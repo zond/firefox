@@ -2614,6 +2614,7 @@ dependencies = [
  "ipdl_utils",
  "jog",
  "jsrust_shared",
+ "jxl_rust_decoder_capi",
  "kvstore",
  "l10nregistry",
  "l10nregistry-ffi",
@@ -3583,6 +3584,17 @@ dependencies = [
  "icu_capi",
  "mozglue-static",
  "unicode-bidi-ffi",
+]
+
+[[package]]
+name = "jxl_rust_decoder"
+version = "0.1.0"
+
+[[package]]
+name = "jxl_rust_decoder_capi"
+version = "0.1.0"
+dependencies = [
+ "jxl_rust_decoder",
 ]
 
 [[package]]
