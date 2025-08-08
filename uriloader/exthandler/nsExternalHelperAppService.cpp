@@ -466,6 +466,9 @@ static const nsDefaultMimeTypeEntry defaultMimeEntries[] = {
     {TEXT_HTML, "htm"},
     {IMAGE_GIF, "gif"},
     {IMAGE_WEBP, "webp"},
+#if defined(MOZ_JXL) || defined(MOZ_JXL_RUST)
+    {IMAGE_JXL, "jxl"},
+#endif
     {APPLICATION_XPINSTALL, "xpi"},
     {APPLICATION_XHTML_XML, "xhtml"},
     {APPLICATION_XHTML_XML, "xht"},

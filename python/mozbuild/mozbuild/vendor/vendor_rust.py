@@ -89,7 +89,10 @@ PACKAGES_WE_ALWAYS_WANT_AN_OVERRIDE_OF = [
 # Historically duplicated crates. Eventually we want this list to be empty.
 # If you do need to make changes increasing the number of duplicates, please
 # add a comment as to why.
-TOLERATED_DUPES = {}
+TOLERATED_DUPES = {
+    # jxl-rs requires syn 2.0 while Firefox uses syn 1.0
+    "syn": 2,
+}
 
 
 class VendorRust(MozbuildObject):
@@ -256,6 +259,7 @@ Please commit or stash these changes before vendoring, or re-run with `--ignore-
     # Licenses for code used at runtime. Please see the above comment before
     # adding anything to this list.
     RUNTIME_LICENSE_WHITELIST = [
+        "0BSD",  # Required by enum-iterator and enum-iterator-derive from jxl-rs
         "Apache-2.0",
         "Apache-2.0 WITH LLVM-exception",
         # BSD-2-Clause and BSD-3-Clause are ok, but packages using them
@@ -295,6 +299,8 @@ Please commit or stash these changes before vendoring, or re-run with `--ignore-
             "qlog",
         ],
         "BSD-3-Clause": [
+            "jxl",
+            "jxl_macros",
             "subtle",
         ],
     }

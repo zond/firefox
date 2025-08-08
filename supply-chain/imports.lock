@@ -521,13 +521,6 @@ when = "2024-03-19"
 user-id = 213776
 user-login = "divviup-github-automation"
 
-[[publisher.proc-macro2]]
-version = "1.0.84"
-when = "2024-05-25"
-user-id = 3618
-user-login = "dtolnay"
-user-name = "David Tolnay"
-
 [[publisher.qcms]]
 version = "0.3.0"
 when = "2024-01-09"
@@ -634,8 +627,15 @@ user-login = "mbrubeck"
 user-name = "Matt Brubeck"
 
 [[publisher.syn]]
-version = "2.0.87"
-when = "2024-11-02"
+version = "1.0.109"
+when = "2023-02-24"
+user-id = 3618
+user-login = "dtolnay"
+user-name = "David Tolnay"
+
+[[publisher.syn]]
+version = "2.0.104"
+when = "2025-06-20"
 user-id = 3618
 user-login = "dtolnay"
 user-name = "David Tolnay"
@@ -1478,6 +1478,12 @@ who = "Johan Andersson <opensource@embark-studios.com>"
 criteria = "safe-to-deploy"
 version = "1.0.58"
 
+[[audits.embark-studios.audits.array-init]]
+who = "Johan Andersson <opensource@embark-studios.com>"
+criteria = "safe-to-deploy"
+version = "2.1.0"
+notes = "Some unsafe usage but with safety comments and tests, and appear sound but didn't do detailed evaluation. No ambient capabilities"
+
 [[audits.embark-studios.audits.cargo_metadata]]
 who = "Johan Andersson <opensource@embark-studios.com>"
 criteria = "safe-to-deploy"
@@ -1508,23 +1514,11 @@ criteria = "safe-to-deploy"
 delta = "0.3.0 -> 0.4.0"
 notes = "No unsafe usage or ambient capabilities"
 
-[[audits.embark-studios.audits.line-wrap]]
-who = "Johan Andersson <opensource@embark-studios.com>"
-criteria = "safe-to-deploy"
-version = "0.1.1"
-notes = "No unsafe usage or ambient capabilities"
-
 [[audits.embark-studios.audits.unic-ucd-version]]
 who = "Johan Andersson <opensource@embark-studios.com>"
 criteria = "safe-to-deploy"
 version = "0.9.0"
 notes = "Only few constants. No unsafe usage or other ambient capabilities"
-
-[[audits.embark-studios.audits.yaml-rust]]
-who = "Johan Andersson <opensource@embark-studios.com>"
-criteria = "safe-to-deploy"
-version = "0.4.5"
-notes = "No unsafe usage or ambient capabilities"
 
 [[audits.google.audits.ash]]
 who = "David Koloski <dkoloski@google.com>"
@@ -2207,24 +2201,11 @@ delta = "0.1.0 -> 0.1.2"
 notes = "Addition of safe comparison APIs since last audit"
 aggregated-from = "https://chromium.googlesource.com/chromium/src/+/main/third_party/rust/chromium_crates_io/supply-chain/audits.toml?format=TEXT"
 
-[[audits.google.audits.proc-macro2]]
-who = "danakj@chromium.org"
+[[audits.google.audits.proc-macro-error-attr]]
+who = "George Burgess IV <gbiv@google.com>"
 criteria = "safe-to-deploy"
-delta = "1.0.84 -> 1.0.85"
-notes = "Test-only changes."
-aggregated-from = "https://chromium.googlesource.com/chromium/src/+/main/third_party/rust/chromium_crates_io/supply-chain/audits.toml?format=TEXT"
-
-[[audits.google.audits.proc-macro2]]
-who = "Lukasz Anforowicz <lukasza@chromium.org>"
-criteria = "safe-to-deploy"
-delta = "1.0.85 -> 1.0.86"
-notes = """
-Comment-only changes in `build.rs`.
-Reordering of `Cargo.toml` entries.
-Just bumping up the version number in `lib.rs`.
-Config-related changes in `test_size.rs`.
-"""
-aggregated-from = "https://chromium.googlesource.com/chromium/src/+/main/third_party/rust/chromium_crates_io/supply-chain/audits.toml?format=TEXT"
+version = "1.0.4"
+aggregated-from = "https://chromium.googlesource.com/chromiumos/third_party/rust_crates/+/refs/heads/main/cargo-vet/audits.toml?format=TEXT"
 
 [[audits.google.audits.quick-xml]]
 who = "Matthew DeVore <matvore@chromium.org>"
