@@ -359,6 +359,8 @@ impl JxlRustDecoder {
 }
 
 /// Apply ICC color transform to convert input color space to RGB
+/// TODO(zond): When the jxl-rs API exposes more info about extra channels,
+/// we can do this correctly with e.g. an extra CMYK black channel.
 fn apply_icc_color_transform(
     data: &mut [u8],
     width: usize,
