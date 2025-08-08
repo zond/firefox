@@ -8351,6 +8351,12 @@
   value: false
   mirror: always
 
+# Whether to use the experimental Rust JXL decoder implementation.
+- name: image.jxl.rust.enabled
+  type: RelaxedAtomicBool
+  value: false
+  mirror: always
+
 #---------------------------------------------------------------------------
 # Prefs starting with "intl."
 #---------------------------------------------------------------------------
