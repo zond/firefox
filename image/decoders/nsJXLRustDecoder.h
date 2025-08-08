@@ -39,6 +39,7 @@ class nsJXLRustDecoder final : public Decoder {
   enum class State { JXL_DATA, FINISHED_JXL_DATA };
 
   LexerTransition<State> ReadJXLData(const char* aData, size_t aLength);
+  LexerTransition<State> ProcessFrame();
   LexerTransition<State> FinishedJXLData();
 
   StreamingLexer<State> mLexer;

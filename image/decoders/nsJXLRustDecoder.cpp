@@ -41,7 +41,8 @@ LexerResult nsJXLRustDecoder::DoDecode(SourceBufferIterator& aIterator,
 
   // Create Rust decoder on first use
   if (!mRustDecoder) {
-    ::mozilla::JxlRustDecoder* decoder = jxl_rust_decoder_new();
+    bool isMetadataDecode = IsMetadataDecode();
+    ::mozilla::JxlRustDecoder* decoder = jxl_rust_decoder_new(isMetadataDecode);
     if (!decoder) {
       return LexerResult(TerminalState::FAILURE);
     }
@@ -63,113 +64,51 @@ LexerResult nsJXLRustDecoder::DoDecode(SourceBufferIterator& aIterator,
 LexerTransition<nsJXLRustDecoder::State> nsJXLRustDecoder::ReadJXLData(
     const char* aData, size_t aLength) {
   MOZ_ASSERT(mRustDecoder);
-
-  const uint8_t* input = reinterpret_cast<const uint8_t*>(aData);
-  size_t length = aLength;
-
-  // If we have buffered data, append new data and use buffer
-  if (mBuffer.length() != 0) {
-    if (!mBuffer.append(aData, aLength)) {
-      return Transition::TerminateFailure();
-    }
-    input = mBuffer.begin();
-    length = mBuffer.length();
-  }
-
+  
   // Process data with Rust decoder
+  size_t sizeHint = 0;
   ::mozilla::JxlRustStatus status = jxl_rust_decoder_process_data(
-      mRustDecoder.get(), input, length);
+      mRustDecoder.get(), 
+      reinterpret_cast<const uint8_t*>(aData), 
+      aLength,
+      &sizeHint);
 
   switch (status) {
     case ::mozilla::JXL_RUST_STATUS_OK: {
-      // Check if we have image info yet
-      ::mozilla::JxlRustImageInfo info;
-      ::mozilla::JxlRustStatus infoStatus = jxl_rust_decoder_get_info(
-          mRustDecoder.get(), &info);
+      // Check if we have image info and haven't posted size yet
+      if (!HasSize()) {
+        ::mozilla::JxlRustImageInfo info;
+        ::mozilla::JxlRustStatus infoStatus = jxl_rust_decoder_get_info(
+            mRustDecoder.get(), &info);
+        
+        if (infoStatus == ::mozilla::JXL_RUST_STATUS_OK) {
+          mSize = IntSize(info.width, info.height);
+          PostSize(info.width, info.height);
 
-      if (infoStatus == ::mozilla::JXL_RUST_STATUS_OK && !HasSize()) {
-        mSize = IntSize(info.width, info.height);
-        PostSize(info.width, info.height);
-
-        if (IsMetadataDecode()) {
-          return Transition::TerminateSuccess();
-        }
-      }
-
-      // Check if Rust decoder has a frame ready
-      if (jxl_rust_decoder_is_frame_ready(mRustDecoder.get())) {
-        // Create the output surface
-        OrientedIntSize outputSize = OutputSize();
-
-        SurfaceFormat format = SurfaceFormat::OS_RGBX;
-        SurfacePipeFlags pipeFlags = SurfacePipeFlags();
-
-        // Create surface pipe
-        OrientedIntRect frameRect(OrientedIntPoint(0, 0), outputSize);
-        Maybe<SurfacePipe> pipe = SurfacePipeFactory::CreateSurfacePipe(
-            this, outputSize, outputSize, frameRect,
-            format, format, /* aAnimParams */ Nothing(),
-            /* aTransform */ nullptr, pipeFlags);
-
-        if (!pipe) {
-          return Transition::TerminateFailure();
-        }
-
-        // Allocate buffer for decoded pixels
-        Vector<uint32_t> pixelBuffer;
-        size_t pixelCount = outputSize.width * outputSize.height;
-        if (!pixelBuffer.resize(pixelCount)) {
-          return Transition::TerminateFailure();
-        }
-
-        // Decode the frame
-        size_t pixelsWritten = 0;
-        status = jxl_rust_decoder_decode_frame(
-            mRustDecoder.get(),
-            pixelBuffer.begin(),
-            pixelBuffer.length(),
-            &pixelsWritten);
-
-        if (status != ::mozilla::JXL_RUST_STATUS_OK || pixelsWritten != pixelCount) {
-          return Transition::TerminateFailure();
-        }
-
-        // Write decoded pixels to the surface row by row
-        uint32_t* currentRow = pixelBuffer.begin();
-        for (int32_t y = 0; y < outputSize.height; ++y) {
-          WriteState result = pipe->WriteBuffer(currentRow);
-          if (result == WriteState::FAILURE) {
-            return Transition::TerminateFailure();
+          if (IsMetadataDecode()) {
+            return Transition::TerminateSuccess();
           }
-          currentRow += outputSize.width;
+          
+          // After posting size, check if frame is already ready
+          if (jxl_rust_decoder_is_frame_ready(mRustDecoder.get())) {
+            return ProcessFrame();
+          }
+          
+          return Transition::ContinueUnbuffered(State::JXL_DATA);
         }
-
-        if (Maybe<SurfaceInvalidRect> invalidRect = pipe->TakeInvalidRect()) {
-          PostInvalidation(invalidRect->mInputSpaceRect,
-                           Some(invalidRect->mOutputSpaceRect));
-        }
-
-        PostFrameStop();
-        PostDecodeDone();
-        return Transition::TerminateSuccess();
       }
-
-      // Clear buffer if we used it
-      mBuffer.clear();
-
+      
+      // Check if frame is ready for decoding
+      if (jxl_rust_decoder_is_frame_ready(mRustDecoder.get())) {
+        return ProcessFrame();
+      }
+      
       // Continue reading more data
       return Transition::ContinueUnbuffered(State::JXL_DATA);
     }
 
-    case ::mozilla::JXL_RUST_STATUS_NEED_MORE_DATA: {
-      // Need to buffer data if it wasn't contiguous
-      if (mBuffer.length() == 0 && aLength > 0) {
-        if (!mBuffer.append(aData, aLength)) {
-              return Transition::TerminateFailure();
-        }
-      }
+    case ::mozilla::JXL_RUST_STATUS_NEED_MORE_DATA:
       return Transition::ContinueUnbuffered(State::JXL_DATA);
-    }
 
     case ::mozilla::JXL_RUST_STATUS_INVALID_DATA:
       return Transition::TerminateFailure();
@@ -178,8 +117,67 @@ LexerTransition<nsJXLRustDecoder::State> nsJXLRustDecoder::ReadJXLData(
       return Transition::TerminateFailure();
 
     default:
+      // Unknown status - treat as error
       return Transition::TerminateFailure();
   }
+}
+
+LexerTransition<nsJXLRustDecoder::State> nsJXLRustDecoder::ProcessFrame() {
+  // Get image dimensions
+  OrientedIntSize fullSize(mSize.width, mSize.height);
+  OrientedIntSize outputSize = OutputSize();
+
+  SurfaceFormat format = SurfaceFormat::OS_RGBX;
+  SurfacePipeFlags pipeFlags = SurfacePipeFlags();
+
+  // Create surface pipe with full size input, scaled output
+  OrientedIntRect frameRect(OrientedIntPoint(0, 0), fullSize);
+  Maybe<SurfacePipe> pipe = SurfacePipeFactory::CreateSurfacePipe(
+      this, fullSize, outputSize, frameRect,
+      format, format, /* aAnimParams */ Nothing(),
+      /* aTransform */ nullptr, pipeFlags);
+
+  if (!pipe) {
+    return Transition::TerminateFailure();
+  }
+
+  // Allocate buffer for full-resolution decoded pixels  
+  Vector<uint32_t> pixelBuffer;
+  size_t fullPixelCount = fullSize.width * fullSize.height;
+  if (!pixelBuffer.resize(fullPixelCount)) {
+    return Transition::TerminateFailure();
+  }
+
+  // Decode the frame at full resolution
+  size_t pixelsWritten = 0;
+  ::mozilla::JxlRustStatus status = jxl_rust_decoder_decode_frame(
+      mRustDecoder.get(),
+      pixelBuffer.begin(),
+      pixelBuffer.length(),
+      &pixelsWritten);
+
+  if (status != ::mozilla::JXL_RUST_STATUS_OK || pixelsWritten != fullPixelCount) {
+    return Transition::TerminateFailure();
+  }
+
+  // Write full-resolution decoded pixels to the surface pipe (scaling handled automatically)
+  uint32_t* currentRow = pixelBuffer.begin();
+  for (int32_t y = 0; y < fullSize.height; ++y) {
+    WriteState result = pipe->WriteBuffer(currentRow);
+    if (result == WriteState::FAILURE) {
+      return Transition::TerminateFailure();
+    }
+    currentRow += fullSize.width;
+  }
+
+  if (Maybe<SurfaceInvalidRect> invalidRect = pipe->TakeInvalidRect()) {
+    PostInvalidation(invalidRect->mInputSpaceRect,
+                     Some(invalidRect->mOutputSpaceRect));
+  }
+
+  PostFrameStop();
+  PostDecodeDone();
+  return Transition::TerminateSuccess();
 }
 
 LexerTransition<nsJXLRustDecoder::State> nsJXLRustDecoder::FinishedJXLData() {
