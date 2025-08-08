@@ -1,0 +1,10 @@
+[package]
+name = "jxl_rust_decoder"
+version = "0.1.0"
+authors = ["Google"]
+edition = "2021"
+license = "MPL-2.0"
+
+[dependencies]
+jxl = { git = "https://github.com/libjxl/jxl-rs.git" }
+qcms = { path = "../../../gfx/qcms" }

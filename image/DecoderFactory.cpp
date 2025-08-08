@@ -27,6 +27,9 @@
 #ifdef MOZ_JXL
 #  include "nsJXLDecoder.h"
 #endif
+#ifdef MOZ_JXL_RUST
+#  include "nsJXLRustDecoder.h"
+#endif
 
 namespace mozilla {
 
@@ -93,9 +96,19 @@ DecoderType DecoderFactory::GetDecoderType(const char* aMimeType) {
     type = DecoderType::AVIF;
   }
 #endif
-#ifdef MOZ_JXL
-  else if (!strcmp(aMimeType, IMAGE_JXL) && StaticPrefs::image_jxl_enabled()) {
-    type = DecoderType::JXL;
+#ifdef MOZ_JXL_RUST
+  else if (!strcmp(aMimeType, IMAGE_JXL)) {
+    bool rustEnabled = StaticPrefs::image_jxl_rust_enabled();
+    if (rustEnabled) {
+      type = DecoderType::JXL;
+    }
+  }
+#elif MOZ_JXL
+  else if (!strcmp(aMimeType, IMAGE_JXL)) {
+    bool enabled = StaticPrefs::image_jxl_enabled();
+    if (enabled) {
+      type = DecoderType::JXL;
+    }
   }
 #endif
 
@@ -164,6 +177,11 @@ already_AddRefed<Decoder> DecoderFactory::GetDecoder(DecoderType aType,
 #ifdef MOZ_JXL
     case DecoderType::JXL:
       decoder = new nsJXLDecoder(aImage);
+      break;
+#endif
+#ifdef MOZ_JXL_RUST
+    case DecoderType::JXL:
+      decoder = new nsJXLRustDecoder(aImage);
       break;
 #endif
     default:

@@ -58,12 +58,22 @@ nsresult mozilla::image::EnsureModuleInitialized() {
 
   static ImageEnablementCookie kAVIFCookie = {
       mozilla::StaticPrefs::image_avif_enabled, "image/avif"_ns};
+#ifdef MOZ_JXL
   static ImageEnablementCookie kJXLCookie = {
       mozilla::StaticPrefs::image_jxl_enabled, "image/jxl"_ns};
+#elif defined(MOZ_JXL_RUST)
+  static ImageEnablementCookie kJXLCookie = {
+      mozilla::StaticPrefs::image_jxl_rust_enabled, "image/jxl"_ns};
+#endif
   Preferences::RegisterCallbackAndCall(UpdateDocumentViewerRegistration,
                                        "image.avif.enabled", &kAVIFCookie);
+#ifdef MOZ_JXL
   Preferences::RegisterCallbackAndCall(UpdateDocumentViewerRegistration,
                                        "image.jxl.enabled", &kJXLCookie);
+#elif defined(MOZ_JXL_RUST)
+  Preferences::RegisterCallbackAndCall(UpdateDocumentViewerRegistration,
+                                       "image.jxl.rust.enabled", &kJXLCookie);
+#endif
 
   mozilla::image::ShutdownTracker::Initialize();
   mozilla::image::ImageFactory::Initialize();
