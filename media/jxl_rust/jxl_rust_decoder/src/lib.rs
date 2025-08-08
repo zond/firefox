@@ -5,14 +5,9 @@
 use jxl::api::{
     states::*, JxlColorType, JxlDecoder, JxlDecoderOptions, JxlOutputBuffer, ProcessingResult,
 };
+use jxl::headers::extra_channels::{ExtraChannel, ExtraChannelInfo};
+use qcms::c_bindings::{icSigCmykData, icSigGrayData, icSigRgbData, qcms_profile_get_color_space};
 use qcms::{DataType, Intent, Profile, Transform};
-use qcms::c_bindings::{qcms_profile_get_color_space, icSigRgbData, icSigGrayData, icSigCmykData};
-
-/// JXL magic signatures
-pub const JXL_CODESTREAM_SIGNATURE: &[u8] = &[0xFF, 0x0A];
-pub const JXL_CONTAINER_SIGNATURE: &[u8] = &[
-    0x00, 0x00, 0x00, 0x0C, 0x4A, 0x58, 0x4C, 0x20, 0x0D, 0x0A, 0x87, 0x0A,
-];
 
 /// Enum to hold the decoder in any of its typestates
 enum DecoderState {
@@ -47,17 +42,26 @@ pub struct CachedImageInfo {
 
 pub struct JxlRustDecoder {
     state: DecoderState,
+    // Cached image info from file header
     pub cached_info: Option<CachedImageInfo>,
+    // Signal for frame ready to render
     pub frame_ready: bool,
+    // True if Firefox only wanted CachedImageInfo
+    metadata_only: bool,
+    // Destination for rendering pixels
     decoded_pixels: Option<Vec<u32>>,
     // Persistent buffers for frame decoding
-    rgb_buffer: Option<Vec<u8>>,
+    color_buffer: Option<Vec<u8>>,
     alpha_buffer: Option<Vec<u8>>,
-    metadata_only: bool,
-    // ICC profile for color management
+    alpha_channel: Option<u8>,
+    black_buffer: Option<Vec<u8>>,
+    black_channel: Option<u8>,
+    // ICC profile of JXL image
     icc_profile: Option<Vec<u8>>,
     // Original number of color channels (before any conversion)
     original_color_channels: usize,
+    // Info for JXL extra channels (alpha, black, ...)
+    extra_channels: Option<Vec<ExtraChannelInfo>>,
 }
 
 impl JxlRustDecoder {
@@ -67,11 +71,15 @@ impl JxlRustDecoder {
             cached_info: None,
             frame_ready: false,
             decoded_pixels: None,
-            rgb_buffer: None,
+            color_buffer: None,
             alpha_buffer: None,
+            alpha_channel: None,
+            black_buffer: None,
+            black_channel: None,
             metadata_only,
             icc_profile: None,
             original_color_channels: 3,
+            extra_channels: None,
         }
     }
 
@@ -95,7 +103,6 @@ impl JxlRustDecoder {
                             DecoderState::Initialized(decoder) => decoder,
                             _ => unreachable!(),
                         };
-
                     match decoder.process(&mut data) {
                         Ok(ProcessingResult::Complete { result }) => {
                             let decoder_with_info = result;
@@ -149,13 +156,31 @@ impl JxlRustDecoder {
                             // Each channel is 4 bytes (f32)
                             let bytes_per_pixel = self.original_color_channels * 4;
 
-                            self.rgb_buffer = Some(vec![0; width * height * bytes_per_pixel]);
+                            self.color_buffer = Some(vec![0; width * height * bytes_per_pixel]);
                             self.alpha_buffer = if info.has_alpha {
                                 Some(vec![0; width * height * 4])
                             } else {
                                 None
                             };
-
+                            for (idx, ec) in
+                                self.extra_channels.as_ref().unwrap().iter().enumerate()
+                            {
+                                match ec.ec_type {
+                                    ExtraChannel::Alpha => self.alpha_channel = Some(idx as u8),
+                                    ExtraChannel::Black => self.black_channel = Some(idx as u8),
+                                    _ => {}
+                                }
+                            }
+                            if self.alpha_buffer.is_some() && self.alpha_channel.is_none() {
+                                let msg = "Color format with alpha without alpha extra channel";
+                                self.state = DecoderState::Error(msg.to_string());
+                                return Err(msg);
+                            }
+                            self.black_buffer = if self.black_channel.is_some() {
+                                Some(vec![0; width * height * 4])
+                            } else {
+                                None
+                            };
                             self.state = DecoderState::WithFrameInfo(result);
                             // Continue in the loop to process frame decode immediately
                         }
@@ -176,7 +201,6 @@ impl JxlRustDecoder {
                 }
 
                 DecoderState::WithFrameInfo(_) => {
-                    // Use existing persistent buffers
                     let info = self.cached_info.as_ref().ok_or("No cached info")?;
                     let (width, height) = if info.orientation_transpose {
                         (info.height as usize, info.width as usize)
@@ -184,17 +208,14 @@ impl JxlRustDecoder {
                         (info.width as usize, info.height as usize)
                     };
 
-                    // Create output buffers from the persistent buffers
-                    // Calculate bytes per row based on original number of color channels
                     let bytes_per_row = width * self.original_color_channels * 4; // Each channel is 4 bytes (f32)
                     let mut buffers = vec![JxlOutputBuffer::new(
-                        self.rgb_buffer.as_mut().ok_or("No RGB buffer allocated")?,
+                        self.color_buffer
+                            .as_mut()
+                            .ok_or("No RGB buffer allocated")?,
                         height,
                         bytes_per_row,
                     )];
-                    if let Some(alpha_buf) = self.alpha_buffer.as_mut() {
-                        buffers.push(JxlOutputBuffer::new(alpha_buf, height, width * 4));
-                    }
 
                     // Take ownership of the decoder
                     let decoder =
@@ -209,53 +230,27 @@ impl JxlRustDecoder {
                             let pixel_count = width * height;
                             let mut decoded_pixels = vec![0u32; pixel_count];
                             // Get the buffer data for conversion
-                            let rgb_bytes = self.rgb_buffer.as_mut().unwrap();
-
-                            let alpha_bytes = self.alpha_buffer.as_deref();
-
-                            // Apply ICC color transformation if needed
-                            let actual_color_channels = if self.original_color_channels > 3 {
-                                // Multi-channel images require ICC profile for conversion to RGB
-                                if let Some(icc_data) = &self.icc_profile {
-                                    if apply_icc_color_transform(
-                                        rgb_bytes, width, height, icc_data, self.original_color_channels,
-                                    ) {
-                                        3 // After transformation, we have RGB data
-                                    } else {
-                                        self.state = DecoderState::Error(format!(
-                                            "Failed to apply color transform for {} channel image",
-                                            self.original_color_channels
-                                        ));
-                                        return Err("Failed to apply color transform");
-                                    }
-                                } else {
-                                    self.state = DecoderState::Error(format!(
-                                        "Image has {} color channels but no ICC profile for conversion to RGB",
-                                        self.original_color_channels
-                                    ));
-                                    return Err("No ICC profile for multi-channel image");
-                                }
-                            } else if info.is_grayscale {
-                                1 // Grayscale has 1 color channel
-                            } else {
-                                3 // RGB has 3 color channels
-                            };
-
-                            // Convert pixels
-                            convert_f32_rgb_to_u32_bgra(
+                            let rgb_bytes = self.color_buffer.as_mut().unwrap();
+                            if let Err(e) = apply_icc_color_transform(
                                 rgb_bytes,
+                                self.alpha_buffer.as_deref(),
+                                self.black_buffer.as_deref(),
                                 &mut decoded_pixels,
                                 width,
                                 height,
-                                info.has_alpha,
-                                alpha_bytes,
-                                actual_color_channels, // Use actual channels after transformation
-                            );
-
+                                self.icc_profile.as_ref().unwrap(),
+                                self.original_color_channels,
+                            ) {
+                                self.state = DecoderState::Error(e.to_string());
+                                return Err(e);
+                            }
                             // Store decoded pixels and clean up buffers
                             self.decoded_pixels = Some(decoded_pixels);
-                            self.rgb_buffer = None;
+                            self.color_buffer = None;
                             self.alpha_buffer = None;
+                            self.alpha_channel = None;
+                            self.black_buffer = None;
+                            self.black_channel = None;
                             self.state = DecoderState::WithImageInfo(result);
                             self.frame_ready = true;
 
@@ -295,14 +290,13 @@ impl JxlRustDecoder {
         let has_alpha = pixel_format.color_type.has_alpha();
 
         // Store the original number of color channels (excluding alpha)
-        // For CMYK, we expect 4 color channels (C, M, Y, K) plus optional alpha
-        // For RGB, we expect 3 color channels (R, G, B) plus optional alpha
-        // For Grayscale, we expect 1 color channel plus optional alpha
         self.original_color_channels = if has_alpha {
             num_color_channels - 1
         } else {
             num_color_channels
         };
+
+        self.extra_channels = Some(basic_info.extra_channels.clone());
 
         // Extract ICC profile from the image
         let color_profile = decoder.output_color_profile();
@@ -358,20 +352,23 @@ impl JxlRustDecoder {
     }
 }
 
-/// Apply ICC color transform to convert input color space to RGB
-/// TODO(zond): When the jxl-rs API exposes more info about extra channels,
-/// we can do this correctly with e.g. an extra CMYK black channel.
+/// Apply ICC color transform to convert input color space to BGRA.
 fn apply_icc_color_transform(
-    data: &mut [u8],
+    original_colors: &[u8],
+    alpha: Option<&[u8]>,
+    black: Option<&[u8]>,
+    bgra: &mut [u32],
     width: usize,
     height: usize,
     icc_data: &[u8],
-    input_channels: usize,
-) -> bool {
+    mut input_channels: usize,
+) -> Result<(), &'static str> {
+    let mut colors = original_colors;
+
     // Parse the ICC profile (false = not curves_only)
     let input_profile = match Profile::new_from_slice(icc_data, false) {
         Some(p) => p,
-        None => return false,
+        None => return Err("Unable to parse ICC profile"),
     };
 
     // Create sRGB output profile
@@ -379,6 +376,7 @@ fn apply_icc_color_transform(
 
     // Determine input data type based on ICC profile's color space
     let color_space = qcms_profile_get_color_space(&input_profile);
+    #[allow(non_upper_case_globals)]
     let input_data_type = match color_space {
         icSigGrayData => DataType::Gray8,
         icSigRgbData => DataType::RGB8,
@@ -386,15 +384,43 @@ fn apply_icc_color_transform(
         _ => {
             // Unsupported color space - could be LAB, XYZ, or other formats
             // that qcms doesn't currently support in our DataType enum
-            return false;
+            return Err("Unknown color space");
         }
     };
+
+    let pixel_count = width * height;
+    // This will be unused unless we need to merge in the black channel for CMYK.
+    #[allow(unused_assignments)]
+    let mut extended_colors = vec![0u8; 0];
+
+    if input_data_type == DataType::CMYK {
+        if input_channels != 3 || black.is_none() {
+            // We must have 3 plus an extra black channel for CMYK.
+            return Err("CMYK requires 3 channels + black");
+        }
+        if let Some(black_buffer) = black {
+            extended_colors = vec![0u8; pixel_count * 4 * 4];
+            for y in 0..height {
+                for x in 0..width {
+                    let pixel_idx = y * width + x;
+                    // Copy the first three channels from colors.
+                    extended_colors[pixel_idx * 16..pixel_idx * 16 + 12]
+                        .copy_from_slice(&colors[pixel_idx * 12..pixel_idx * 12 + 12]);
+                    // Copy the fourth channel from black.
+                    extended_colors[pixel_idx * 16 + 12..pixel_idx * 16 + 16]
+                        .copy_from_slice(&black_buffer[pixel_idx * 4..pixel_idx * 4 + 4]);
+                }
+            }
+            colors = &extended_colors;
+            input_channels += 1;
+        }
+    }
 
     // Validate that the number of channels matches the color space
     let expected_channels = input_data_type.bytes_per_pixel();
     if input_channels != expected_channels {
         // Channel count doesn't match the ICC profile's color space
-        return false;
+        return Err("Wrong channel count");
     }
 
     // Create transform from input color space to RGB
@@ -406,98 +432,43 @@ fn apply_icc_color_transform(
         Intent::Perceptual,
     ) {
         Some(t) => t,
-        None => return false,
+        None => return Err("Unable to transform colors"),
     };
 
     // Convert f32 data to u8 for qcms
-    let pixel_count = width * height;
     let mut input_u8 = vec![0u8; pixel_count * input_channels];
     let mut rgb_u8 = vec![0u8; pixel_count * 3];
-
     // Convert f32 input to u8 input
     for i in 0..pixel_count * input_channels {
-        let f32_val = f32::from_ne_bytes(data[i * 4..(i + 1) * 4].try_into().unwrap());
-        input_u8[i] = (f32_val.clamp(0.0, 1.0) * 255.0) as u8;
+        let f32_val = f32::from_ne_bytes(colors[i * 4..(i + 1) * 4].try_into().unwrap());
+        input_u8[i] = f32_val.clamp(0.0, 255.0) as u8;
     }
 
     // Apply color transform
     transform.convert(&input_u8, &mut rgb_u8);
 
-    // Convert u8 RGB back to f32 RGB and write back to data buffer
-    // Note: We're converting from input_channels to 3 channels (RGB)
-    for i in 0..pixel_count * 3 {
-        let f32_val = rgb_u8[i] as f32 / 255.0;
-        data[i * 4..(i + 1) * 4].copy_from_slice(&f32_val.to_ne_bytes());
-    }
-    true
-}
-
-/// Convert f32 RGB/Grayscale/CMYK to u32 BGRA packed format
-fn convert_f32_rgb_to_u32_bgra(
-    rgb_buffer: &[u8],
-    output: &mut [u32],
-    width: usize,
-    height: usize,
-    has_alpha: bool,
-    alpha_buffer: Option<&[u8]>,
-    num_color_channels: usize,
-) {
     for y in 0..height {
         for x in 0..width {
             let pixel_idx = y * width + x;
-
-            // Extract f32 values based on number of color channels
-            let (r, g, b) = if num_color_channels == 1 {
-                // Grayscale: single channel, replicate to RGB
-                let gray_offset = pixel_idx * 4;
-                let gray = f32::from_ne_bytes(
-                    rgb_buffer[gray_offset..gray_offset + 4].try_into().unwrap(),
-                );
-                (gray, gray, gray)
-            } else if num_color_channels == 3 {
-                // RGB: 3 channels (includes converted CMYK)
-                let rgb_offset = pixel_idx * 12;
-                let r =
-                    f32::from_ne_bytes(rgb_buffer[rgb_offset..rgb_offset + 4].try_into().unwrap());
-                let g = f32::from_ne_bytes(
-                    rgb_buffer[rgb_offset + 4..rgb_offset + 8]
+            let r = rgb_u8[pixel_idx * 3];
+            let g = rgb_u8[pixel_idx * 3 + 1];
+            let b = rgb_u8[pixel_idx * 3 + 2];
+            let a = if let Some(alpha_buffer) = alpha {
+                let alpha_offset = pixel_idx * 4;
+                f32::from_ne_bytes(
+                    alpha_buffer[alpha_offset..alpha_offset + 4]
                         .try_into()
                         .unwrap(),
-                );
-                let b = f32::from_ne_bytes(
-                    rgb_buffer[rgb_offset + 8..rgb_offset + 12]
-                        .try_into()
-                        .unwrap(),
-                );
-                (r, g, b)
+                ) as u8
             } else {
-                // Shouldn't reach here after conversion
-                (0.0, 0.0, 0.0)
+                255
             };
-
-            // Get alpha if available
-            let a = if has_alpha {
-                if let Some(alpha) = alpha_buffer {
-                    let alpha_offset = pixel_idx * 4;
-                    f32::from_ne_bytes(alpha[alpha_offset..alpha_offset + 4].try_into().unwrap())
-                } else {
-                    255.0
-                }
-            } else {
-                255.0
-            };
-
-            // Convert to u8 and pack as BGRA (actually ARGB in memory on little-endian)
-            let r_u8 = (r.clamp(0.0, 255.0)) as u8;
-            let g_u8 = (g.clamp(0.0, 255.0)) as u8;
-            let b_u8 = (b.clamp(0.0, 255.0)) as u8;
-            let a_u8 = (a.clamp(0.0, 255.0)) as u8;
 
             // Pack as 0xAARRGGBB for OS_RGBX format
-            output[pixel_idx] = ((a_u8 as u32) << 24)
-                | ((r_u8 as u32) << 16)
-                | ((g_u8 as u32) << 8)
-                | (b_u8 as u32);
+            bgra[pixel_idx] =
+                ((a as u32) << 24) | ((r as u32) << 16) | ((g as u32) << 8) | (b as u32);
         }
     }
+
+    Ok(())
 }

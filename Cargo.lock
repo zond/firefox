@@ -3615,7 +3615,7 @@ dependencies = [
 [[package]]
 name = "jxl"
 version = "0.1.0"
-source = "git+https://github.com/libjxl/jxl-rs.git#e9d32920e52f71690e4bd596b15e749ec0bb8992"
+source = "git+https://github.com/libjxl/jxl-rs.git#419220581b662aa1ff659600bd2918ae1295d4a1"
 dependencies = [
  "array-init",
  "byteorder",
@@ -3631,7 +3631,7 @@ dependencies = [
 [[package]]
 name = "jxl_macros"
 version = "0.1.0"
-source = "git+https://github.com/libjxl/jxl-rs.git#e9d32920e52f71690e4bd596b15e749ec0bb8992"
+source = "git+https://github.com/libjxl/jxl-rs.git#419220581b662aa1ff659600bd2918ae1295d4a1"
 dependencies = [
  "proc-macro-error",
  "proc-macro2",
