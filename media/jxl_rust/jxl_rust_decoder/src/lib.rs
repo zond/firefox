@@ -6,6 +6,7 @@ use jxl::api::{
     states::*, JxlColorType, JxlDecoder, JxlDecoderOptions, JxlOutputBuffer, ProcessingResult,
 };
 use qcms::{DataType, Intent, Profile, Transform};
+use qcms::c_bindings::{qcms_profile_get_color_space, icSigRgbData, icSigGrayData, icSigCmykData};
 
 /// JXL magic signatures
 pub const JXL_CODESTREAM_SIGNATURE: &[u8] = &[0xFF, 0x0A];
@@ -212,12 +213,12 @@ impl JxlRustDecoder {
 
                             let alpha_bytes = self.alpha_buffer.as_deref();
 
-                            // Apply ICC color transformation for CMYK images
+                            // Apply ICC color transformation if needed
                             let actual_color_channels = if self.original_color_channels > 3 {
-                                // CMYK requires ICC profile for conversion to RGB
+                                // Multi-channel images require ICC profile for conversion to RGB
                                 if let Some(icc_data) = &self.icc_profile {
-                                    if apply_cmyk_to_rgb_transform(
-                                        rgb_bytes, width, height, icc_data,
+                                    if apply_icc_color_transform(
+                                        rgb_bytes, width, height, icc_data, self.original_color_channels,
                                     ) {
                                         3 // After transformation, we have RGB data
                                     } else {
@@ -357,12 +358,13 @@ impl JxlRustDecoder {
     }
 }
 
-/// Apply color transform from CMYK to RGB
-fn apply_cmyk_to_rgb_transform(
+/// Apply ICC color transform to convert input color space to RGB
+fn apply_icc_color_transform(
     data: &mut [u8],
     width: usize,
     height: usize,
     icc_data: &[u8],
+    input_channels: usize,
 ) -> bool {
     // Parse the ICC profile (false = not curves_only)
     let input_profile = match Profile::new_from_slice(icc_data, false) {
@@ -373,11 +375,31 @@ fn apply_cmyk_to_rgb_transform(
     // Create sRGB output profile
     let output_profile = Profile::new_sRGB();
 
-    // Create transform from CMYK to RGB
+    // Determine input data type based on ICC profile's color space
+    let color_space = qcms_profile_get_color_space(&input_profile);
+    let input_data_type = match color_space {
+        icSigGrayData => DataType::Gray8,
+        icSigRgbData => DataType::RGB8,
+        icSigCmykData => DataType::CMYK,
+        _ => {
+            // Unsupported color space - could be LAB, XYZ, or other formats
+            // that qcms doesn't currently support in our DataType enum
+            return false;
+        }
+    };
+
+    // Validate that the number of channels matches the color space
+    let expected_channels = input_data_type.bytes_per_pixel();
+    if input_channels != expected_channels {
+        // Channel count doesn't match the ICC profile's color space
+        return false;
+    }
+
+    // Create transform from input color space to RGB
     let transform = match Transform::new_to(
         &input_profile,
         &output_profile,
-        DataType::CMYK,
+        input_data_type,
         DataType::RGB8,
         Intent::Perceptual,
     ) {
@@ -387,19 +409,20 @@ fn apply_cmyk_to_rgb_transform(
 
     // Convert f32 data to u8 for qcms
     let pixel_count = width * height;
-    let mut cmyk_u8 = vec![0u8; pixel_count * 4];
+    let mut input_u8 = vec![0u8; pixel_count * input_channels];
     let mut rgb_u8 = vec![0u8; pixel_count * 3];
 
-    // Convert f32 CMYK to u8 CMYK
-    for i in 0..pixel_count * 4 {
+    // Convert f32 input to u8 input
+    for i in 0..pixel_count * input_channels {
         let f32_val = f32::from_ne_bytes(data[i * 4..(i + 1) * 4].try_into().unwrap());
-        cmyk_u8[i] = (f32_val.clamp(0.0, 1.0) * 255.0) as u8;
+        input_u8[i] = (f32_val.clamp(0.0, 1.0) * 255.0) as u8;
     }
 
     // Apply color transform
-    transform.convert(&cmyk_u8, &mut rgb_u8);
+    transform.convert(&input_u8, &mut rgb_u8);
 
-    // Convert u8 RGB back to f32 RGB
+    // Convert u8 RGB back to f32 RGB and write back to data buffer
+    // Note: We're converting from input_channels to 3 channels (RGB)
     for i in 0..pixel_count * 3 {
         let f32_val = rgb_u8[i] as f32 / 255.0;
         data[i * 4..(i + 1) * 4].copy_from_slice(&f32_val.to_ne_bytes());
