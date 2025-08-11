@@ -2,9 +2,7 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-use jxl::api::{
-    states::*, JxlColorType, JxlDecoder, JxlDecoderOptions, JxlOutputBuffer, ProcessingResult,
-};
+use jxl::api::{states::*, JxlDecoder, JxlDecoderOptions, JxlOutputBuffer, ProcessingResult};
 use jxl::headers::extra_channels::{ExtraChannel, ExtraChannelInfo};
 use qcms::c_bindings::{icSigCmykData, icSigGrayData, icSigRgbData, qcms_profile_get_color_space};
 use qcms::{DataType, Intent, Profile, Transform};
@@ -35,9 +33,7 @@ impl std::fmt::Debug for DecoderState {
 pub struct CachedImageInfo {
     pub width: u32,
     pub height: u32,
-    pub has_alpha: bool,
     pub orientation_transpose: bool,
-    pub is_grayscale: bool,
 }
 
 pub struct JxlRustDecoder {
@@ -155,33 +151,22 @@ impl JxlRustDecoder {
                             // Allocate buffers based on original channel count (before any conversion)
                             // Each channel is 4 bytes (f32)
                             let bytes_per_pixel = self.original_color_channels * 4;
-
                             self.color_buffer = Some(vec![0; width * height * bytes_per_pixel]);
-                            self.alpha_buffer = if info.has_alpha {
-                                Some(vec![0; width * height * 4])
-                            } else {
-                                None
-                            };
                             for (idx, ec) in
                                 self.extra_channels.as_ref().unwrap().iter().enumerate()
                             {
                                 match ec.ec_type {
-                                    ExtraChannel::Alpha => self.alpha_channel = Some(idx as u8),
-                                    ExtraChannel::Black => self.black_channel = Some(idx as u8),
+                                    ExtraChannel::Alpha => {
+                                        self.alpha_channel = Some(idx as u8);
+                                        self.alpha_buffer = Some(vec![0; width * height * 4]);
+                                    }
+                                    ExtraChannel::Black => {
+                                        self.black_channel = Some(idx as u8);
+                                        self.black_buffer = Some(vec![0; width * height * 4]);
+                                    }
                                     _ => {}
                                 }
                             }
-                            eprintln!("alpha_buffer: {}", self.alpha_buffer.is_some());
-                            if self.alpha_buffer.is_some() && self.alpha_channel.is_none() {
-                                let msg = "Color format with alpha without alpha extra channel";
-                                self.state = DecoderState::Error(msg.to_string());
-                                return Err(msg);
-                            }
-                            self.black_buffer = if self.black_channel.is_some() {
-                                Some(vec![0; width * height * 4])
-                            } else {
-                                None
-                            };
                             self.state = DecoderState::WithFrameInfo(result);
                             // Continue in the loop to process frame decode immediately
                         }
@@ -211,12 +196,41 @@ impl JxlRustDecoder {
 
                     let bytes_per_row = width * self.original_color_channels * 4; // Each channel is 4 bytes (f32)
                     let mut buffers = vec![JxlOutputBuffer::new(
-                        self.color_buffer
-                            .as_mut()
-                            .ok_or("No RGB buffer allocated")?,
+                        self.color_buffer.as_mut().unwrap(),
                         height,
                         bytes_per_row,
                     )];
+
+                    let mut alpha_buffer = match &mut self.alpha_buffer {
+                        Some(buf) => Some(buf),
+                        _ => None,
+                    };
+                    let mut black_buffer = match &mut self.black_buffer {
+                        Some(buf) => Some(buf),
+                        _ => None,
+                    };
+
+                    for idx in 0..self.extra_channels.as_ref().unwrap().len() as u8 {
+                        if Some(idx) == self.alpha_channel {
+                            let Some(buf) = alpha_buffer.take() else {
+                                unreachable!()
+                            };
+                            buffers.push(JxlOutputBuffer::new(
+                                buf.as_mut_slice(),
+                                height,
+                                width * 4,
+                            ))
+                        } else if Some(idx) == self.black_channel {
+                            let Some(buf) = black_buffer.take() else {
+                                unreachable!()
+                            };
+                            buffers.push(JxlOutputBuffer::new(
+                                buf.as_mut_slice(),
+                                height,
+                                width * 4,
+                            ))
+                        }
+                    }
 
                     // Take ownership of the decoder
                     let decoder =
@@ -283,47 +297,22 @@ impl JxlRustDecoder {
 
     fn cache_image_info(&mut self, decoder: &JxlDecoder<WithImageInfo>) {
         let basic_info = decoder.basic_info();
-        let pixel_format = decoder.current_pixel_format();
-        
-        
+
+        eprintln!("pixel format: {:?}", decoder.current_pixel_format());
+
         // Reflect the number of channels in the main color buffer,
         // including alpha if it's part of the core color type (e.g., RGBA).
-        let num_color_channels = pixel_format.color_type.samples_per_pixel();
-        self.original_color_channels = num_color_channels;
+        self.original_color_channels = decoder.current_pixel_format().color_type.samples_per_pixel();
 
-        let mut has_alpha = pixel_format.color_type.has_alpha();
-        has_alpha = true;
-        eprintln!("has alpha: {}", has_alpha);
         self.extra_channels = Some(basic_info.extra_channels.clone());
 
-        // Specifically find the index of the *extra* alpha channel.
-        // This is how we distinguish between interleaved RGBA and RGB + extra alpha.
-        self.alpha_channel = self
-            .extra_channels
-            .as_ref()
-            .unwrap()
-            .iter()
-            .position(|ec| ec.ec_type == ExtraChannel::Alpha)
-            .map(|idx| idx as u8);
-        
-
-
         // Extract ICC profile from the image
-        let color_profile = decoder.output_color_profile();
-        let icc_bytes = color_profile.as_icc();
-        self.icc_profile = Some(icc_bytes.to_vec());
-
-        let is_grayscale = matches!(
-            pixel_format.color_type,
-            JxlColorType::Grayscale | JxlColorType::GrayscaleAlpha
-        );
+        self.icc_profile = Some(decoder.output_color_profile().as_icc().to_vec());
 
         let info = CachedImageInfo {
             width: basic_info.size.0 as u32,
             height: basic_info.size.1 as u32,
-            has_alpha,
             orientation_transpose: basic_info.orientation.is_transposing(),
-            is_grayscale,
         };
 
         self.cached_info = Some(info);
@@ -371,9 +360,9 @@ fn apply_icc_color_transform(
     width: usize,
     height: usize,
     icc_data: &[u8],
-    mut input_channels: usize,
+    input_channels: usize,
 ) -> Result<(), &'static str> {
-    let mut colors = original_colors;
+    eprintln!("original_colors.len() {}, alpha: {}, black: {}, bgra.len {}, width {}, height {}, icc_data.len {}, input_channels {}", original_colors.len(), alpha.is_some(), black.is_some(), bgra.len(), width, height, icc_data.len(), input_channels);
 
     // Parse the ICC profile (false = not curves_only)
     let input_profile = match Profile::new_from_slice(icc_data, false) {
@@ -397,9 +386,9 @@ fn apply_icc_color_transform(
             return Err("Unknown color space");
         }
     };
-   
+
     let pixel_count = width * height;
-    let mut colors_for_qcms;
+    let  colors_for_qcms;
     let mut alpha_for_compositing = vec![255u8; pixel_count]; // Default to opaque
     eprintln!("data_type: {}", input_data_type == DataType::RGBA8);
     if input_data_type == DataType::RGBA8 {
@@ -407,13 +396,14 @@ fn apply_icc_color_transform(
         // CASE: Interleaved RGBA data. We de-interleave it.
         let mut rgb_f32 = Vec::with_capacity(pixel_count * 3);
         let mut alpha_f32 = Vec::with_capacity(pixel_count);
-        
-        for chunk in original_colors.chunks_exact(16) { // 4 channels * 4 bytes/f32
+
+        for chunk in original_colors.chunks_exact(16) {
+            // 4 channels * 4 bytes/f32
             rgb_f32.extend_from_slice(&chunk[0..12]); // Copy R, G, B bytes as-is
             let a = f32::from_ne_bytes(chunk[12..16].try_into().unwrap());
             alpha_f32.push(a);
         }
-        
+
         for i in 0..pixel_count {
             alpha_for_compositing[i] = alpha_f32[i].clamp(0.0, 255.0) as u8;
         }
@@ -421,35 +411,40 @@ fn apply_icc_color_transform(
         // The input `original_colors` contains f32 bytes.
         // For the RGB data, we have already copied the correct bytes.
         colors_for_qcms = rgb_f32;
-
     } else {
         // CASE: Color data is already contiguous (RGB, CMYK, Gray), or it's an extra channel.
         colors_for_qcms = original_colors.to_vec();
-        
+
         if let Some(alpha_buffer) = alpha {
             for i in 0..pixel_count {
                 let offset = i * 4;
-                let a = f32::from_ne_bytes(alpha_buffer[offset..offset+4].try_into().unwrap());
+                let a = f32::from_ne_bytes(alpha_buffer[offset..offset + 4].try_into().unwrap());
                 alpha_for_compositing[i] = a.clamp(0.0, 255.0) as u8;
             }
         }
     }
-    
+
     let qcms_input_channels = input_data_type.bytes_per_pixel();
     let mut input_u8 = vec![0u8; pixel_count * qcms_input_channels];
-    
+
     // Convert f32 input to u8 input for qcms
     for i in 0..(pixel_count * qcms_input_channels) {
         let f32_val = f32::from_ne_bytes(colors_for_qcms[i * 4..(i + 1) * 4].try_into().unwrap());
         input_u8[i] = f32_val.clamp(0.0, 255.0) as u8;
     }
-    
-    let transform = Transform::new_to(&input_profile, &output_profile, input_data_type, DataType::RGB8, Intent::Perceptual)
-        .ok_or("Unable to create color transform")?;
-    
+
+    let transform = Transform::new_to(
+        &input_profile,
+        &output_profile,
+        input_data_type,
+        DataType::RGB8,
+        Intent::Perceptual,
+    )
+    .ok_or("Unable to create color transform")?;
+
     let mut rgb_u8 = vec![0u8; pixel_count * 3];
     transform.convert(&input_u8, &mut rgb_u8);
-    
+
     for i in 0..pixel_count {
         let r = rgb_u8[i * 3];
         let g = rgb_u8[i * 3 + 1];
@@ -458,6 +453,6 @@ fn apply_icc_color_transform(
 
         bgra[i] = ((a as u32) << 24) | ((r as u32) << 16) | ((g as u32) << 8) | (b as u32);
     }
-    
+
     Ok(())
 }
