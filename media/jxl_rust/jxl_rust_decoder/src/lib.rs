@@ -171,6 +171,7 @@ impl JxlRustDecoder {
                                     _ => {}
                                 }
                             }
+                            eprintln!("alpha_buffer: {}", self.alpha_buffer.is_some());
                             if self.alpha_buffer.is_some() && self.alpha_channel.is_none() {
                                 let msg = "Color format with alpha without alpha extra channel";
                                 self.state = DecoderState::Error(msg.to_string());
@@ -283,20 +284,29 @@ impl JxlRustDecoder {
     fn cache_image_info(&mut self, decoder: &JxlDecoder<WithImageInfo>) {
         let basic_info = decoder.basic_info();
         let pixel_format = decoder.current_pixel_format();
-
-        // Determine number of color channels based on color type
-        // jxl-rs outputs actual channels, so we need to check what we're really getting
+        
+        
+        // Reflect the number of channels in the main color buffer,
+        // including alpha if it's part of the core color type (e.g., RGBA).
         let num_color_channels = pixel_format.color_type.samples_per_pixel();
-        let has_alpha = pixel_format.color_type.has_alpha();
+        self.original_color_channels = num_color_channels;
 
-        // Store the original number of color channels (excluding alpha)
-        self.original_color_channels = if has_alpha {
-            num_color_channels - 1
-        } else {
-            num_color_channels
-        };
-
+        let mut has_alpha = pixel_format.color_type.has_alpha();
+        has_alpha = true;
+        eprintln!("has alpha: {}", has_alpha);
         self.extra_channels = Some(basic_info.extra_channels.clone());
+
+        // Specifically find the index of the *extra* alpha channel.
+        // This is how we distinguish between interleaved RGBA and RGB + extra alpha.
+        self.alpha_channel = self
+            .extra_channels
+            .as_ref()
+            .unwrap()
+            .iter()
+            .position(|ec| ec.ec_type == ExtraChannel::Alpha)
+            .map(|idx| idx as u8);
+        
+
 
         // Extract ICC profile from the image
         let color_profile = decoder.output_color_profile();
@@ -387,88 +397,67 @@ fn apply_icc_color_transform(
             return Err("Unknown color space");
         }
     };
-
+   
     let pixel_count = width * height;
-    // This will be unused unless we need to merge in the black channel for CMYK.
-    #[allow(unused_assignments)]
-    let mut extended_colors = vec![0u8; 0];
-
-    if input_data_type == DataType::CMYK {
-        if input_channels != 3 || black.is_none() {
-            // We must have 3 plus an extra black channel for CMYK.
-            return Err("CMYK requires 3 channels + black");
+    let mut colors_for_qcms;
+    let mut alpha_for_compositing = vec![255u8; pixel_count]; // Default to opaque
+    eprintln!("data_type: {}", input_data_type == DataType::RGBA8);
+    if input_data_type == DataType::RGBA8 {
+        eprintln!("input_channels ==4 ");
+        // CASE: Interleaved RGBA data. We de-interleave it.
+        let mut rgb_f32 = Vec::with_capacity(pixel_count * 3);
+        let mut alpha_f32 = Vec::with_capacity(pixel_count);
+        
+        for chunk in original_colors.chunks_exact(16) { // 4 channels * 4 bytes/f32
+            rgb_f32.extend_from_slice(&chunk[0..12]); // Copy R, G, B bytes as-is
+            let a = f32::from_ne_bytes(chunk[12..16].try_into().unwrap());
+            alpha_f32.push(a);
         }
-        if let Some(black_buffer) = black {
-            extended_colors = vec![0u8; pixel_count * 4 * 4];
-            for y in 0..height {
-                for x in 0..width {
-                    let pixel_idx = y * width + x;
-                    // Copy the first three channels from colors.
-                    extended_colors[pixel_idx * 16..pixel_idx * 16 + 12]
-                        .copy_from_slice(&colors[pixel_idx * 12..pixel_idx * 12 + 12]);
-                    // Copy the fourth channel from black.
-                    extended_colors[pixel_idx * 16 + 12..pixel_idx * 16 + 16]
-                        .copy_from_slice(&black_buffer[pixel_idx * 4..pixel_idx * 4 + 4]);
-                }
+        
+        for i in 0..pixel_count {
+            alpha_for_compositing[i] = alpha_f32[i].clamp(0.0, 255.0) as u8;
+        }
+
+        // The input `original_colors` contains f32 bytes.
+        // For the RGB data, we have already copied the correct bytes.
+        colors_for_qcms = rgb_f32;
+
+    } else {
+        // CASE: Color data is already contiguous (RGB, CMYK, Gray), or it's an extra channel.
+        colors_for_qcms = original_colors.to_vec();
+        
+        if let Some(alpha_buffer) = alpha {
+            for i in 0..pixel_count {
+                let offset = i * 4;
+                let a = f32::from_ne_bytes(alpha_buffer[offset..offset+4].try_into().unwrap());
+                alpha_for_compositing[i] = a.clamp(0.0, 255.0) as u8;
             }
-            colors = &extended_colors;
-            input_channels += 1;
         }
     }
-
-    // Validate that the number of channels matches the color space
-    let expected_channels = input_data_type.bytes_per_pixel();
-    if input_channels != expected_channels {
-        // Channel count doesn't match the ICC profile's color space
-        return Err("Wrong channel count");
-    }
-
-    // Create transform from input color space to RGB
-    let transform = match Transform::new_to(
-        &input_profile,
-        &output_profile,
-        input_data_type,
-        DataType::RGB8,
-        Intent::Perceptual,
-    ) {
-        Some(t) => t,
-        None => return Err("Unable to transform colors"),
-    };
-
-    // Convert f32 data to u8 for qcms
-    let mut input_u8 = vec![0u8; pixel_count * input_channels];
-    let mut rgb_u8 = vec![0u8; pixel_count * 3];
-    // Convert f32 input to u8 input
-    for i in 0..pixel_count * input_channels {
-        let f32_val = f32::from_ne_bytes(colors[i * 4..(i + 1) * 4].try_into().unwrap());
+    
+    let qcms_input_channels = input_data_type.bytes_per_pixel();
+    let mut input_u8 = vec![0u8; pixel_count * qcms_input_channels];
+    
+    // Convert f32 input to u8 input for qcms
+    for i in 0..(pixel_count * qcms_input_channels) {
+        let f32_val = f32::from_ne_bytes(colors_for_qcms[i * 4..(i + 1) * 4].try_into().unwrap());
         input_u8[i] = f32_val.clamp(0.0, 255.0) as u8;
     }
-
-    // Apply color transform
+    
+    let transform = Transform::new_to(&input_profile, &output_profile, input_data_type, DataType::RGB8, Intent::Perceptual)
+        .ok_or("Unable to create color transform")?;
+    
+    let mut rgb_u8 = vec![0u8; pixel_count * 3];
     transform.convert(&input_u8, &mut rgb_u8);
+    
+    for i in 0..pixel_count {
+        let r = rgb_u8[i * 3];
+        let g = rgb_u8[i * 3 + 1];
+        let b = rgb_u8[i * 3 + 2];
+        let a = alpha_for_compositing[i];
 
-    for y in 0..height {
-        for x in 0..width {
-            let pixel_idx = y * width + x;
-            let r = rgb_u8[pixel_idx * 3];
-            let g = rgb_u8[pixel_idx * 3 + 1];
-            let b = rgb_u8[pixel_idx * 3 + 2];
-            let a = if let Some(alpha_buffer) = alpha {
-                let alpha_offset = pixel_idx * 4;
-                f32::from_ne_bytes(
-                    alpha_buffer[alpha_offset..alpha_offset + 4]
-                        .try_into()
-                        .unwrap(),
-                ) as u8
-            } else {
-                255
-            };
-
-            // Pack as 0xAARRGGBB for OS_RGBX format
-            bgra[pixel_idx] =
-                ((a as u32) << 24) | ((r as u32) << 16) | ((g as u32) << 8) | (b as u32);
-        }
+        bgra[i] = ((a as u32) << 24) | ((r as u32) << 16) | ((g as u32) << 8) | (b as u32);
     }
-
+    
     Ok(())
 }
