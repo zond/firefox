@@ -16,6 +16,7 @@ pub enum JxlRustStatus {
 pub struct JxlRustImageInfo {
     pub width: u32,
     pub height: u32,
+    pub alpha_premultiplied: bool,
 }
 
 /// Create a new JXL decoder instance.
@@ -91,6 +92,7 @@ pub unsafe extern "C" fn jxl_rust_decoder_get_info(
     if let Some(cached_info) = &decoder.cached_info {
         (*info).width = cached_info.width;
         (*info).height = cached_info.height;
+        (*info).alpha_premultiplied = cached_info.alpha_premultiplied;
     } else {
         return JxlRustStatus::Error;
     }

@@ -24,7 +24,6 @@ class nsJXLRustDecoder final : public Decoder {
   virtual ~nsJXLRustDecoder();
 
   DecoderType GetType() const override { return DecoderType::JXL; }
-  IntSize Size() const { return mSize; }
 
  protected:
   LexerResult DoDecode(SourceBufferIterator& aIterator,
@@ -43,16 +42,13 @@ class nsJXLRustDecoder final : public Decoder {
   LexerTransition<State> FinishedJXLData();
 
   StreamingLexer<State> mLexer;
-  IntSize mSize;
-
-  // Buffer to accumulate data when non-contiguous
-  Vector<uint8_t> mBuffer;
 
   // Opaque pointer to Rust decoder
   struct JxlRustDecoderDeleter {
     void operator()(::mozilla::JxlRustDecoder* aDecoder);
   };
   UniquePtr<::mozilla::JxlRustDecoder, JxlRustDecoderDeleter> mRustDecoder;
+  UniquePtr<::mozilla::JxlRustImageInfo> mImageInfo;
 };
 
 }  // namespace mozilla::image

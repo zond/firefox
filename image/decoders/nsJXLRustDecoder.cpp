@@ -28,9 +28,7 @@ nsJXLRustDecoder::nsJXLRustDecoder(RasterImage* aImage)
     : Decoder(aImage),
       mLexer(Transition::ToUnbuffered(State::FINISHED_JXL_DATA,
                                        State::JXL_DATA, SIZE_MAX),
-             Transition::TerminateSuccess()),
-      mSize(0, 0) {
-}
+             Transition::TerminateSuccess()) {}
 
 nsJXLRustDecoder::~nsJXLRustDecoder() {
 }
@@ -75,33 +73,23 @@ LexerTransition<nsJXLRustDecoder::State> nsJXLRustDecoder::ReadJXLData(
 
   switch (status) {
     case ::mozilla::JXL_RUST_STATUS_OK: {
-      // Check if we have image info and haven't posted size yet
       if (!HasSize()) {
-        ::mozilla::JxlRustImageInfo info;
+        mImageInfo.reset(new ::mozilla::JxlRustImageInfo());
         ::mozilla::JxlRustStatus infoStatus = jxl_rust_decoder_get_info(
-            mRustDecoder.get(), &info);
+            mRustDecoder.get(), mImageInfo.get());
         
         if (infoStatus == ::mozilla::JXL_RUST_STATUS_OK) {
-          mSize = IntSize(info.width, info.height);
-          PostSize(info.width, info.height);
+          PostSize(mImageInfo->width, mImageInfo->height);
 
           if (IsMetadataDecode()) {
             return Transition::TerminateSuccess();
           }
-          
-          // After posting size, check if frame is already ready
-          if (jxl_rust_decoder_is_frame_ready(mRustDecoder.get())) {
-            return ProcessFrame(info.alpha_premultiplied);
-          }
-          
-          return Transition::ContinueUnbuffered(State::JXL_DATA);
         }
       }
       
-      // Check if frame is ready for decoding
-      if (jxl_rust_decoder_is_frame_ready(mRustDecoder.get())) {
-        return ProcessFrame();
-      }
+      if (HasSize() && jxl_rust_decoder_is_frame_ready(mRustDecoder.get())) {
+          return ProcessFrame();
+      }  
       
       // Continue reading more data
       return Transition::ContinueUnbuffered(State::JXL_DATA);
@@ -124,13 +112,16 @@ LexerTransition<nsJXLRustDecoder::State> nsJXLRustDecoder::ReadJXLData(
 
 LexerTransition<nsJXLRustDecoder::State> nsJXLRustDecoder::ProcessFrame() {
   // Get image dimensions
-  OrientedIntSize fullSize(mSize.width, mSize.height);
+  OrientedIntSize fullSize(mImageInfo->width, mImageInfo->height);
   OrientedIntSize outputSize = OutputSize();
 
   SurfaceFormat format = SurfaceFormat::OS_RGBA;
   PostHasTransparency();
   SurfacePipeFlags pipeFlags = SurfacePipeFlags();
-  pipeFlags |= SurfacePipeFlags::PREMULTIPLY_ALPHA;
+  // Tell Firefox to premultiply if necessary.
+  if (!mImageInfo->alpha_premultiplied) {
+    pipeFlags |= SurfacePipeFlags::PREMULTIPLY_ALPHA;
+  }
 
   // Create surface pipe with full size input, scaled output
   OrientedIntRect frameRect(OrientedIntPoint(0, 0), fullSize);

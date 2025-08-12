@@ -2,7 +2,7 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-use jxl::api::{states::*, JxlDecoder, JxlDecoderOptions, JxlOutputBuffer, ProcessingResult};
+use jxl::api::{states::*, JxlColorType, JxlDecoder, JxlDecoderOptions, JxlOutputBuffer, ProcessingResult};
 use jxl::headers::extra_channels::{ExtraChannel, ExtraChannelInfo};
 use qcms::c_bindings::{icSigCmykData, icSigGrayData, icSigRgbData, qcms_profile_get_color_space};
 use qcms::{DataType, Intent, Profile, Transform};
@@ -204,14 +204,8 @@ impl JxlRustDecoder {
                         bytes_per_row,
                     )];
 
-                    let mut alpha_buffer = match &mut self.alpha_buffer {
-                        Some(buf) => Some(buf),
-                        _ => None,
-                    };
-                    let mut black_buffer = match &mut self.black_buffer {
-                        Some(buf) => Some(buf),
-                        _ => None,
-                    };
+                    let mut alpha_buffer = self.alpha_buffer.as_mut();
+                    let mut black_buffer = self.black_buffer.as_mut();
 
                     for idx in 0..self.extra_channels.as_ref().unwrap().len() as u8 {
                         if Some(idx) == self.alpha_channel {
@@ -223,14 +217,13 @@ impl JxlRustDecoder {
                                 ));
                             }
                         } else if Some(idx) == self.black_channel {
-                            let Some(buf) = black_buffer.take() else {
-                                unreachable!()
-                            };
-                            buffers.push(JxlOutputBuffer::new(
-                                buf.as_mut_slice(),
-                                height,
-                                width * 4,
-                            ))
+                            if let Some(buf) = black_buffer.take() {
+                                buffers.push(JxlOutputBuffer::new(
+                                    buf.as_mut_slice(),
+                                    height,
+                                    width * 4,
+                                ))
+                            }
                         }
                     }
 
@@ -246,10 +239,8 @@ impl JxlRustDecoder {
                             // Frame decoded successfully - convert the pixel data
                             let pixel_count = width * height;
                             let mut decoded_pixels = vec![0u32; pixel_count];
-                            // Get the buffer data for conversion
-                            let rgb_bytes = self.color_buffer.as_mut().unwrap();
                             if let Err(e) = apply_icc_color_transform(
-                                rgb_bytes,
+                                self.color_buffer.as_mut().unwrap(),
                                 self.alpha_buffer.as_deref(),
                                 self.black_buffer.as_deref(),
                                 &mut decoded_pixels,
@@ -300,12 +291,11 @@ impl JxlRustDecoder {
     fn cache_image_info(&mut self, decoder: &JxlDecoder<WithImageInfo>) {
         let basic_info = decoder.basic_info();
 
-        eprintln!("pixel format: {:?}", decoder.current_pixel_format());
-
-        self.original_color_channels = decoder
+        // TODO(zond): This is what the jxl-rs API actually does today - might have to change
+        // it if the API becomes cleverer.
+        self.original_color_channels = if decoder
             .current_pixel_format()
-            .color_type
-            .samples_per_pixel();
+            .color_type == JxlColorType::Grayscale { 1 } else { 3 };
         self.orientation_transpose = basic_info.orientation.is_transposing();
         self.extra_channels = Some(basic_info.extra_channels.clone());
         self.icc_profile = Some(decoder.output_color_profile().as_icc().to_vec());
@@ -363,9 +353,7 @@ fn apply_icc_color_transform(
     icc_data: &[u8],
     original_input_channels: usize,
 ) -> Result<(), &'static str> {
-    eprintln!("original_colors.len() {}, alpha: {}, black: {}, bgra.len {}, width {}, height {}, icc_data.len {}, input_channels {}", original_colors.len(), alpha.is_some(), black.is_some(), bgra.len(), width, height, icc_data.len(), original_input_channels);
-
-    let input_profile = match Profile::new_from_slice(icc_data, false /* not curves only */) {
+    let input_profile = match Profile::new_from_slice(icc_data, false) {
         Some(p) => p,
         None => return Err("Unable to parse ICC profile"),
     };
@@ -374,19 +362,16 @@ fn apply_icc_color_transform(
 
     let pixel_count = width * height;
 
-    let tmp_alpha_buf;
     let alpha_for_compositing = match alpha {
-        Some(buf) => {
-            eprintln!(
-                "using {} alpha values for alpha compositing, {:?}",
-                buf.len(),
-                &buf[100..120]
-            );
+        Some(alpha_buffer) => {
+            let mut buf = vec![0u8; pixel_count];
+            for (idx, alpha) in buf.iter_mut().enumerate() {
+                *alpha = f32::from_ne_bytes(alpha_buffer[idx * 4..idx * 4 + 4].try_into().unwrap()) as u8;
+            }
             buf
         }
         None => {
-            tmp_alpha_buf = vec![255u8; pixel_count]; // Default to opaque
-            tmp_alpha_buf.as_slice()
+            vec![255u8; pixel_count] // Default to opaque
         }
     };
     let mut tmp_color_buf = vec![0u8; 0];
@@ -399,38 +384,32 @@ fn apply_icc_color_transform(
             (DataType::Gray8, original_colors)
         }
         icSigRgbData => {
-            eprintln!("found rgb data");
             if original_input_channels != 3 {
                 return Err("RGB requires exactly 3 input channels");
             }
             (DataType::RGB8, original_colors)
         }
         icSigCmykData => {
+            // TODO(zond): The jxl-rs API only ever returns 1 or 3 channels as of now, when it's cleverer
+            // maybe improve this.
+            if original_input_channels != 3 {
+                return Err(
+                    "CMYK with extra black channel requires exactly 3 regular input channels",
+                );
+            }
             if let Some(buf) = black {
-                if original_input_channels == 3 {
-                    tmp_color_buf = vec![0u8; pixel_count * 4 * 4];
-                    for y in 0..height {
-                        for x in 0..width {
-                            let pixel_idx = y * width + x;
-                            // Copy the first three channels from colors.
-                            tmp_color_buf[pixel_idx * 16..pixel_idx * 16 + 12].copy_from_slice(
-                                &original_colors[pixel_idx * 12..pixel_idx * 12 + 12],
-                            );
-                            // Copy the fourth channel from black.
-                            tmp_color_buf[pixel_idx * 16 + 12..pixel_idx * 16 + 16]
-                                .copy_from_slice(&buf[pixel_idx * 4..pixel_idx * 4 + 4]);
-                        }
+                tmp_color_buf = vec![0u8; pixel_count * 4 * 4];
+                for y in 0..height {
+                    for x in 0..width {
+                        let pixel_idx = y * width + x;
+                        // Copy the first three channels from colors.
+                        tmp_color_buf[pixel_idx * 16..pixel_idx * 16 + 12].copy_from_slice(
+                            &original_colors[pixel_idx * 12..pixel_idx * 12 + 12],
+                        );
+                        // Copy the fourth channel from black.
+                        tmp_color_buf[pixel_idx * 16 + 12..pixel_idx * 16 + 16]
+                            .copy_from_slice(&buf[pixel_idx * 4..pixel_idx * 4 + 4]);
                     }
-                } else {
-                    return Err(
-                        "CMYK with extra black channel requires exactly 3 regular input channels",
-                    );
-                }
-            } else {
-                if original_input_channels != 4 {
-                    return Err(
-                        "CMYK without extra black channel requires exactly 4 input channels",
-                    );
                 }
             }
             (DataType::CMYK, tmp_color_buf.as_slice())
@@ -450,7 +429,6 @@ fn apply_icc_color_transform(
         let f32_val = f32::from_ne_bytes(colors_for_qcms[i * 4..(i + 1) * 4].try_into().unwrap());
         input_u8[i] = f32_val.clamp(0.0, 255.0) as u8;
     }
-
     let transform = Transform::new_to(
         &input_profile,
         &output_profile,
@@ -459,10 +437,9 @@ fn apply_icc_color_transform(
         Intent::Perceptual,
     )
     .ok_or("Unable to create color transform")?;
-
     let mut rgb_u8 = vec![0u8; pixel_count * 3];
     transform.convert(&input_u8, &mut rgb_u8);
-
+    
     for i in 0..pixel_count {
         let r = rgb_u8[i * 3];
         let g = rgb_u8[i * 3 + 1];
