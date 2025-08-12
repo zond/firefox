@@ -451,6 +451,7 @@ fn apply_icc_color_transform(
         let b = rgb_u8[i * 3 + 2];
         let a = alpha_for_compositing[i];
 
+
         bgra[i] = ((a as u32) << 24) | ((r as u32) << 16) | ((g as u32) << 8) | (b as u32);
     }
 
