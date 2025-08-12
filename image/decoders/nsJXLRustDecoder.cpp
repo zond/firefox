@@ -91,7 +91,7 @@ LexerTransition<nsJXLRustDecoder::State> nsJXLRustDecoder::ReadJXLData(
           
           // After posting size, check if frame is already ready
           if (jxl_rust_decoder_is_frame_ready(mRustDecoder.get())) {
-            return ProcessFrame();
+            return ProcessFrame(info.alpha_premultiplied);
           }
           
           return Transition::ContinueUnbuffered(State::JXL_DATA);
@@ -127,8 +127,10 @@ LexerTransition<nsJXLRustDecoder::State> nsJXLRustDecoder::ProcessFrame() {
   OrientedIntSize fullSize(mSize.width, mSize.height);
   OrientedIntSize outputSize = OutputSize();
 
-  SurfaceFormat format = SurfaceFormat::OS_RGBX;
+  SurfaceFormat format = SurfaceFormat::OS_RGBA;
+  PostHasTransparency();
   SurfacePipeFlags pipeFlags = SurfacePipeFlags();
+  pipeFlags |= SurfacePipeFlags::PREMULTIPLY_ALPHA;
 
   // Create surface pipe with full size input, scaled output
   OrientedIntRect frameRect(OrientedIntPoint(0, 0), fullSize);
