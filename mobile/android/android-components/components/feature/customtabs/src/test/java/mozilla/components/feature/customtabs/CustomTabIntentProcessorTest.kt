@@ -9,6 +9,7 @@ import android.os.Bundle
 import android.provider.Browser
 import androidx.browser.customtabs.CustomTabsIntent
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import mozilla.components.browser.state.action.BrowserAction
 import mozilla.components.browser.state.action.CustomTabListAction
 import mozilla.components.browser.state.action.EngineAction
@@ -37,6 +38,7 @@ import org.mockito.ArgumentMatchers.eq
 import org.mockito.Mockito.verify
 
 @RunWith(AndroidJUnit4::class)
+@ExperimentalCoroutinesApi
 class CustomTabIntentProcessorTest {
     @Test
     fun processCustomTabIntentWithDefaultHandlers() {

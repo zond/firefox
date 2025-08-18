@@ -175,9 +175,6 @@ document.addEventListener(
         case "context-pdfjs-highlight-selection":
           gContextMenu.pdfJSCmd("highlightSelection");
           break;
-        case "context-pdfjs-comment-selection":
-          gContextMenu.pdfJSCmd("commentSelection");
-          break;
         case "context-reveal-password":
           gContextMenu.toggleRevealPassword();
           break;

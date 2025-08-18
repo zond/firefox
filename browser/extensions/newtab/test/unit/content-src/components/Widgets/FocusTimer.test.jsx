@@ -144,15 +144,13 @@ describe("<FocusTimer>", () => {
     resetBtn.props().onClick();
     assert.equal(dispatch.getCall(0).args[0].type, at.WIDGETS_TIMER_RESET);
 
-    const initialUserDuration = 12 * 60;
-
     const resetState = {
       ...mockState,
       TimerWidget: {
         ...mockState.TimerWidget,
         focus: {
-          duration: initialUserDuration,
-          initialDuration: initialUserDuration,
+          duration: 0,
+          initialDuration: 0,
           startTime: null,
           isRunning: false,
         },
@@ -169,7 +167,7 @@ describe("<FocusTimer>", () => {
 
     const minutes = wrapper.find(".timer-set-minutes").text();
     const seconds = wrapper.find(".timer-set-seconds").text();
-    assert.equal(minutes, "12");
+    assert.equal(minutes, "00");
     assert.equal(seconds, "00");
   });
 

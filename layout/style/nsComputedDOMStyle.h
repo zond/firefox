@@ -24,7 +24,6 @@
 #include "nsIWeakReferenceUtils.h"
 #include "nsStubMutationObserver.h"
 #include "nsStyleStruct.h"
-#include "nsStyleStructList.h"
 #include "nscore.h"
 
 // XXX Avoid including this here by moving function bodies to the cpp file
@@ -176,12 +175,12 @@ class nsComputedDOMStyle final : public nsDOMCSSDeclaration,
       const Element*, const PseudoStyleRequest&, mozilla::PresShell*,
       StyleType);
 
-#define COMPUTED_STYLE_ACCESSOR(name_)         \
+#define STYLE_STRUCT(name_)                    \
   const nsStyle##name_* Style##name_() const { \
     return mComputedStyle->Style##name_();     \
   }
-  FOR_EACH_STYLE_STRUCT(COMPUTED_STYLE_ACCESSOR, COMPUTED_STYLE_ACCESSOR)
-#undef COMPUTED_STYLE_ACCESSOR
+#include "nsStyleStructList.h"
+#undef STYLE_STRUCT
 
   /**
    * A method to get a percentage base for a percentage value.  Returns true

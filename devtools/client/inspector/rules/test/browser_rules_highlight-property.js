@@ -36,7 +36,7 @@ add_task(async function () {
     ({ name }) => name === "border-left-width"
   );
 
-  let onHighlightProperty = view.once("element-highlighted");
+  let onHighlightProperty = view.once("scrolled-to-element");
   let isHighlighted = view.highlightProperty("border-left-width");
   await onHighlightProperty;
 
@@ -50,7 +50,7 @@ add_task(async function () {
   const fontSize = rules[2].textProps[1].editor;
 
   info("Wait for the view to scroll to the property.");
-  onHighlightProperty = view.once("element-highlighted");
+  onHighlightProperty = view.once("scrolled-to-element");
   isHighlighted = view.highlightProperty("font-size");
   await onHighlightProperty;
 
@@ -61,7 +61,7 @@ add_task(async function () {
   const color = rules[0].textProps[1].editor;
 
   info("Wait for the view to scroll to the property.");
-  onHighlightProperty = view.once("element-highlighted");
+  onHighlightProperty = view.once("scrolled-to-element");
   isHighlighted = view.highlightProperty("color");
   await onHighlightProperty;
 
@@ -72,7 +72,7 @@ add_task(async function () {
   const marginTop = rules[2].textProps[3].editor;
 
   info("Wait for the view to scroll to the property.");
-  onHighlightProperty = view.once("element-highlighted");
+  onHighlightProperty = view.once("scrolled-to-element");
   isHighlighted = view.highlightProperty("margin-top");
   await onHighlightProperty;
 

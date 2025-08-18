@@ -54,7 +54,7 @@ pub fn pass(root: &mut Root) -> Result<()> {
         .try_map(|callback_interfaces| {
             let mut async_callback_method_handler_bases = vec![];
             callback_interfaces.try_visit(|meth: &CppCallbackInterfaceMethod| {
-                let CallbackMethodKind::Async(async_data) = &meth.kind else {
+                let Some(async_data) = &meth.async_data else {
                     return Ok(());
                 };
                 if seen_async_complete_handlers
@@ -90,19 +90,21 @@ fn map_method(
         ),
         None => (None, FfiType::VoidPointer),
     };
-    let kind = match meth.callable.async_data.as_ref() {
-        // Callback interface methods defined as sync in the Rust code always `FireAndForget` (for now)
-        None => CallbackMethodKind::FireAndForget,
-        // Callback interface methods defined as async in the Rust code are always `Async`
-        Some(async_data) => CallbackMethodKind::Async(CppCallbackInterfaceMethodAsyncData {
-            callback_handler_base_class: async_callback_method_handler_base_class(&meth.callable)?,
-            complete_callback_type_name: async_data.ffi_foreign_future_complete.0.clone(),
-            result_type_name: async_data.ffi_foreign_future_result.0.clone(),
-        }),
-    };
-
     Ok(CppCallbackInterfaceMethod {
-        kind,
+        async_data: meth
+            .callable
+            .async_data
+            .as_ref()
+            .map(|async_data| {
+                anyhow::Ok(CppCallbackInterfaceMethodAsyncData {
+                    callback_handler_base_class: async_callback_method_handler_base_class(
+                        &meth.callable,
+                    )?,
+                    complete_callback_type_name: async_data.ffi_foreign_future_complete.0.clone(),
+                    result_type_name: async_data.ffi_foreign_future_result.0.clone(),
+                })
+            })
+            .transpose()?,
         arguments: meth
             .callable
             .arguments

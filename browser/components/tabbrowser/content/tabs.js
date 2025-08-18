@@ -324,7 +324,15 @@
       if (!this._showTabHoverPreview) {
         return;
       }
-      this.ensureTabPreviewPanelLoaded();
+      if (!this.previewPanel) {
+        // load the tab preview component
+        const TabHoverPreviewPanel = ChromeUtils.importESModule(
+          "chrome://browser/content/tabbrowser/tab-hover-preview.mjs"
+        ).default;
+        this.previewPanel = new TabHoverPreviewPanel(
+          document.getElementById("tab-preview-panel")
+        );
+      }
       this.previewPanel.activate(event.target);
     }
 
@@ -336,21 +344,24 @@
       if (!this._showTabGroupHoverPreview) {
         return;
       }
-      this.ensureTabPreviewPanelLoaded();
-      this.previewPanel.activate(event.target.group);
+
+      if (!this.tabGroupPreviewPanel) {
+        const TabGroupHoverPreviewPanel = ChromeUtils.importESModule(
+          "chrome://browser/content/tabbrowser/tabgroup-hover-preview.mjs"
+        ).default;
+        this.tabGroupPreviewPanel = new TabGroupHoverPreviewPanel(
+          document.getElementById("tabgroup-preview-panel")
+        );
+      }
+      this.tabGroupPreviewPanel.activate(event.target);
     }
 
     on_TabGroupLabelHoverEnd(event) {
-      this.previewPanel?.deactivate(event.target.group);
-    }
-
-    ensureTabPreviewPanelLoaded() {
-      if (!this.previewPanel) {
-        const TabHoverPanelSet = ChromeUtils.importESModule(
-          "chrome://browser/content/tabbrowser/tab-hover-preview.mjs"
-        ).default;
-        this.previewPanel = new TabHoverPanelSet(window);
-      }
+      // TODO bug1971237: determine a more appropriate value for this delay
+      // and consider making it adjustable
+      setTimeout(() => {
+        this.tabGroupPreviewPanel?.deactivate(event.target);
+      }, 50);
     }
 
     on_TabGroupExpand() {
@@ -752,7 +763,7 @@
         return;
       }
 
-      this.previewPanel?.deactivate(null, { force: true });
+      this.previewPanel?.deactivate();
       this.startTabDrag(event, tab);
     }
 
@@ -1792,25 +1803,20 @@
       if (this.#allTabs) {
         return this.#allTabs;
       }
-      // Remove temporary periphery element added at drag start.
-      let pinnedChildren = Array.from(this.pinnedTabsContainer.children);
-      if (pinnedChildren?.at(-1)?.id == "pinned-tabs-container-periphery") {
-        pinnedChildren.pop();
-      }
-      let unpinnedChildren = Array.from(this.arrowScrollbox.children);
-      // remove arrowScrollbox periphery element.
-      unpinnedChildren.pop();
+      let children = Array.from(this.arrowScrollbox.children);
+      // remove arrowScrollbox periphery element
+      children.pop();
 
       // explode tab groups
       // Iterate backwards over the array to preserve indices while we modify
       // things in place
-      for (let i = unpinnedChildren.length - 1; i >= 0; i--) {
-        if (unpinnedChildren[i].tagName == "tab-group") {
-          unpinnedChildren.splice(i, 1, ...unpinnedChildren[i].tabs);
+      for (let i = children.length - 1; i >= 0; i--) {
+        if (children[i].tagName == "tab-group") {
+          children.splice(i, 1, ...children[i].tabs);
         }
       }
 
-      this.#allTabs = [...pinnedChildren, ...unpinnedChildren];
+      this.#allTabs = [...this.pinnedTabsContainer.children, ...children];
       return this.#allTabs;
     }
 
@@ -1883,17 +1889,13 @@
 
       let elementIndex = 0;
 
-      let unpinnedChildren = Array.from(this.arrowScrollbox.children);
-      let pinnedChildren = Array.from(this.pinnedTabsContainer.children);
+      for (let i = 0; i < this.pinnedTabsContainer.childElementCount; i++) {
+        this.pinnedTabsContainer.children[i].elementIndex = elementIndex++;
+      }
+      let children = Array.from(this.arrowScrollbox.children);
 
       let focusableItems = [];
-      for (let child of pinnedChildren) {
-        if (isTab(child)) {
-          child.elementIndex = elementIndex++;
-          focusableItems.push(child);
-        }
-      }
-      for (let child of unpinnedChildren) {
+      for (let child of children) {
         if (isTab(child) && child.visible) {
           child.elementIndex = elementIndex++;
           focusableItems.push(child);
@@ -1909,7 +1911,10 @@
         }
       }
 
-      this.#focusableItems = focusableItems;
+      this.#focusableItems = [
+        ...this.pinnedTabsContainer.children,
+        ...focusableItems,
+      ];
 
       return this.#focusableItems;
     }

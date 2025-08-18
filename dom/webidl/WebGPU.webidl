@@ -171,8 +171,6 @@ interface GPUDevice : EventTarget {
     [Throws]
     GPUBuffer createBuffer(GPUBufferDescriptor descriptor);
     GPUTexture createTexture(GPUTextureDescriptor descriptor);
-    [Throws, Func="mozilla::webgpu::Instance::ExternalTextureEnabled"]
-    GPUExternalTexture importExternalTexture(GPUExternalTextureDescriptor descriptor);
     GPUSampler createSampler(optional GPUSamplerDescriptor descriptor = {});
 
     GPUBindGroupLayout createBindGroupLayout(GPUBindGroupLayoutDescriptor descriptor);
@@ -458,12 +456,6 @@ interface GPUExternalTexture {
 };
 GPUExternalTexture includes GPUObjectBase;
 
-dictionary GPUExternalTextureDescriptor
-         : GPUObjectDescriptorBase {
-    required (HTMLVideoElement or VideoFrame) source;
-    PredefinedColorSpace colorSpace = "srgb";
-};
-
 [Func="mozilla::webgpu::Instance::PrefEnabled",
  Exposed=(Window, Worker), SecureContext]
 interface GPUSampler {
@@ -609,8 +601,7 @@ typedef (GPUSampler or
          GPUTexture or
          GPUTextureView or
          GPUBuffer or
-         GPUBufferBinding or
-         GPUExternalTexture) GPUBindingResource;
+         GPUBufferBinding) GPUBindingResource;
 
 dictionary GPUBindGroupEntry {
     required GPUIndex32 binding;

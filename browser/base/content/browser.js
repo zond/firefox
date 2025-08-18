@@ -1066,6 +1066,7 @@ const gStoragePressureObserver = {
     }
     this._lastNotificationTime = Date.now();
 
+    MozXULElement.insertFTLIfNeeded("branding/brand.ftl");
     MozXULElement.insertFTLIfNeeded("browser/preferences/preferences.ftl");
 
     const BYTES_IN_GIGABYTE = 1073741824;

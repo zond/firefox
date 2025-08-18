@@ -14,7 +14,6 @@ import androidx.lifecycle.Lifecycle.State.RESUMED
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.navigation.NavController
-import androidx.navigation.NavOptions
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -461,7 +460,7 @@ class BrowserToolbarSearchMiddleware(
         val isValidSearchEngine = selectedSearchEngine?.isGeneral == true ||
                 selectedSearchEngine?.type == CUSTOM
 
-        if (settings.shouldShowVoiceSearch && isSpeechRecognitionAvailable()) {
+        if (isSpeechRecognitionAvailable()) {
             add(
                 ActionButtonRes(
                     drawableResId = iconsR.drawable.mozac_ic_microphone_24,
@@ -497,8 +496,6 @@ class BrowserToolbarSearchMiddleware(
             distinctUntilChangedBy { it.qrScannerState.lastScanData }
                 .collect {
                     if (it.qrScannerState.lastScanData?.isNotEmpty() == true) {
-                        observeQRScannerInputJob?.cancel()
-
                         appStore.dispatch(AppAction.QrScannerAction.QrScannerInputConsumed)
                         context.dispatch(SearchQueryUpdated(it.qrScannerState.lastScanData))
                         components.useCases.fenixBrowserUseCases.loadUrlOrSearch(
@@ -507,19 +504,8 @@ class BrowserToolbarSearchMiddleware(
                             flags = EngineSession.LoadUrlFlags.external(),
                             private = false,
                         )
-                        environment?.navController?.navigate(
-                            resId = R.id.browserFragment,
-                            args = null,
-                            navOptions = when (environment?.navController?.currentDestination?.id) {
-                                R.id.historyFragment,
-                                R.id.bookmarkFragment,
-                                    -> NavOptions.Builder()
-                                        .setPopUpTo(R.id.browserFragment, true)
-                                        .build()
-
-                                else -> null
-                            },
-                        )
+                        environment?.navController?.navigate(R.id.browserFragment)
+                        observeQRScannerInputJob?.cancel()
                     }
                 }
         }

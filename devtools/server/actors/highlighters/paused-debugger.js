@@ -33,15 +33,16 @@ class PausedDebuggerOverlay {
     this.markup = new CanvasFrameAnonymousContentHelper(
       highlighterEnv,
       this._buildMarkup.bind(this),
-      {
-        contentRootHostClassName: "devtools-highlighter-paused-debugger",
-        waitForDocumentToLoad: false,
-      }
+      { waitForDocumentToLoad: false }
     );
     this.isReady = this.markup.initialize();
   }
 
+  ID_CLASS_PREFIX = "paused-dbg-";
+
   _buildMarkup() {
+    const prefix = this.ID_CLASS_PREFIX;
+
     const container = this.markup.createNode({
       attributes: { class: "highlighter-container" },
     });
@@ -50,71 +51,79 @@ class PausedDebuggerOverlay {
     const wrapper = this.markup.createNode({
       parent: container,
       attributes: {
-        id: "paused-dbg-root",
-        class: "paused-dbg-root",
+        id: "root",
+        class: "root",
         hidden: "true",
         overlay: "true",
       },
+      prefix,
     });
 
     const toolbar = this.markup.createNode({
       parent: wrapper,
       attributes: {
-        id: "paused-dbg-toolbar",
-        class: "paused-dbg-toolbar",
+        id: "toolbar",
+        class: "toolbar",
       },
+      prefix,
     });
 
     this.markup.createNode({
       nodeType: "span",
       parent: toolbar,
       attributes: {
-        id: "paused-dbg-reason",
-        class: "paused-dbg-reason",
+        id: "reason",
+        class: "reason",
       },
       text: PausedReasonsBundle.formatValueSync("whypaused-other"),
+      prefix,
     });
 
     this.markup.createNode({
       parent: toolbar,
       attributes: {
-        id: "paused-dbg-divider",
-        class: "paused-dbg-divider",
+        id: "divider",
+        class: "divider",
       },
+      prefix,
     });
 
     const stepWrapper = this.markup.createNode({
       parent: toolbar,
       attributes: {
-        id: "paused-dbg-step-button-wrapper",
-        class: "paused-dbg-step-button-wrapper",
+        id: "step-button-wrapper",
+        class: "step-button-wrapper",
       },
+      prefix,
     });
 
     this.markup.createNode({
       nodeType: "button",
       parent: stepWrapper,
       attributes: {
-        id: "paused-dbg-step-button",
-        class: "paused-dbg-step-button",
+        id: "step-button",
+        class: "step-button",
       },
+      prefix,
     });
 
     const resumeWrapper = this.markup.createNode({
       parent: toolbar,
       attributes: {
-        id: "paused-dbg-resume-button-wrapper",
-        class: "paused-dbg-resume-button-wrapper",
+        id: "resume-button-wrapper",
+        class: "resume-button-wrapper",
       },
+      prefix,
     });
 
     this.markup.createNode({
       nodeType: "button",
       parent: resumeWrapper,
       attributes: {
-        id: "paused-dbg-resume-button",
-        class: "paused-dbg-resume-button",
+        id: "resume-button",
+        class: "resume-button",
       },
+      prefix,
     });
 
     return container;
@@ -192,7 +201,7 @@ class PausedDebuggerOverlay {
   }
 
   getElement(id) {
-    return this.markup.getElement(id);
+    return this.markup.getElement(this.ID_CLASS_PREFIX + id);
   }
 
   show(reason) {
@@ -206,12 +215,12 @@ class PausedDebuggerOverlay {
     pageListenerTarget.addEventListener("mousemove", this);
 
     // Show the highlighter's root element.
-    const root = this.getElement("paused-dbg-root");
+    const root = this.getElement("root");
     root.removeAttribute("hidden");
     root.setAttribute("overlay", "true");
 
     // Set the text to appear in the toolbar.
-    const toolbar = this.getElement("paused-dbg-toolbar");
+    const toolbar = this.getElement("toolbar");
     toolbar.removeAttribute("hidden");
 
     // When the debugger pauses execution in a page, events will not be delivered
@@ -234,14 +243,10 @@ class PausedDebuggerOverlay {
     pageListenerTarget.removeEventListener("mousemove", this);
 
     // Hide the overlay.
-    this.getElement("paused-dbg-root").setAttribute("hidden", "true");
+    this.getElement("root").setAttribute("hidden", "true");
     // Remove the hover state
-    this.getElement("paused-dbg-step-button-wrapper").classList?.remove(
-      "hover"
-    );
-    this.getElement("paused-dbg-resume-button-wrapper").classList?.remove(
-      "hover"
-    );
+    this.getElement("step-button-wrapper").classList?.remove("hover");
+    this.getElement("resume-button-wrapper").classList?.remove("hover");
   }
 }
 exports.PausedDebuggerOverlay = PausedDebuggerOverlay;

@@ -541,8 +541,6 @@ struct opStartLayout {};
 
 struct opEnableEncodingMenu {};
 
-struct opMicrotaskCheckpoint {};
-
 typedef mozilla::Variant<
     uninitialized,
     // main HTML5 ops
@@ -562,8 +560,7 @@ typedef mozilla::Variant<
     opSetScriptLineAndColumnNumberAndFreeze, opSvgLoad,
     opMaybeComplainAboutCharset, opMaybeComplainAboutDeepTree, opAddClass,
     opAddViewSourceHref, opAddViewSourceBase, opAddErrorType, opAddLineNumberId,
-    opStartLayout, opEnableEncodingMenu, opMicrotaskCheckpoint,
-    opShallowCloneInto>
+    opStartLayout, opEnableEncodingMenu, opShallowCloneInto>
     treeOperation;
 
 class nsHtml5TreeOperation final {

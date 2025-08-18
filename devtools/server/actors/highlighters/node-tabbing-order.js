@@ -43,72 +43,76 @@ class NodeTabbingOrderHighlighter extends AutoRefreshHighlighter {
     super(highlighterEnv);
 
     this._doNotStartRefreshLoop = true;
+    this.ID_CLASS_PREFIX = "tabbing-order-";
     this.markup = new CanvasFrameAnonymousContentHelper(
       this.highlighterEnv,
-      this._buildMarkup.bind(this),
-      {
-        contentRootHostClassName: "devtools-highlighter-tabbing-order",
-      }
+      this._buildMarkup.bind(this)
     );
     this.isReady = this.markup.initialize();
   }
 
   _buildMarkup() {
-    this.rootEl = this.markup.createNode({
+    const root = this.markup.createNode({
       attributes: {
-        id: "tabbing-order-root",
-        class: "tabbing-order-root highlighter-container tabbing-order",
+        id: "root",
+        class: "root highlighter-container tabbing-order",
         "aria-hidden": "true",
       },
+      prefix: this.ID_CLASS_PREFIX,
     });
 
     const container = this.markup.createNode({
-      parent: this.rootEl,
+      parent: root,
       attributes: {
-        id: "tabbing-order-container",
+        id: "container",
         width: "100%",
         height: "100%",
         hidden: "true",
       },
+      prefix: this.ID_CLASS_PREFIX,
     });
 
     // Building the SVG element
     this.markup.createNode({
       parent: container,
       attributes: {
-        class: "tabbing-order-bounds",
-        id: "tabbing-order-bounds",
+        class: "bounds",
+        id: "bounds",
       },
+      prefix: this.ID_CLASS_PREFIX,
     });
 
     // Building the nodeinfo bar markup
 
     const infobarContainer = this.markup.createNode({
-      parent: this.rootEl,
+      parent: root,
       attributes: {
-        class: "tabbing-order-infobar-container",
-        id: "tabbing-order-infobar-container",
+        class: "infobar-container",
+        id: "infobar-container",
         position: "top",
         hidden: "true",
       },
+      prefix: this.ID_CLASS_PREFIX,
     });
 
     const infobar = this.markup.createNode({
       parent: infobarContainer,
       attributes: {
-        class: "tabbing-order-infobar",
+        class: "infobar",
       },
+      prefix: this.ID_CLASS_PREFIX,
     });
 
     this.markup.createNode({
       parent: infobar,
       attributes: {
-        class: "tabbing-order-infobar-text",
-        id: "tabbing-order-infobar-text",
+        class: "infobar-text",
+        id: "infobar-text",
       },
+      prefix: this.ID_CLASS_PREFIX,
     });
 
-    return this.rootEl;
+    return root;
   }
 
   /**
@@ -116,13 +120,12 @@ class NodeTabbingOrderHighlighter extends AutoRefreshHighlighter {
    */
   destroy() {
     this.markup.destroy();
-    this.rootEl = null;
 
     AutoRefreshHighlighter.prototype.destroy.call(this);
   }
 
   getElement(id) {
-    return this.markup.getElement(id);
+    return this.markup.getElement(this.ID_CLASS_PREFIX + id);
   }
 
   /**
@@ -132,7 +135,7 @@ class NodeTabbingOrderHighlighter extends AutoRefreshHighlighter {
    *        Indicates if the highlighted node needs to be focused.
    */
   updateFocus(focused) {
-    const root = this.getElement("tabbing-order-root");
+    const root = this.getElement("root");
     root.classList?.toggle("focused", focused);
   }
 
@@ -187,10 +190,7 @@ class NodeTabbingOrderHighlighter extends AutoRefreshHighlighter {
    * Hide the infobar
    */
   _hideInfobar() {
-    this.getElement("tabbing-order-infobar-container").setAttribute(
-      "hidden",
-      "true"
-    );
+    this.getElement("infobar-container").setAttribute("hidden", "true");
   }
 
   /**
@@ -201,14 +201,10 @@ class NodeTabbingOrderHighlighter extends AutoRefreshHighlighter {
       return;
     }
 
-    this.getElement("tabbing-order-infobar-container").removeAttribute(
-      "hidden"
-    );
-    this.getElement("tabbing-order-infobar-text").setTextContent(
-      this.options.index
-    );
+    this.getElement("infobar-container").removeAttribute("hidden");
+    this.getElement("infobar-text").setTextContent(this.options.index);
     const bounds = this._getBounds();
-    const container = this.getElement("tabbing-order-infobar-container");
+    const container = this.getElement("infobar-container");
 
     moveInfobar(container, bounds, this.win);
   }
@@ -217,14 +213,14 @@ class NodeTabbingOrderHighlighter extends AutoRefreshHighlighter {
    * Hide the tabbing order highlighter
    */
   _hideTabbingOrder() {
-    this.getElement("tabbing-order-container").setAttribute("hidden", "true");
+    this.getElement("container").setAttribute("hidden", "true");
   }
 
   /**
    * Show the tabbing order highlighter
    */
   _showTabbingOrder() {
-    this.getElement("tabbing-order-container").removeAttribute("hidden");
+    this.getElement("container").removeAttribute("hidden");
   }
 
   /**
@@ -275,7 +271,7 @@ class NodeTabbingOrderHighlighter extends AutoRefreshHighlighter {
       return false;
     }
 
-    const boundsEl = this.getElement("tabbing-order-bounds");
+    const boundsEl = this.getElement("bounds");
     const { left, top, width, height } = this._getBounds();
     boundsEl.setAttribute(
       "style",
@@ -283,7 +279,8 @@ class NodeTabbingOrderHighlighter extends AutoRefreshHighlighter {
     );
 
     // Un-zoom the root wrapper if the page was zoomed.
-    this.markup.scaleRootElement(this.currentNode, "tabbing-order-container");
+    const rootId = this.ID_CLASS_PREFIX + "container";
+    this.markup.scaleRootElement(this.currentNode, rootId);
 
     return true;
   }

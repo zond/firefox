@@ -205,56 +205,34 @@ void nsScrollbarFrame::Reflow(nsPresContext* aPresContext,
   aDesiredSize.SetOverflowAreasToDesiredBounds();
 }
 
-bool nsScrollbarFrame::SetCurPos(CSSIntCoord aCurPos) {
-  if (mCurPos == aCurPos) {
-    return false;
-  }
-  mCurPos = aCurPos;
-  if (ScrollContainerFrame* scrollContainerFrame = do_QueryFrame(GetParent())) {
-    scrollContainerFrame->ScrollbarCurPosChanged();
-  }
-  if (nsSliderFrame* slider = do_QueryFrame(mSlider->GetPrimaryFrame())) {
-    slider->CurrentPositionChanged();
-  }
-  return true;
-}
+nsresult nsScrollbarFrame::AttributeChanged(int32_t aNameSpaceID,
+                                            nsAtom* aAttribute,
+                                            int32_t aModType) {
+  MOZ_TRY(
+      nsContainerFrame::AttributeChanged(aNameSpaceID, aAttribute, aModType));
 
-void nsScrollbarFrame::RequestSliderReflow() {
-  // These affect the slider.
-  if (nsSliderFrame* slider = do_QueryFrame(mSlider->GetPrimaryFrame())) {
-    PresShell()->FrameNeedsReflow(slider, IntrinsicDirty::None,
-                                  NS_FRAME_IS_DIRTY);
+  // if the current position changes, notify any ScrollContainerFrame
+  // parent we may have
+  if (aAttribute == nsGkAtoms::curpos) {
+    if (ScrollContainerFrame* scrollContainerFrame =
+            do_QueryFrame(GetParent())) {
+      nsCOMPtr<nsIContent> content(mContent);
+      scrollContainerFrame->CurPosAttributeChanged(content);
+    }
+    if (nsSliderFrame* slider = do_QueryFrame(mSlider->GetPrimaryFrame())) {
+      slider->CurrentPositionChanged();
+    }
+  } else if (aAttribute == nsGkAtoms::minpos ||
+             aAttribute == nsGkAtoms::maxpos ||
+             aAttribute == nsGkAtoms::pageincrement ||
+             aAttribute == nsGkAtoms::increment) {
+    // These affect the slider.
+    if (nsSliderFrame* slider = do_QueryFrame(mSlider->GetPrimaryFrame())) {
+      PresShell()->FrameNeedsReflow(slider, IntrinsicDirty::None,
+                                    NS_FRAME_IS_DIRTY);
+    }
   }
-}
-
-bool nsScrollbarFrame::SetMaxPos(CSSIntCoord aMaxPos) {
-  if (mMaxPos == aMaxPos) {
-    return false;
-  }
-  RequestSliderReflow();
-  mMaxPos = aMaxPos;
-  return true;
-}
-
-bool nsScrollbarFrame::SetPageIncrement(CSSIntCoord aPageIncrement) {
-  if (mPageIncrement == aPageIncrement) {
-    return false;
-  }
-  RequestSliderReflow();
-  mPageIncrement = aPageIncrement;
-  return true;
-}
-
-bool nsScrollbarFrame::IsEnabled() const {
-  return !mContent->AsElement()->State().HasState(dom::ElementState::DISABLED);
-}
-
-bool nsScrollbarFrame::SetEnabled(bool aEnabled) {
-  if (IsEnabled() == aEnabled) {
-    return false;
-  }
-  mContent->AsElement()->SetStates(dom::ElementState::DISABLED, !aEnabled);
-  return true;
+  return NS_OK;
 }
 
 NS_IMETHODIMP
@@ -286,16 +264,33 @@ nsScrollbarFrame::HandleRelease(nsPresContext* aPresContext,
   return NS_OK;
 }
 
-void nsScrollbarFrame::SetOverrideScrollbarMediator(
-    nsIScrollbarMediator* aMediator) {
-  mOverriddenScrollbarMediator = do_QueryFrame(aMediator);
+void nsScrollbarFrame::SetScrollbarMediatorContent(nsIContent* aMediator) {
+  mScrollbarMediator = aMediator;
 }
 
 nsIScrollbarMediator* nsScrollbarFrame::GetScrollbarMediator() {
-  if (auto* override = mOverriddenScrollbarMediator.GetFrame()) {
-    return do_QueryFrame(override);
+  if (!mScrollbarMediator) {
+    return nullptr;
   }
-  return do_QueryFrame(GetParent());
+  nsIFrame* f = mScrollbarMediator->GetPrimaryFrame();
+  ScrollContainerFrame* scrollContainerFrame = do_QueryFrame(f);
+  nsIScrollbarMediator* sbm;
+
+  if (scrollContainerFrame) {
+    nsIFrame* scrolledFrame = scrollContainerFrame->GetScrolledFrame();
+    sbm = do_QueryFrame(scrolledFrame);
+    if (sbm) {
+      return sbm;
+    }
+  }
+  sbm = do_QueryFrame(f);
+  if (f && !sbm) {
+    f = f->PresShell()->GetRootScrollContainerFrame();
+    if (f && f->GetContent() == mScrollbarMediator) {
+      return do_QueryFrame(f);
+    }
+  }
+  return sbm;
 }
 
 bool nsScrollbarFrame::IsHorizontal() const {
@@ -393,7 +388,10 @@ nsresult nsScrollbarFrame::CreateAnonymousContent(
     return NS_OK;
   }
 
-  const bool vertical = el->HasAttr(nsGkAtoms::vertical);
+  nsAutoString orient;
+  el->GetAttr(nsGkAtoms::orient, orient);
+  bool vertical = orient.EqualsLiteral("vertical");
+
   RefPtr<dom::NodeInfo> sbbNodeInfo =
       nodeInfoManager->GetNodeInfo(nsGkAtoms::scrollbarbutton, nullptr,
                                    kNameSpaceID_XUL, nsINode::ELEMENT_NODE);
@@ -429,6 +427,7 @@ nsresult nsScrollbarFrame::CreateAnonymousContent(
         getter_AddRefs(mSlider),
         nodeInfoManager->GetNodeInfo(nsGkAtoms::slider, nullptr,
                                      kNameSpaceID_XUL, nsINode::ELEMENT_NODE));
+    mSlider->SetAttr(kNameSpaceID_None, nsGkAtoms::orient, orient, false);
 
     aElements.AppendElement(ContentInfo(mSlider, key));
 
@@ -436,6 +435,7 @@ nsresult nsScrollbarFrame::CreateAnonymousContent(
         getter_AddRefs(mThumb),
         nodeInfoManager->GetNodeInfo(nsGkAtoms::thumb, nullptr,
                                      kNameSpaceID_XUL, nsINode::ELEMENT_NODE));
+    mThumb->SetAttr(kNameSpaceID_None, nsGkAtoms::orient, orient, false);
     mSlider->AppendChildTo(mThumb, false, IgnoreErrors());
   }
 
@@ -453,6 +453,14 @@ nsresult nsScrollbarFrame::CreateAnonymousContent(
         MakeScrollbarButton(sbbNodeInfo, vertical, /* aBottom */ true,
                             /* aDown */ true, key);
     aElements.AppendElement(ContentInfo(mDownBottomButton, key));
+  }
+
+  // Don't cache styles if we are inside a <select> element, since we have
+  // some UA style sheet rules that depend on the <select>'s attributes.
+  if (el->GetParent() && el->GetParent()->IsHTMLElement(nsGkAtoms::select)) {
+    for (auto& info : aElements) {
+      info.mKey = AnonymousContentKey::None;
+    }
   }
 
   return NS_OK;

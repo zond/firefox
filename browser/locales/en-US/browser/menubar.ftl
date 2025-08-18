@@ -251,9 +251,9 @@ menu-bookmarks-mobile =
 menu-profiles =
     .label = Profiles
 menu-profiles-manage-profiles =
-    .label = Manage Profiles
+    .label = Manage profiles
 menu-profiles-new-profile =
-    .label = New Profile
+    .label = New profile
 # Variables:
 #  $profileName (String): the name of the users profile
 menu-profiles-current =

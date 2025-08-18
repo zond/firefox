@@ -10,6 +10,8 @@ export {
   TOP_SITES_MAX_SITES_PER_ROW,
 } from "resource:///modules/topsites/constants.mjs";
 
+const PREF_COLLECTION_DISMISSIBLE = "discoverystream.isCollectionDismissible";
+
 const dedupe = new Dedupe(site => site && site.url);
 
 export const INITIAL_STATE = {
@@ -73,6 +75,7 @@ export const INITIAL_STATE = {
     config: { enabled: false },
     layout: [],
     isPrivacyInfoModalVisible: false,
+    isCollectionDismissible: false,
     topicsLoading: false,
     feeds: {
       data: {
@@ -741,6 +744,11 @@ function DiscoveryStream(prevState = INITIAL_STATE.DiscoveryStream, action) {
         ...prevState,
         layout: action.data.layout || [],
       };
+    case at.DISCOVERY_STREAM_COLLECTION_DISMISSIBLE_TOGGLE:
+      return {
+        ...prevState,
+        isCollectionDismissible: action.data.value,
+      };
     case at.DISCOVERY_STREAM_TOPICS_LOADING:
       return {
         ...prevState,
@@ -751,6 +759,7 @@ function DiscoveryStream(prevState = INITIAL_STATE.DiscoveryStream, action) {
         ...prevState,
         recentSavesEnabled: action.data.recentSavesEnabled,
         pocketButtonEnabled: action.data.pocketButtonEnabled,
+        saveToPocketCard: action.data.saveToPocketCard,
         hideDescriptions: action.data.hideDescriptions,
         compactImages: action.data.compactImages,
         imageGradient: action.data.imageGradient,
@@ -907,6 +916,14 @@ function DiscoveryStream(prevState = INITIAL_STATE.DiscoveryStream, action) {
         ? prevState
         : nextState(items => items.map(removeBookmarkInfo));
     }
+    case at.PREF_CHANGED:
+      if (action.data.name === PREF_COLLECTION_DISMISSIBLE) {
+        return {
+          ...prevState,
+          isCollectionDismissible: action.data.value,
+        };
+      }
+      return prevState;
     case at.TOPIC_SELECTION_SPOTLIGHT_OPEN:
       return {
         ...prevState,
@@ -1143,9 +1160,8 @@ function TimerWidget(prevState = INITIAL_STATE.TimerWidget, action) {
       return {
         ...prevState,
         [timerType]: {
-          ...prevState[timerType],
-          duration: action.data.duration,
-          initialDuration: action.data.duration,
+          duration: 0,
+          initialDuration: 0,
           startTime: null,
           isRunning: false,
         },

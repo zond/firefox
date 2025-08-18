@@ -6,6 +6,7 @@ package mozilla.components.feature.privatemode.feature
 
 import android.view.Window
 import android.view.WindowManager.LayoutParams.FLAG_SECURE
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import mozilla.components.browser.state.state.BrowserState
 import mozilla.components.browser.state.state.createTab
 import mozilla.components.browser.state.store.BrowserStore
@@ -17,6 +18,7 @@ import org.junit.Test
 import org.mockito.Mockito.never
 import org.mockito.Mockito.verify
 
+@ExperimentalCoroutinesApi
 class SecureWindowFeatureTest {
 
     @get:Rule

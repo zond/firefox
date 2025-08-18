@@ -8,6 +8,7 @@ import androidx.concurrent.futures.await
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.work.ListenableWorker
 import androidx.work.testing.TestListenableWorkerBuilder
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import mozilla.components.service.pocket.GlobalDependencyProvider
 import mozilla.components.service.pocket.recommendations.ContentRecommendationsUseCases
 import mozilla.components.support.test.mock
@@ -20,6 +21,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.mockito.Mockito.doReturn
 
+@ExperimentalCoroutinesApi // for runTestOnMain
 @RunWith(AndroidJUnit4::class)
 class ContentRecommendationsRefreshWorkerTest {
 

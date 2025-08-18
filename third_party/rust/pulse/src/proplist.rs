@@ -3,6 +3,7 @@
 // This program is made available under an ISC-style license.  See the
 // accompanying file LICENSE for details.
 
+use ffi;
 use std::ffi::{CStr, CString};
 
 #[derive(Debug)]
@@ -27,5 +28,5 @@ impl Proplist {
 }
 
 pub unsafe fn from_raw_ptr(raw: *mut ffi::pa_proplist) -> Proplist {
-    Proplist(raw)
+    return Proplist(raw);
 }

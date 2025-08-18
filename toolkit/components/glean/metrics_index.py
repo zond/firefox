@@ -221,7 +221,6 @@ firefox_desktop_pings = [
     "browser/components/search/pings.yaml",
     "browser/components/urlbar/pings.yaml",
     "browser/modules/pings.yaml",
-    "dom/security/pings.yaml",
     "services/fxaccounts/pings.yaml",
     "services/sync/pings.yaml",
     "toolkit/components/crashes/pings.yaml",

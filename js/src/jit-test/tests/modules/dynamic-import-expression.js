@@ -1,4 +1,4 @@
-// |jit-test|
+// |jit-test| --enable-import-attributes
 
 load(libdir + "match.js");
 load(libdir + "asserts.js");
@@ -86,106 +86,108 @@ for (let parse of [parseAsModuleScript, parseAsClassicScript]) {
         )
     ]).assert(parse("x = import(foo);"));
 
-    program([
-        expressionStatement(
-            importCall(
-                ident("import"),
-                [
-                    ident("foo"),
-                    objExpr([])
-                ]
+    if (getRealmConfiguration("importAttributes")) {
+        program([
+            expressionStatement(
+                importCall(
+                    ident("import"),
+                    [
+                        ident("foo"),
+                        objExpr([])
+                    ]
+                )
             )
-        )
-    ]).assert(parse("import(foo, {});"));
+        ]).assert(parse("import(foo, {});"));
 
-    program([
-        expressionStatement(
-            importCall(
-                ident("import"),
+        program([
+            expressionStatement(
+                importCall(
+                    ident("import"),
 
-                [
-                    ident("foo"),
-                    objExpr([
-                        property(
-                            ident("assert"),
-                            objExpr([]
-                        ))
-                    ])
-                ]
+                    [
+                        ident("foo"),
+                        objExpr([
+                            property(
+                                ident("assert"),
+                                objExpr([]
+                            ))
+                        ])
+                    ]
 
+                )
             )
-        )
-    ]).assert(parse("import(foo, { assert: {} });"));
+        ]).assert(parse("import(foo, { assert: {} });"));
 
-    program([
-        expressionStatement(
-            importCall(
-                ident("import"),
-                [
-                    ident("foo"),
-                    objExpr([
-                        property(
-                            ident("assert"),
-                            objExpr([
-                                property(
-                                    ident("type"),
-                                    lit('json')
-                                )
-                            ]
-                        ))
-                    ])
-                ]
+        program([
+            expressionStatement(
+                importCall(
+                    ident("import"),
+                    [
+                        ident("foo"),
+                        objExpr([
+                            property(
+                                ident("assert"),
+                                objExpr([
+                                    property(
+                                        ident("type"),
+                                        lit('json')
+                                    )
+                                ]
+                            ))
+                        ])
+                    ]
+                )
             )
-        )
-    ]).assert(parse("import(foo, { assert: { type: 'json' } });"));
+        ]).assert(parse("import(foo, { assert: { type: 'json' } });"));
 
-    program([
-        expressionStatement(
-            importCall(
-                ident("import"),
-                [
-                    ident("foo"),
-                    objExpr([
-                        property(
-                            ident("assert"),
-                            objExpr([
-                                property(
-                                    ident("type"),
-                                    lit('json')
-                                ),
-                                property(
-                                    ident("foo"),
-                                    lit('bar')
-                                )
-                            ]
-                        ))
-                    ])
-                ]
+        program([
+            expressionStatement(
+                importCall(
+                    ident("import"),
+                    [
+                        ident("foo"),
+                        objExpr([
+                            property(
+                                ident("assert"),
+                                objExpr([
+                                    property(
+                                        ident("type"),
+                                        lit('json')
+                                    ),
+                                    property(
+                                        ident("foo"),
+                                        lit('bar')
+                                    )
+                                ]
+                            ))
+                        ])
+                    ]
+                )
             )
-        )
-    ]).assert(parse("import(foo, { assert: { type: 'json', foo: 'bar' } });"));
+        ]).assert(parse("import(foo, { assert: { type: 'json', foo: 'bar' } });"));
 
-    program([
-        expressionStatement(
-            importCall(
-                ident("import"),
-                [
-                    ident("foo"),
-                    objExpr([
-                        property(
-                            ident("assert"),
-                            objExpr([
-                                property(
-                                    ident("type"),
-                                    callExpression(ident('getType'), [])
-                                )
-                            ]
-                        ))
-                    ])
-                ]
+        program([
+            expressionStatement(
+                importCall(
+                    ident("import"),
+                    [
+                        ident("foo"),
+                        objExpr([
+                            property(
+                                ident("assert"),
+                                objExpr([
+                                    property(
+                                        ident("type"),
+                                        callExpression(ident('getType'), [])
+                                    )
+                                ]
+                            ))
+                        ])
+                    ]
+                )
             )
-        )
-    ]).assert(parse("import(foo, { assert: { type: getType() } });"));
+        ]).assert(parse("import(foo, { assert: { type: getType() } });"));
+    }
 }
 
 function assertParseThrowsSyntaxError(source)
@@ -201,4 +203,12 @@ assertParseThrowsSyntaxError("x = import");
 assertParseThrowsSyntaxError("x = import(");
 assertParseThrowsSyntaxError("x = import(1,");
 assertParseThrowsSyntaxError("x = import(1, 2");
-assertParseThrowsSyntaxError("import(1, 2, 3)");
+
+if (!getRealmConfiguration("importAttributes")) {
+    assertParseThrowsSyntaxError("import(1, 2");
+    assertParseThrowsSyntaxError("import(1, 2)");
+    assertParseThrowsSyntaxError("x = import(1, 2)");
+}
+else {
+    assertParseThrowsSyntaxError("import(1, 2, 3)");
+}

@@ -21,6 +21,7 @@ import org.mockito.Mockito.verify
 import org.mockito.Mockito.`when`
 
 @RunWith(AndroidJUnit4::class)
+@kotlinx.coroutines.ExperimentalCoroutinesApi
 class OnDiskMessageMetadataStorageTest {
 
     private lateinit var storage: OnDiskMessageMetadataStorage

@@ -34,32 +34,24 @@ loader.lazyRequireGetter(
  */
 class TextProperty {
   /**
-   * @param {Object} options
-   * @param {Rule} options.rule
+   * @param {Rule} rule
    *        The rule this TextProperty came from.
-   * @param {String} options.name
+   * @param {String} name
    *        The text property name (such as "background" or "border-top").
-   * @param {String} options.value
+   * @param {String} value
    *        The property's value (not including priority).
-   * @param {String} options.priority
+   * @param {String} priority
    *        The property's priority (either "important" or an empty string).
-   * @param {Boolean} options.enabled
+   * @param {Boolean} enabled
    *        Whether the property is enabled.
-   * @param {Boolean} options.invisible
+   * @param {Boolean} invisible
    *        Whether the property is invisible. In an inherited rule, only show
    *        the inherited declarations. The other declarations are considered
    *        invisible and does not show up in the UI. These are needed so that
    *        the index of a property in Rule.textProps is the same as the index
    *        coming from parseDeclarations.
    */
-  constructor({
-    rule,
-    name,
-    value,
-    priority,
-    enabled = true,
-    invisible = false,
-  }) {
+  constructor(rule, name, value, priority, enabled = true, invisible = false) {
     this.id = name + "_" + generateUUID().toString();
     this.rule = rule;
     this.name = name;

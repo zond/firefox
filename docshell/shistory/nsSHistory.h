@@ -136,9 +136,8 @@ class nsSHistory : public mozilla::LinkedListElement<nsSHistory>,
   static void WalkContiguousEntries(
       nsISHEntry* aEntry, const std::function<void(nsISHEntry*)>& aCallback);
   // Same as above, but calls aCallback on the entries in their history order.
-  // Will stop walking when `aCallback` returns false.
   static void WalkContiguousEntriesInOrder(
-      nsISHEntry* aEntry, const std::function<bool(nsISHEntry*)>& aCallback);
+      nsISHEntry* aEntry, const std::function<void(nsISHEntry*)>& aCallback);
 
   nsTArray<nsCOMPtr<nsISHEntry>>& Entries() { return mEntries; }
 

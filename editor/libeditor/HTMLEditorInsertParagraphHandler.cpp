@@ -276,7 +276,8 @@ HTMLEditor::AutoInsertParagraphHandler::Run() {
     if (NS_WARN_IF(!pointToInsert.IsInContentNode())) {
       return Err(NS_ERROR_EDITOR_UNEXPECTED_DOM_TREE);
     }
-    MOZ_ASSERT(pointToInsert.IsSetAndValidInComposedDoc());
+    MOZ_ASSERT(pointToInsert.IsSetAndValid());
+    blockElementToPutCaret = suggestBlockElementToPutCaretOrError.unwrap();
 
     editableBlockElement = HTMLEditUtils::GetInclusiveAncestorElement(
         *pointToInsert.ContainerAs<nsIContent>(),
@@ -330,8 +331,8 @@ HTMLEditor::AutoInsertParagraphHandler::Run() {
   }
 
   RefPtr<Element> maybeNonEditableListItem =
-      HTMLEditUtils::GetClosestInclusiveAncestorListItemElement(
-          *editableBlockElement, &mEditingHost);
+      HTMLEditUtils::GetClosestAncestorListItemElement(*editableBlockElement,
+                                                       &mEditingHost);
   if (maybeNonEditableListItem &&
       HTMLEditUtils::IsSplittableNode(*maybeNonEditableListItem)) {
     Result<InsertParagraphResult, nsresult> insertParagraphInListItemResult =

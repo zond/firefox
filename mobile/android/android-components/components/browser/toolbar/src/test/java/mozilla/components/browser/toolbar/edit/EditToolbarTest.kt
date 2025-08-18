@@ -7,6 +7,7 @@ package mozilla.components.browser.toolbar.edit
 import android.view.KeyEvent
 import android.view.View
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.runTest
 import mozilla.components.browser.toolbar.BrowserToolbar
 import mozilla.components.browser.toolbar.R
@@ -27,6 +28,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import java.util.concurrent.CountDownLatch
 
+@ExperimentalCoroutinesApi // for runTest
 @RunWith(AndroidJUnit4::class)
 class EditToolbarTest {
     private fun createEditToolbar(): Pair<BrowserToolbar, EditToolbar> {

@@ -3,6 +3,7 @@
 // This program is made available under an ISC-style license.  See the
 // accompanying file LICENSE for details.
 
+use ffi;
 use std::ffi::CStr;
 
 #[macro_export]
@@ -31,7 +32,7 @@ impl ErrorCode {
 
     pub fn from_error_code(err: ffi::pa_error_code_t) -> Self {
         debug_assert!(err > 0);
-        ErrorCode { err }
+        ErrorCode { err: err }
     }
 
     fn desc(&self) -> &'static str {

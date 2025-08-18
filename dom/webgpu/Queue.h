@@ -69,9 +69,6 @@ class Queue final : public ObjectBase, public ChildOf<Device> {
   void Cleanup();
 
   RefPtr<WebGPUChild> mBridge;
-  // Index to use for the next submission containing external textures. Used to
-  // keep track of when work involving external textures is done.
-  uint64_t mNextExternalTextureSubmissionIndex = 1;
 
  public:
 };

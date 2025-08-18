@@ -268,14 +268,31 @@ urlbar:
       description: >-
         Feature gate that controls whether result deduplication in the urlbar
         is enabled.
-    # TODO Bug 1982966: Remove this after all experiments and rollouts using it
-    # finish.
     fakespotFeatureGate:
       type: boolean
       fallbackPref: browser.urlbar.fakespot.featureGate
       description: >-
         Feature gate that controls whether all aspects of the Fakespot suggestion
         feature are exposed to the user.
+    fakespotMinKeywordLength:
+      type: int
+      description: >-
+        The minimum prefix length of a Fakespot keyword the user must type to
+        trigger the suggestion.
+    fakespotShowLessFrequentlyCap:
+      type: int
+      fallbackPref: browser.urlbar.fakespot.showLessFrequentlyCap
+      description: >-
+        If defined and non-zero, this is the maximum number of times the user
+        will be able to click the "Show less frequently" command for Fakespot
+        suggestions. If undefined or zero, the user will be able to click the
+        command without any limit.
+    fakespotSuggestedIndex:
+      type: int
+      fallbackPref: browser.urlbar.fakespot.suggestedIndex
+      description: >-
+        The index of Fakespot results within the Firefox Suggest section. A
+        negative index is relative to the end of the section.
     keywordExposureResults:
       type: string
       setPref:
@@ -549,14 +566,6 @@ urlbar:
       description: >-
         Fraction (0.0 – 1.0) of top Places rows that must have embeddings
         before semantic-history search is enabled. 0.5 = 50 %.
-    semanticHistoryDefaultBatchChunksize:
-      type: int
-      setPref:
-        branch: user
-        pref: places.semanticHistory.defaultBatchChunksize
-      description: >-
-        The batch chunk size for updates for vectorDB
-        defaulted at 25.
     semanticHistoryDistanceThreshold:
       type: string
       setPref:
@@ -996,7 +1005,7 @@ newtabAdSizingExperiment:
         Medium rectangle (MREC) ad size and UI.
 
 newtabPromoCard:
-  description: the promo card that appears next to the ad banner
+  description: about:newtab reporting ads feature
   owner: achurchwell@mozilla.com
   hasExposure: false
   variables:
@@ -1150,20 +1159,6 @@ newtabMerinoOhttp:
         pref: browser.newtabpage.activity-stream.discoverystream.merino-provider.ohttp.enabled
       description: >-
         Enables using OHTTP for merino content requests
-
-newtabOhttpImages:
-  description: Sending request to MARS over OHTTP in newtab
-  owner: nbarrett@mozilla.com
-  hasExposure: false
-  variables:
-    enabled:
-      type: boolean
-      description: >-
-        Enables using OHTTP for images
-    includeTopStoriesSection:
-      type: boolean
-      description: >-
-        Enables using OHTTP for top stories section if enabled for images
 
 newtabMobileDownloadPromotion:
   description: Cross-sell promotion to download Firefox for mobile
@@ -1377,16 +1372,6 @@ newTabSectionsExperiment:
         branch: user
         pref: browser.newtabpage.activity-stream.discoverystream.placements.contextualBanners.counts
       description: CSV string of AdBanner placement counts on newtab Pocket grid. The count tells the ad server how many banners to return for this position and placement.
-
-newtabInferredPersonalization:
-  description: about:newtab inferred content personalization settings
-  owner: rrando@mozilla.com
-  hasExposure: false
-  variables:
-    iv_refresh_frequency_hours:
-      type: int
-      description: >-
-        Time to refresh interest vector in hours
 
 newtabSmartShortcuts:
   description: about:newtab personalized shortcuts
@@ -1708,6 +1693,19 @@ pocketNewtab:
       fallbackPref: >-
         browser.newtabpage.activity-stream.discoverystream.newFooterSection.enabled
       description: Enable an updated Pocket section topics footer
+    saveToPocketCard:
+      type: boolean
+      fallbackPref: >-
+        browser.newtabpage.activity-stream.discoverystream.saveToPocketCard.enabled
+      description: >-
+        A save to Pocket button inside the card, shown on the card thumbnail, on
+        hover.
+    saveToPocketCardRegions:
+      type: string
+      fallbackPref: >-
+        browser.newtabpage.activity-stream.discoverystream.saveToPocketCardRegions
+      description: >-
+        CSV string of regions that support the save to Pocket button inside the card.
     hideDescriptions:
       type: boolean
       fallbackPref: >-
@@ -1757,6 +1755,20 @@ pocketNewtab:
         browser.newtabpage.activity-stream.discoverystream.onboardingExperience.enabled
       description: >-
         Enables an onboarding experience for Pocket section on newtab.
+    essentialReadsHeader:
+      type: boolean
+      fallbackPref: >-
+        browser.newtabpage.activity-stream.discoverystream.essentialReadsHeader.enabled
+      description: >-
+        Updates the Pocket section header and title to say "Today’s Essential Reads",
+        moves the "Recommended by Pocket" header to the right side.
+    editorsPicksHeader:
+      type: boolean
+      fallbackPref: >-
+        browser.newtabpage.activity-stream.discoverystream.editorsPicksHeader.enabled
+      description: >-
+        Updates the Pocket section header and title to say "Editor’s Picks", if used with
+        essentialReadsHeader, creates a second section 2 rows down for editorsPicksHeader.
     recentSavesEnabled:
       type: boolean
       fallbackPref: >-
@@ -2954,18 +2966,6 @@ localNetworkAccess:
       setPref:
         branch: default
         pref: "network.lna.block_trackers"
-    lnaPromptsEnabled:
-      description: Whether we should prompt users for permission whenever we detect local network access.
-      type: boolean
-      setPref:
-        branch: default
-        pref: "network.lna.blocking"
-    lnaFeatureEnabled:
-      description: Blanket flag to enable/disable LNA sub-features.
-      type: boolean
-      setPref:
-        branch: default
-        pref: "network.lna.enabled"
 
 essentialFallbackDomains:
   description: "Whether to retry failing system requests with a backup domain"
@@ -3770,18 +3770,6 @@ mixedContentUpgrading:
       setPref:
         branch: default
         pref: security.mixed_content.upgrade_display_content
-
-unexpectedScriptLoadNotificationBar:
-  description: Pref to control whether we show the Unexpected Script Load Notification Bar
-  owner: tritter@mozilla.com
-  hasExposure: false
-  variables:
-    enabled:
-      description: True if we want to disable the notification bar
-      type: boolean
-      setPref:
-        branch: default
-        pref: security.hide_parent_unrestricted_js_loads_warning.temporary
 
 gc:
   description: Prefs that control gc heuristics.
@@ -4630,13 +4618,6 @@ certCompression:
         pref: security.tls.enable_certificate_compression_brotli
       description: >-
         Whether to enable Brotli for TLS certificate compression.
-    h3EnableBrotli:
-      type: boolean
-      setPref:
-        branch: default
-        pref: network.http.http3.enable_certificate_compression_brotli
-      description: >-
-        Whether to enable Brotli for H3/QUIC certificate compression.
     tlsEnableZstd:
       type: boolean
       setPref:
@@ -5152,13 +5133,6 @@ ipProtection:
         pref: browser.ipProtection.enabled
       description: >-
         Enables the IP Protection feature.
-    variant:
-      type: string
-      setPref:
-        branch: default
-        pref: browser.ipProtection.variant
-      description: >-
-        What variant of the feature to use.
 
 webApps:
   description: Enables or disables web apps.

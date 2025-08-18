@@ -61,8 +61,7 @@ async function loadExtension() {
     ),
   });
 
-  await AddonTestUtils.promiseShutdownManager({ clearL10nRegistry: false });
-  await AddonTestUtils.promiseStartupManager();
+  await AddonTestUtils.promiseRestartManager();
 
   const addon = await AddonManager.getAddonByID(EXTENSION_ID);
   Assert.ok(addon, "Expect newtab addon to be found");

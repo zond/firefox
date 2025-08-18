@@ -65,39 +65,19 @@ class MozTextLabel extends HTMLLabelElement {
     }
   }
 
-  #startMutationObserver() {
-    if (!this.#observer) {
-      return;
-    }
-    this.#observer.observe(this, {
-      characterData: true,
-      childList: true,
-      subtree: true,
-    });
-  }
-
-  #stopMutationObserver() {
-    if (!this.#observer) {
-      return;
-    }
-    this.#observer.disconnect();
-  }
-
   connectedCallback() {
     this.#setStyles();
     this.formatAccessKey();
     if (!this.#observer) {
       this.#observer = new MutationObserver(() => {
-        this.#lastFormattedAccessKey = null;
         this.formatAccessKey();
-      });
-      this.#startMutationObserver();
+      }).observe(this, { characterData: true, childList: true, subtree: true });
     }
   }
 
   disconnectedCallback() {
     if (this.#observer) {
-      this.#stopMutationObserver();
+      this.#observer.disconnect();
       this.#observer = null;
     }
   }
@@ -205,15 +185,6 @@ class MozTextLabel extends HTMLLabelElement {
     ) {
       return;
     }
-    this.#stopMutationObserver();
-    try {
-      this.#formatAccessKey(accessKey);
-    } finally {
-      queueMicrotask(() => this.#startMutationObserver());
-    }
-  }
-
-  #formatAccessKey(accessKey) {
     this.#lastFormattedAccessKey = accessKey;
     if (this.accessKeySpan) {
       // Clear old accesskey

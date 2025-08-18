@@ -77,13 +77,6 @@ class SiteSettingsFragment : PreferenceFragmentCompat() {
             // Autoplay inaudible should be set in the same menu as autoplay audible, so it does
             // not need to be bound
             .filter { it != PhoneFeature.AUTOPLAY_INAUDIBLE }
-            .excludeFeatures(
-                condition = { !requireContext().settings().isLnaBlockingEnabled },
-                features = setOf(
-                    PhoneFeature.LOCAL_DEVICE_ACCESS,
-                    PhoneFeature.LOCAL_NETWORK_ACCESS,
-                ),
-            )
             .forEach(::initPhoneFeature)
     }
 
@@ -91,16 +84,10 @@ class SiteSettingsFragment : PreferenceFragmentCompat() {
         val context = requireContext()
         val settings = context.settings()
 
-        val preference = requirePreference<Preference>(phoneFeature.getPreferenceId())
-        preference.summary = phoneFeature.getActionLabel(context, settings = settings)
-        preference.icon?.setTint(
-            ContextCompat.getColor(
-                context,
-                R.color.fx_mobile_icon_color_primary,
-            ),
-        )
-        preference.isVisible = true
-        preference.onPreferenceClickListener = OnPreferenceClickListener {
+        val cameraPhoneFeatures = requirePreference<Preference>(phoneFeature.getPreferenceId())
+        cameraPhoneFeatures.summary = phoneFeature.getActionLabel(context, settings = settings)
+
+        cameraPhoneFeatures.onPreferenceClickListener = OnPreferenceClickListener {
             navigateToPhoneFeature(phoneFeature)
             true
         }
@@ -121,19 +108,5 @@ class SiteSettingsFragment : PreferenceFragmentCompat() {
                 crashReporter = it.components.analytics.crashReporter,
             )
         }
-    }
-
-    /**
-     * Excludes a set of [PhoneFeature]s from the receiver list if the given [condition] is true.
-     *
-     * @param condition A lambda that returns true if the features should be excluded.
-     * @param features A set of [PhoneFeature]s to exclude if the condition is true.
-     * @return A new list of [PhoneFeature]s with the specified features potentially excluded.
-     */
-    private fun Iterable<PhoneFeature>.excludeFeatures(
-        condition: () -> Boolean,
-        features: Set<PhoneFeature> = emptySet(),
-    ): List<PhoneFeature> {
-        return if (condition()) filterNot { features.contains(it) } else this.toList()
     }
 }

@@ -20,7 +20,7 @@ from dataclasses import (
     field,
 )
 from pathlib import Path
-from typing import Union
+from typing import Optional, Union
 
 import requests
 from mach.util import get_state_dir
@@ -49,7 +49,7 @@ def convert_bytes_patch_to_base64(patch_bytes: bytes) -> str:
     return base64.b64encode(patch_bytes).decode("ascii")
 
 
-def load_token_from_disk() -> dict | None:
+def load_token_from_disk() -> Optional[dict]:
     """Load and validate an existing Auth0 token from disk.
 
     Return the token as a `dict` if it can be validated, or return `None`
@@ -69,7 +69,7 @@ def load_token_from_disk() -> dict | None:
 
 
 def get_stack_info(
-    vcs: SupportedVcsRepository, head: str | None
+    vcs: SupportedVcsRepository, head: Optional[str]
 ) -> tuple[str, str, list[str]]:
     """Retrieve information about the current stack for submission via Lando.
 
@@ -168,7 +168,7 @@ class Auth0Config:
 
         return response.json()
 
-    def validate_token(self, user_token: dict) -> dict | None:
+    def validate_token(self, user_token: dict) -> Optional[dict]:
         """Verify the given user token is valid.
 
         Validate the ID token, and validate the access token's expiration claim.
@@ -311,7 +311,7 @@ class Auth0Config:
 class LandoAPIException(Exception):
     """Raised when Lando throws an exception."""
 
-    def __init__(self, detail: str | None = None):
+    def __init__(self, detail: Optional[str] = None):
         super().__init__(detail or "")
 
 

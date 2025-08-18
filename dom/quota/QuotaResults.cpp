@@ -44,42 +44,9 @@ FullOriginMetadataResult::GetStorageOrigin(nsACString& aStorageOrigin) {
 }
 
 NS_IMETHODIMP
-FullOriginMetadataResult::GetPrivate(bool* aPrivate) {
-  MOZ_ASSERT(aPrivate);
-
-  *aPrivate = mFullOriginMetadata.mIsPrivate;
-  return NS_OK;
-}
-
-NS_IMETHODIMP
 FullOriginMetadataResult::GetPersistenceType(nsACString& aPersistenceType) {
   aPersistenceType =
       PersistenceTypeToString(mFullOriginMetadata.mPersistenceType);
-  return NS_OK;
-}
-
-NS_IMETHODIMP
-FullOriginMetadataResult::GetLastAccessTime(int64_t* aLastAccessTime) {
-  MOZ_ASSERT(aLastAccessTime);
-
-  *aLastAccessTime = mFullOriginMetadata.mLastAccessTime;
-  return NS_OK;
-}
-
-NS_IMETHODIMP
-FullOriginMetadataResult::GetLastMaintenanceDate(
-    int32_t* aLastMaintenanceDate) {
-  MOZ_ASSERT(aLastMaintenanceDate);
-
-  *aLastMaintenanceDate = mFullOriginMetadata.mLastMaintenanceDate;
-  return NS_OK;
-}
-
-NS_IMETHODIMP
-FullOriginMetadataResult::GetAccessed(bool* aAccessed) {
-  MOZ_ASSERT(aAccessed);
-
-  *aAccessed = mFullOriginMetadata.mAccessed;
   return NS_OK;
 }
 
@@ -92,24 +59,10 @@ FullOriginMetadataResult::GetPersisted(bool* aPersisted) {
 }
 
 NS_IMETHODIMP
-FullOriginMetadataResult::GetClientUsages(nsACString& aClientUsages) {
-  mFullOriginMetadata.mClientUsages.Serialize(aClientUsages);
-  return NS_OK;
-}
+FullOriginMetadataResult::GetLastAccessTime(int64_t* aLastAccessTime) {
+  MOZ_ASSERT(aLastAccessTime);
 
-NS_IMETHODIMP
-FullOriginMetadataResult::GetOriginUsage(uint64_t* aOriginUsage) {
-  MOZ_ASSERT(aOriginUsage);
-
-  *aOriginUsage = mFullOriginMetadata.mOriginUsage;
-  return NS_OK;
-}
-
-NS_IMETHODIMP
-FullOriginMetadataResult::GetQuotaVersion(uint32_t* aQuotaVersion) {
-  MOZ_ASSERT(aQuotaVersion);
-
-  *aQuotaVersion = mFullOriginMetadata.mQuotaVersion;
+  *aLastAccessTime = mFullOriginMetadata.mLastAccessTime;
   return NS_OK;
 }
 

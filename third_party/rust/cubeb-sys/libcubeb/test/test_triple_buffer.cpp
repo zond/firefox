@@ -64,7 +64,4 @@ TEST(cubeb, triple_buffer)
   }
 
   t.join();
-
-  buffer.invalidate();
-  ASSERT_FALSE(buffer.updated());
 }

@@ -290,19 +290,6 @@
             app:exitAnim="@anim/slide_out_left"
             app:popEnterAnim="@anim/slide_in_left"
             app:popExitAnim="@anim/slide_out_right" />
-        <action
-            android:id="@+id/action_homeFragment_to_shortcutsFragment"
-            app:destination="@id/shortcutsFragment" />
-    </fragment>
-
-    <fragment
-        android:id="@+id/shortcutsFragment"
-        android:name="org.mozilla.fenix.home.topsites.ShortcutsFragment">
-        <action
-            android:id="@+id/action_shortcutsFragment_to_browserFragment"
-            app:destination="@id/browserFragment"
-            app:popUpTo="@id/shortcutsFragment"
-            app:popUpToInclusive="true" />
     </fragment>
 
     <dialog
@@ -1252,10 +1239,10 @@
 
     <fragment
         android:id="@+id/unlockPrivateTabsFragment"
-        android:name="org.mozilla.fenix.pbmlock.UnlockPrivateTabsFragment">
+        android:name="org.mozilla.fenix.biometricauthentication.UnlockPrivateTabsFragment">
         <argument
             android:name="navigationOrigin"
-            app:argType="org.mozilla.fenix.pbmlock.NavigationOrigin" />
+            app:argType="org.mozilla.fenix.biometricauthentication.NavigationOrigin" />
     </fragment>
 
     <fragment

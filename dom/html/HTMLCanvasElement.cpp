@@ -26,7 +26,6 @@
 #include "mozilla/ProfilerLabels.h"
 #include "mozilla/ProfilerMarkers.h"
 #include "mozilla/StaticPrefs_privacy.h"
-#include "mozilla/dom/BlobImpl.h"
 #include "mozilla/dom/CanvasCaptureMediaStream.h"
 #include "mozilla/dom/CanvasRenderingContext2D.h"
 #include "mozilla/dom/Document.h"
@@ -768,26 +767,16 @@ void HTMLCanvasElement::ToDataURL(JSContext* aCx, const nsAString& aType,
                                   nsAString& aDataURL,
                                   nsIPrincipal& aSubjectPrincipal,
                                   ErrorResult& aRv) {
-  bool recheckCanRead = mOffscreenDisplay && mOffscreenDisplay->HasWorkerRef();
-
-  if (!CallerCanRead(aSubjectPrincipal)) {
+  // mWriteOnly check is redundant, but optimizes for the common case.
+  if (mWriteOnly && !CallerCanRead(aSubjectPrincipal)) {
     aRv.Throw(NS_ERROR_DOM_SECURITY_ERR);
     return;
   }
 
-  nsString dataURL;
-  nsresult rv = ToDataURLImpl(aCx, aSubjectPrincipal, aType, aParams, dataURL);
-  if (recheckCanRead && !CallerCanRead(aSubjectPrincipal)) {
-    aRv.Throw(NS_ERROR_DOM_SECURITY_ERR);
-    return;
-  }
-
+  nsresult rv = ToDataURLImpl(aCx, aSubjectPrincipal, aType, aParams, aDataURL);
   if (NS_FAILED(rv)) {
-    aDataURL.Assign(u"data:,"_ns);
-    return;
+    aDataURL.AssignLiteral("data:,");
   }
-
-  aDataURL = std::move(dataURL);
 }
 
 void HTMLCanvasElement::SetMozPrintCallback(PrintCallback* aCallback) {
@@ -903,12 +892,11 @@ already_AddRefed<CanvasCaptureMediaStream> HTMLCanvasElement::CaptureStream(
   // Check site-specific permission and display prompt if appropriate.
   // If no permission, arrange for the frame capture listener to return
   // all-white, opaque image data.
-  CanvasUtils::ImageExtraction spoofing =
-      CanvasUtils::ImageExtractionResult(this, nullptr, &aSubjectPrincipal);
+  bool usePlaceholder = !CanvasUtils::IsImageExtractionAllowed(
+      OwnerDoc(), nsContentUtils::GetCurrentJSContext(), aSubjectPrincipal);
 
-  rv = RegisterFrameCaptureListener(
-      stream->FrameCaptureListener(),
-      spoofing == CanvasUtils::ImageExtraction::Placeholder);
+  rv = RegisterFrameCaptureListener(stream->FrameCaptureListener(),
+                                    usePlaceholder);
   if (NS_FAILED(rv)) {
     aRv.Throw(rv);
     return nullptr;
@@ -924,10 +912,10 @@ nsresult HTMLCanvasElement::ExtractData(JSContext* aCx,
                                         nsIInputStream** aStream) {
   // Check site-specific permission and display prompt if appropriate.
   // If no permission, return all-white, opaque image data.
-  CanvasUtils::ImageExtraction spoofing =
-      CanvasUtils::ImageExtractionResult(this, aCx, &aSubjectPrincipal);
+  bool usePlaceholder = !CanvasUtils::IsImageExtractionAllowed(
+      OwnerDoc(), aCx, aSubjectPrincipal);
 
-  if (spoofing != CanvasUtils::ImageExtraction::Placeholder) {
+  if (!usePlaceholder) {
     auto size = GetWidthHeight();
     CanvasContextType type = GetCurrentContextType();
     CanvasFeatureUsage featureUsage = CanvasFeatureUsage::None;
@@ -942,7 +930,7 @@ nsresult HTMLCanvasElement::ExtractData(JSContext* aCx,
     OwnerDoc()->RecordCanvasUsage(usage);
   }
 
-  return ImageEncoder::ExtractData(aType, aOptions, GetSize(), spoofing,
+  return ImageEncoder::ExtractData(aType, aOptions, GetSize(), usePlaceholder,
                                    mCurrentContext, mOffscreenDisplay, aStream);
 }
 
@@ -994,15 +982,12 @@ nsresult HTMLCanvasElement::ToDataURLImpl(JSContext* aCx,
 }
 
 UniquePtr<uint8_t[]> HTMLCanvasElement::GetImageBuffer(
-    CanvasUtils::ImageExtraction aExtractionBehavior, int32_t* aOutFormat,
-    gfx::IntSize* aOutImageSize) {
+    int32_t* aOutFormat, gfx::IntSize* aOutImageSize) {
   if (mCurrentContext) {
-    return mCurrentContext->GetImageBuffer(aExtractionBehavior, aOutFormat,
-                                           aOutImageSize);
+    return mCurrentContext->GetImageBuffer(aOutFormat, aOutImageSize);
   }
   if (mOffscreenDisplay) {
-    return mOffscreenDisplay->GetImageBuffer(aExtractionBehavior, aOutFormat,
-                                             aOutImageSize);
+    return mOffscreenDisplay->GetImageBuffer(aOutFormat, aOutImageSize);
   }
   return nullptr;
 }
@@ -1012,9 +997,8 @@ void HTMLCanvasElement::ToBlob(JSContext* aCx, BlobCallback& aCallback,
                                JS::Handle<JS::Value> aParams,
                                nsIPrincipal& aSubjectPrincipal,
                                ErrorResult& aRv) {
-  bool recheckCanRead = mOffscreenDisplay && mOffscreenDisplay->HasWorkerRef();
-
-  if (!CallerCanRead(aSubjectPrincipal)) {
+  // mWriteOnly check is redundant, but optimizes for the common case.
+  if (mWriteOnly && !CallerCanRead(aSubjectPrincipal)) {
     aRv.Throw(NS_ERROR_DOM_SECURITY_ERR);
     return;
   }
@@ -1037,62 +1021,10 @@ void HTMLCanvasElement::ToBlob(JSContext* aCx, BlobCallback& aCallback,
 
   // Check site-specific permission and display prompt if appropriate.
   // If no permission, return all-white, opaque image data.
-  CanvasUtils::ImageExtraction spoofing =
-      CanvasUtils::ImageExtractionResult(this, aCx, &aSubjectPrincipal);
-
-  // Encoder callback when encoding is complete.
-  class EncodeCallback : public EncodeCompleteCallback {
-   public:
-    EncodeCallback(nsIGlobalObject* aGlobal, BlobCallback* aCallback,
-                   OffscreenCanvasDisplayHelper* aOffscreenDisplay,
-                   nsIPrincipal* aSubjectPrincipal)
-        : mGlobal(aGlobal),
-          mBlobCallback(aCallback),
-          mOffscreenDisplay(aOffscreenDisplay),
-          mSubjectPrincipal(aSubjectPrincipal) {}
-
-    // This is called on main thread.
-    MOZ_CAN_RUN_SCRIPT
-    nsresult ReceiveBlobImpl(already_AddRefed<BlobImpl> aBlobImpl) override {
-      MOZ_ASSERT(NS_IsMainThread());
-
-      RefPtr<BlobImpl> blobImpl = aBlobImpl;
-
-      RefPtr<Blob> blob;
-
-      if (blobImpl && (!mOffscreenDisplay ||
-                       mOffscreenDisplay->CallerCanRead(*mSubjectPrincipal))) {
-        blob = Blob::Create(mGlobal, blobImpl);
-      }
-
-      RefPtr<BlobCallback> callback(std::move(mBlobCallback));
-      ErrorResult rv;
-
-      callback->Call(blob, rv);
-
-      mGlobal = nullptr;
-      MOZ_ASSERT(!mBlobCallback);
-
-      return rv.StealNSResult();
-    }
-
-    bool CanBeDeletedOnAnyThread() override {
-      // EncodeCallback is used from the main thread only.
-      return false;
-    }
-
-    nsCOMPtr<nsIGlobalObject> mGlobal;
-    RefPtr<BlobCallback> mBlobCallback;
-    RefPtr<OffscreenCanvasDisplayHelper> mOffscreenDisplay;
-    RefPtr<nsIPrincipal> mSubjectPrincipal;
-  };
-
-  RefPtr<EncodeCompleteCallback> callback = new EncodeCallback(
-      global, &aCallback, recheckCanRead ? mOffscreenDisplay.get() : nullptr,
-      recheckCanRead ? &aSubjectPrincipal : nullptr);
-
-  CanvasRenderingContextHelper::ToBlob(aCx, callback, aType, aParams, spoofing,
-                                       aRv);
+  bool usePlaceholder = !CanvasUtils::IsImageExtractionAllowed(
+      OwnerDoc(), aCx, aSubjectPrincipal);
+  CanvasRenderingContextHelper::ToBlob(aCx, global, aCallback, aType, aParams,
+                                       usePlaceholder, aRv);
 }
 
 OffscreenCanvas* HTMLCanvasElement::TransferControlToOffscreen(
@@ -1159,12 +1091,7 @@ already_AddRefed<nsISupports> HTMLCanvasElement::GetContext(
 
 CSSIntSize HTMLCanvasElement::GetSize() { return GetWidthHeight(); }
 
-bool HTMLCanvasElement::IsWriteOnly() const {
-  if (mOffscreenDisplay && mOffscreenDisplay->IsWriteOnly()) {
-    return true;
-  }
-  return mWriteOnly;
-}
+bool HTMLCanvasElement::IsWriteOnly() const { return mWriteOnly; }
 
 void HTMLCanvasElement::SetWriteOnly(
     nsIPrincipal* aExpandedReader /* = nullptr */) {
@@ -1176,10 +1103,6 @@ void HTMLCanvasElement::SetWriteOnly(
 }
 
 bool HTMLCanvasElement::CallerCanRead(nsIPrincipal& aPrincipal) const {
-  if (mOffscreenDisplay && !mOffscreenDisplay->CallerCanRead(aPrincipal)) {
-    return false;
-  }
-
   if (!mWriteOnly) {
     return true;
   }

@@ -6,8 +6,6 @@ const lazy = {};
 
 ChromeUtils.defineESModuleGetters(lazy, {
   E10SUtils: "resource://gre/modules/E10SUtils.sys.mjs",
-  SessionStore: "resource:///modules/sessionstore/SessionStore.sys.mjs",
-  TabGroupState: "resource:///modules/sessionstore/TabGroupState.sys.mjs",
 });
 
 var SessionMigrationInternal = {
@@ -18,10 +16,9 @@ var SessionMigrationInternal = {
    *   - with tabs
    *     - with history entries with only title, url, triggeringPrincipal
    *     - with pinned state
-   *     - with tab group info
+   *     - with tab group info (hidden + group id)
    *     - with selected tab info
    *   - with selected window info
-   * - saved tab groups
    *
    * The complete state is then wrapped into the "about:welcomeback" page as
    * form field info to be restored when restoring the state.
@@ -31,13 +28,8 @@ var SessionMigrationInternal = {
       selectedWindow: aStateObj.selectedWindow,
       _closedWindows: [],
     };
-    let savedGroups = aStateObj.savedGroups || [];
     state.windows = aStateObj.windows.map(function (oldWin) {
       var win = { extData: {} };
-      if (oldWin.groups) {
-        win.groups = oldWin.groups;
-      }
-      let groupsToSave = new Map();
       win.tabs = oldWin.tabs.map(function (oldTab) {
         var tab = {};
         // Keep only titles, urls and triggeringPrincipals for history entries
@@ -51,35 +43,7 @@ var SessionMigrationInternal = {
         tab.index = oldTab.index;
         tab.hidden = oldTab.hidden;
         tab.pinned = oldTab.pinned;
-        if (oldTab.groupId) {
-          tab.groupId = oldTab.groupId;
-          let groupStateToSave = oldWin.groups.find(
-            groupState => groupState.id == oldTab.groupId
-          );
-          let groupToSave = groupsToSave.get(groupStateToSave.id);
-          if (!groupToSave) {
-            groupToSave =
-              lazy.TabGroupState.savedInClosedWindow(groupStateToSave);
-            // If the session is manually restored, these groups will be removed from the saved groups list
-            // to prevent duplication.
-            groupToSave.removeAfterRestore = true;
-            groupsToSave.set(groupStateToSave.id, groupToSave);
-          }
-          groupToSave.tabs.push(
-            lazy.SessionStore.formatTabStateForSavedGroup(tab)
-          );
-        }
         return tab;
-      });
-      groupsToSave.forEach(groupState => {
-        const alreadySavedGroup = savedGroups.find(
-          existingGroup => existingGroup.id == groupState.id
-        );
-        if (alreadySavedGroup) {
-          alreadySavedGroup.removeAfterRestore = true;
-        } else {
-          savedGroups.push(groupState);
-        }
       });
       win.selected = oldWin.selected;
       win._closedTabs = [];
@@ -91,10 +55,7 @@ var SessionMigrationInternal = {
       url,
       triggeringPrincipal_base64: lazy.E10SUtils.SERIALIZED_SYSTEMPRINCIPAL,
     };
-    return {
-      windows: [{ tabs: [{ entries: [entry], formdata }] }],
-      savedGroups,
-    };
+    return { windows: [{ tabs: [{ entries: [entry], formdata }] }] };
   },
   /**
    * Asynchronously read session restore state (JSON) from a path

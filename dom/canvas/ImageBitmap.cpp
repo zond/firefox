@@ -855,9 +855,7 @@ already_AddRefed<SourceSurface> ImageBitmap::PrepareForDrawTarget(
       cropped = Factory::CreateDrawTarget(BackendType::SKIA,
                                           mPictureRect.Size(), format);
     } else {
-      if (aTarget->CanCreateSimilarDrawTarget(mPictureRect.Size(), format)) {
-        cropped = aTarget->CreateSimilarDrawTarget(mPictureRect.Size(), format);
-      }
+      cropped = aTarget->CreateSimilarDrawTarget(mPictureRect.Size(), format);
     }
 
     if (NS_WARN_IF(!cropped)) {

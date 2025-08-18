@@ -194,8 +194,8 @@ class SourceFooter extends PureComponent {
 
     const tooltip = L10N.getFormatStr(
       mappedSource.isOriginal
-        ? "sourceFooter.mappedGeneratedSource.tooltip"
-        : "sourceFooter.mappedOriginalSource.tooltip",
+        ? "sourceFooter.mappedOriginalSource.tooltip"
+        : "sourceFooter.mappedGeneratedSource.tooltip",
       mappedSource.url
     );
     const label = L10N.getFormatStr(

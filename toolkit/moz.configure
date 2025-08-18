@@ -940,6 +940,19 @@ def jxl(value, is_nightly):
 set_config("MOZ_JXL", jxl)
 set_define("MOZ_JXL", jxl)
 
+# Experimental Rust JXL decoder support
+option("--enable-jxl-rust", help="Enable experimental Rust jxl decoder")
+
+
+@depends("--enable-jxl-rust", milestone.is_nightly)
+def jxl_rust(value, is_nightly):
+    if is_nightly and value:
+        return True
+
+
+set_config("MOZ_JXL_RUST", jxl_rust)
+set_define("MOZ_JXL_RUST", jxl_rust)
+
 set_config("MOZ_SAMPLE_TYPE_FLOAT32", True)
 set_define("MOZ_SAMPLE_TYPE_FLOAT32", True)
 
@@ -2752,7 +2765,7 @@ with only_when(target_is_windows):
         dxc_dll_path,
         when=dxc_supports_target,
     )
-    @checking("for dxcompiler.dll")
+    @checking("for dxcompiler.dll and dxil.dll")
     @imports("os.path")
     def dxcompiler(target, artifact, windows_sdk_dir, dxc_path):
         if not windows_sdk_dir and not artifact:

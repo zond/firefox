@@ -14,7 +14,6 @@ const TOOL_CONTEXT_MENU = "sidebar-context-menu";
 
 registerCleanupFunction(() => {
   Services.prefs.clearUserPref("sidebar.new-sidebar.has-used");
-  Services.prefs.clearUserPref("browser.engagement.sidebar-button.has-used");
 });
 
 // Bug 1895789 to standarize contextmenu helpers in BrowserTestUtils
@@ -105,19 +104,6 @@ function assertContextMenuStubResult(stub) {
   );
 }
 
-async function ensureSidebarLauncherIsVisible() {
-  await TestUtils.waitForTick();
-  // Show the sidebar launcher if its hidden
-  if (SidebarController.sidebarContainer.hidden) {
-    document.getElementById("sidebar-button").doCommand();
-  }
-  await TestUtils.waitForTick();
-  Assert.ok(
-    BrowserTestUtils.isVisible(SidebarController.sidebarMain),
-    "Sidebar launcher is visible"
-  );
-}
-
 add_setup(async function () {
   await SpecialPowers.pushPrefEnv({
     set: [["test.wait300msAfterTabSwitch", true]],
@@ -138,7 +124,6 @@ add_task(async function test_page_and_tab_menu_prompt() {
       ["sidebar.revamp", true],
     ],
   });
-  await ensureSidebarLauncherIsVisible();
 
   await BrowserTestUtils.withNewTab("https://example.com", async browser => {
     await runContextMenuTest({
@@ -249,7 +234,6 @@ add_task(async function test_page_menu_no_chatbot() {
         ["sidebar.main.tools", "history"],
       ],
     });
-    await ensureSidebarLauncherIsVisible();
     await openContextMenu({ menuId: CONTENT_AREA_CONTEXT_MENU, browser });
 
     Assert.ok(

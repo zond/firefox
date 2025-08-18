@@ -93,6 +93,10 @@ class Infobar {
     return this.highlighter.options;
   }
 
+  get prefix() {
+    return this.highlighter.ID_CLASS_PREFIX;
+  }
+
   get win() {
     return this.highlighter.win;
   }
@@ -121,45 +125,50 @@ class Infobar {
     const container = this.markup.createNode({
       parent: root,
       attributes: {
-        class: "accessible-infobar-container",
-        id: "accessible-infobar-container",
+        class: "infobar-container",
+        id: "infobar-container",
         "aria-hidden": "true",
         hidden: "true",
       },
+      prefix: this.prefix,
     });
 
     const infobar = this.markup.createNode({
       parent: container,
       attributes: {
-        class: "accessible-infobar",
-        id: "accessible-infobar",
+        class: "infobar",
+        id: "infobar",
       },
+      prefix: this.prefix,
     });
 
     const infobarText = this.markup.createNode({
       parent: infobar,
       attributes: {
-        class: "accessible-infobar-text",
-        id: "accessible-infobar-text",
+        class: "infobar-text",
+        id: "infobar-text",
       },
+      prefix: this.prefix,
     });
 
     this.markup.createNode({
       nodeType: "span",
       parent: infobarText,
       attributes: {
-        class: "accessible-infobar-role",
-        id: "accessible-infobar-role",
+        class: "infobar-role",
+        id: "infobar-role",
       },
+      prefix: this.prefix,
     });
 
     this.markup.createNode({
       nodeType: "span",
       parent: infobarText,
       attributes: {
-        class: "accessible-infobar-name",
-        id: "accessible-infobar-name",
+        class: "infobar-name",
+        id: "infobar-name",
       },
+      prefix: this.prefix,
     });
 
     this.audit.buildMarkup(infobarText);
@@ -194,14 +203,15 @@ class Infobar {
    */
   getTextContent(id) {
     const anonymousContent = this.markup.content;
-    return anonymousContent.root.getElementById(id).textContent;
+    return anonymousContent.root.getElementById(`${this.prefix}${id}`)
+      .textContent;
   }
 
   /**
    * Hide the accessible infobar.
    */
   hide() {
-    const container = this.getElement("accessible-infobar-container");
+    const container = this.getElement("infobar-container");
     container.setAttribute("hidden", "true");
   }
 
@@ -209,7 +219,7 @@ class Infobar {
    * Show the accessible infobar highlighter.
    */
   show() {
-    const container = this.getElement("accessible-infobar-container");
+    const container = this.getElement("infobar-container");
 
     // Remove accessible's infobar "hidden" attribute. We do this first to get the
     // computed styles of the infobar container.
@@ -225,8 +235,8 @@ class Infobar {
   update(container) {
     const { audit, name, role } = this.options;
 
-    this.updateRole(role, this.getElement("accessible-infobar-role"));
-    this.updateName(name, this.getElement("accessible-infobar-name"));
+    this.updateRole(role, this.getElement("infobar-role"));
+    this.updateName(name, this.getElement("infobar-name"));
     this.audit.update(audit);
 
     // Position the infobar.
@@ -289,6 +299,10 @@ class Audit {
     };
   }
 
+  get prefix() {
+    return this.infobar.prefix;
+  }
+
   get markup() {
     return this.infobar.markup;
   }
@@ -298,16 +312,17 @@ class Audit {
       nodeType: "span",
       parent: root,
       attributes: {
-        class: "accessible-infobar-audit",
-        id: "accessible-infobar-audit",
+        class: "infobar-audit",
+        id: "infobar-audit",
       },
+      prefix: this.prefix,
     });
 
     Object.values(this.reports).forEach(report => report.buildMarkup(audit));
   }
 
   update(audit = {}) {
-    const el = this.getElement("accessible-infobar-audit");
+    const el = this.getElement("infobar-audit");
     el.setAttribute("hidden", true);
 
     let updated = false;
@@ -346,6 +361,10 @@ class AuditReport {
     this.audit = audit;
   }
 
+  get prefix() {
+    return this.audit.prefix;
+  }
+
   get markup() {
     return this.audit.markup;
   }
@@ -373,18 +392,20 @@ class ContrastRatio extends AuditReport {
       nodeType: "span",
       parent: root,
       attributes: {
-        class: "accessible-contrast-ratio-label",
-        id: "accessible-contrast-ratio-label",
+        class: "contrast-ratio-label",
+        id: "contrast-ratio-label",
       },
+      prefix: this.prefix,
     });
 
     this.markup.createNode({
       nodeType: "span",
       parent: root,
       attributes: {
-        class: "accessible-contrast-ratio-error",
-        id: "accessible-contrast-ratio-error",
+        class: "contrast-ratio-error",
+        id: "contrast-ratio-error",
       },
+      prefix: this.prefix,
       text: L10N.getStr("accessibility.contrast.ratio.error"),
     });
 
@@ -392,27 +413,30 @@ class ContrastRatio extends AuditReport {
       nodeType: "span",
       parent: root,
       attributes: {
-        class: "accessible-contrast-ratio",
-        id: "accessible-contrast-ratio-min",
+        class: "contrast-ratio",
+        id: "contrast-ratio-min",
       },
+      prefix: this.prefix,
     });
 
     this.markup.createNode({
       nodeType: "span",
       parent: root,
       attributes: {
-        class: "accessible-contrast-ratio-separator",
-        id: "accessible-contrast-ratio-separator",
+        class: "contrast-ratio-separator",
+        id: "contrast-ratio-separator",
       },
+      prefix: this.prefix,
     });
 
     this.markup.createNode({
       nodeType: "span",
       parent: root,
       attributes: {
-        class: "accessible-contrast-ratio",
-        id: "accessible-contrast-ratio-max",
+        class: "contrast-ratio",
+        id: "contrast-ratio-max",
       },
+      prefix: this.prefix,
     });
   }
 
@@ -439,9 +463,7 @@ class ContrastRatio extends AuditReport {
   update(audit) {
     const els = {};
     for (const key of ["label", "min", "max", "error", "separator"]) {
-      const el = (els[key] = this.getElement(
-        `accessible-contrast-ratio-${key}`
-      ));
+      const el = (els[key] = this.getElement(`contrast-ratio-${key}`));
       if (["min", "max"].includes(key)) {
         Object.values(SCORES).forEach(className =>
           el.classList?.remove(className)
@@ -537,9 +559,10 @@ class Keyboard extends AuditReport {
       nodeType: "span",
       parent: root,
       attributes: {
-        class: "accessible-audit",
-        id: "accessible-keyboard",
+        class: "audit",
+        id: "keyboard",
       },
+      prefix: this.prefix,
     });
   }
 
@@ -552,7 +575,7 @@ class Keyboard extends AuditReport {
    *         block should be visible.
    */
   update(audit) {
-    const el = this.getElement("accessible-keyboard");
+    const el = this.getElement("keyboard");
     el.setAttribute("hidden", true);
     Object.values(SCORES).forEach(className => el.classList?.remove(className));
 
@@ -615,9 +638,10 @@ class TextLabel extends AuditReport {
       nodeType: "span",
       parent: root,
       attributes: {
-        class: "accessible-audit",
-        id: "accessible-text-label",
+        class: "audit",
+        id: "text-label",
       },
+      prefix: this.prefix,
     });
   }
 
@@ -630,7 +654,7 @@ class TextLabel extends AuditReport {
    *         audit block should be visible.
    */
   update(audit) {
-    const el = this.getElement("accessible-text-label");
+    const el = this.getElement("text-label");
     el.setAttribute("hidden", true);
     Object.values(SCORES).forEach(className => el.classList?.remove(className));
 

@@ -28,7 +28,7 @@ const perfMetadata = {
       verbose: true,
       manifest: "perftest.toml",
       manifest_flavor: "browser-chrome",
-      try_platform: ["mac", "win"],
+      try_platform: ["linux", "mac", "win"],
     },
   },
 };
@@ -42,7 +42,6 @@ const CUSTOM_EMBEDDER_OPTIONS = {
   modelRevision: "main",
   numThreads: 2,
   timeoutMS: -1,
-  backend: "onnx-native",
 };
 
 const ROOT_URL =
@@ -344,7 +343,7 @@ async function cleanupSemanticSearchTest({ semanticManager, conn, cleanup }) {
 }
 
 async function runShortAndLongQueryPerfTest(concurrentInferenceFlag) {
-  const rowLimit = 500;
+  const rowLimit = 10000;
   const numIterations = 20;
   const mode = concurrentInferenceFlag ? "CONCURRENT" : "SEQUENTIAL";
   info(`Running ${mode} inference performance test...`);

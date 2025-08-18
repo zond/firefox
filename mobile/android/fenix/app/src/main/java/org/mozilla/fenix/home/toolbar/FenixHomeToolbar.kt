@@ -20,10 +20,8 @@ interface FenixHomeToolbar {
      * Setups the home screen toolbar.
      *
      * @param browserState [BrowserState] is used to update button visibility.
-     * @param middleSearchEnabled Whether middle search is enabled, and the address bar
-     * should be invisible.
      */
-    fun build(browserState: BrowserState, middleSearchEnabled: Boolean)
+    fun build(browserState: BrowserState)
 
     /**
      * Configure the toolbar top/bottom divider

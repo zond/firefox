@@ -11,6 +11,7 @@ const TEST_URL =
   "<div style='position:absolute;left: 0; top: 0; " +
   "width: 20px; height: 50px'></div>";
 
+const ID = "viewport-size-on-resize-highlighter-";
 const { TYPES } = ChromeUtils.importESModule(
   "resource://devtools/shared/highlighters.mjs"
 );
@@ -163,7 +164,7 @@ async function hasRightLabelsContent(highlighterFront, highlighterTestFront) {
 
     const dimensionText =
       await highlighterTestFront.getHighlighterNodeTextContent(
-        `viewport-size-highlighter-viewport-infobar-container`,
+        `${ID}viewport-infobar-container`,
         highlighterFront
       );
     return dimensionText == windowText;
@@ -201,7 +202,7 @@ async function waitForHidden(highlighterFront, highlighterTestFront) {
 
 async function isViewportInfobarHidden(highlighterFront, highlighterTestFront) {
   const hidden = await highlighterTestFront.getHighlighterNodeAttribute(
-    `viewport-size-highlighter-viewport-infobar-container`,
+    `${ID}viewport-infobar-container`,
     "hidden",
     highlighterFront
   );

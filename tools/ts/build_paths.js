@@ -83,7 +83,7 @@ function emitPaths(files, uris, modules, relativeBasePath) {
 // Emit type mapping for all modules imported via lazy getters.
 function emitLazy(modules) {
   let lines = [HEADER];
-  lines.push("export interface Modules {");
+  lines.push("export interface LazyModules {");
   for (let uri of [...modules].sort()) {
     lines.push(`  "${uri}": typeof import("${uri}"),`);
   }
@@ -106,7 +106,7 @@ function main(root_dir, paths_json, lib_lazy) {
         if (proto !== "moz-src") {
           uris.add(uri);
         }
-        if (method?.match(/importESModule|ModuleGetter|Lazy/)) {
+        if (method?.match(/ModuleGetter|Lazy/)) {
           modules.add(uri);
         }
       }

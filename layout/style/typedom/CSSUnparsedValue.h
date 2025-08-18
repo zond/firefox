@@ -49,6 +49,7 @@ class CSSUnparsedValue final : public CSSStyleValue {
 
   void IndexedSetter(uint32_t aIndex,
                      const UTF8StringOrCSSVariableReferenceValue& aVal,
+                     OwningUTF8StringOrCSSVariableReferenceValue& aRetVal,
                      ErrorResult& aRv);
 
   // end of CSSUnparsedValue Web IDL declarations

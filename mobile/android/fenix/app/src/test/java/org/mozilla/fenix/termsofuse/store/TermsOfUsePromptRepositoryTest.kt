@@ -7,7 +7,6 @@ package org.mozilla.fenix.termsofuse.store
 import junit.framework.TestCase.assertFalse
 import junit.framework.TestCase.assertTrue
 import mozilla.components.support.test.robolectric.testContext
-import org.junit.Assert.assertEquals
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -36,15 +35,8 @@ class TermsOfUsePromptRepositoryTest {
 
     @Test
     fun `WHEN updateHasPostponedAcceptingTermsOfUsePreference is called THEN the preference is updated`() {
-        assertFalse(settings.hasPostponedAcceptingTermsOfUse)
+        assertFalse(settings.hasPostponedAcceptingTermsOfService)
         repository.updateHasPostponedAcceptingTermsOfUsePreference()
-        assertTrue(settings.hasPostponedAcceptingTermsOfUse)
-    }
-
-    @Test
-    fun `WHEN updateLastTermsOfUsePromptTimeInMillis is called THEN the preference is updated`() {
-        assertEquals(settings.lastTermsOfUsePromptTimeInMillis, 0)
-        repository.updateLastTermsOfUsePromptTimeInMillis()
-        assertTrue(settings.lastTermsOfUsePromptTimeInMillis > 0)
+        assertTrue(settings.hasPostponedAcceptingTermsOfService)
     }
 }

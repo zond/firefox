@@ -136,7 +136,6 @@ if CONFIG["MOZ_SANDBOX"] and CONFIG["OS_ARCH"] == "WINNT":
     DELAYLOAD_DLLS += [
         "winmm.dll",
         "user32.dll",
-        "userenv.dll",
         "usp10.dll",
     ]
 

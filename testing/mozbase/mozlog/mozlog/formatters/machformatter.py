@@ -290,7 +290,7 @@ class MachFormatter(base.BaseFormatter):
             rv.append(self.color_formatter.log_test_status_pass("OK"))
         else:
             # Format test failures
-            heading = "Error Summary"
+            heading = "Unexpected Results"
             rv.extend(
                 [
                     "",
@@ -583,14 +583,8 @@ class MachFormatter(base.BaseFormatter):
 
     def log(self, data):
         level = data.get("level").upper()
-        message = data["message"]
 
-        # Handle TEST-EXPECTED-FAIL specially
-        if level == "ERROR" and message.startswith("TEST-EXPECTED-FAIL"):
-            level = self.color_formatter.warning("TODO")
-            # Replace the TEST-EXPECTED-FAIL prefix with empty string
-            message = message[len("TEST-EXPECTED-FAIL") :].strip()
-        elif level in ("CRITICAL", "ERROR"):
+        if level in ("CRITICAL", "ERROR"):
             level = self.color_formatter.error(level)
         elif level == "WARNING":
             level = self.color_formatter.warning(level)
@@ -598,9 +592,9 @@ class MachFormatter(base.BaseFormatter):
             level = self.color_formatter.log_process_output(level)
 
         if data.get("component"):
-            rv = " ".join([data["component"], level, message])
+            rv = " ".join([data["component"], level, data["message"]])
         else:
-            rv = "%s %s" % (level, message)
+            rv = "%s %s" % (level, data["message"])
 
         if "stack" in data:
             rv += "\n%s" % data["stack"]

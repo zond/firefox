@@ -29,10 +29,6 @@ import kotlinx.parcelize.Parcelize
  * web content from playing.
  * @property autoPlayInaudibleBlocking indicates if the autoplay inaudible setting disabled
  * some web content from playing.
- * @property localDeviceAccessChanged indicates if the local device access permission has changed
- * from its default value.
- * @property localNetworkAccessChanged indicates if the local network access permission has changed
- * from its default value.
  */
 @SuppressLint("ParcelCreator")
 @Parcelize
@@ -47,13 +43,10 @@ data class PermissionHighlightsState(
     val autoPlayInaudibleChanged: Boolean = false,
     val autoPlayAudibleBlocking: Boolean = false,
     val autoPlayInaudibleBlocking: Boolean = false,
-    val localDeviceAccessChanged: Boolean = false,
-    val localNetworkAccessChanged: Boolean = false,
 ) : Parcelable {
     val isAutoPlayBlocking get() = autoPlayAudibleBlocking || autoPlayInaudibleBlocking
     val permissionsChanged
         get() = notificationChanged || cameraChanged || locationChanged ||
             microphoneChanged || persistentStorageChanged || mediaKeySystemAccessChanged ||
-            autoPlayAudibleChanged || autoPlayInaudibleChanged ||
-            localDeviceAccessChanged || localNetworkAccessChanged
+            autoPlayAudibleChanged || autoPlayInaudibleChanged
 }

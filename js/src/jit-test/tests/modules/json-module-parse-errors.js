@@ -1,4 +1,4 @@
-// |jit-test|
+// |jit-test| --enable-import-attributes
 
 import('./invalid-json-module.json', { with: { type: 'json' }})
     .then(() => {

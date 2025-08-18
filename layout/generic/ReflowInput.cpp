@@ -946,8 +946,7 @@ bool ReflowInput::ShouldApplyAutomaticMinimumOnBlockAxis() const {
          !mStyleDisplay->IsScrollableOverflow() &&
          mStylePosition
              ->MinBSize(GetWritingMode(), AnchorPosResolutionParams::From(this))
-             ->IsAuto() &&
-         !mFrame->GetContainSizeAxes().mBContained;
+             ->IsAuto();
 }
 
 bool ReflowInput::IsInFragmentedContext() const {

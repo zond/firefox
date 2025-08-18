@@ -44,7 +44,8 @@ namespace mozilla::loader {
 class SyncLoadContext;
 }  // namespace mozilla::loader
 
-namespace JS::loader {
+namespace JS {
+namespace loader {
 
 class LoadContextBase;
 class ModuleLoadRequest;
@@ -105,7 +106,7 @@ class ScriptLoadRequest : public nsISupports,
   using super::getNext;
   using super::isInList;
 
-  template <typename T, typename D = DeletePolicy<T>>
+  template <typename T, typename D = JS::DeletePolicy<T>>
   using UniquePtr = mozilla::UniquePtr<T, D>;
 
   bool IsModuleRequest() const { return mKind == ScriptKind::eModule; }
@@ -303,7 +304,7 @@ class ScriptLoadRequest : public nsISupports,
   // it is parsed, and marked to be saved in the bytecode cache.
   //
   // NOTE: This field is not used for ModuleLoadRequest.
-  Heap<JSScript*> mScriptForBytecodeEncoding;
+  JS::Heap<JSScript*> mScriptForBytecodeEncoding;
 
   // Holds the Cache information, which is used to register the bytecode
   // on the cache entry, such that we can load it the next time.
@@ -371,6 +372,7 @@ inline void ImplCycleCollectionTraverse(
   }
 }
 
-}  // namespace JS::loader
+}  // namespace loader
+}  // namespace JS
 
 #endif  // js_loader_ScriptLoadRequest_h

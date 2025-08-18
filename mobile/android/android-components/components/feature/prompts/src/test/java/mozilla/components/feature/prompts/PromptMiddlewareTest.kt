@@ -4,6 +4,7 @@
 
 package mozilla.components.feature.prompts
 
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import mozilla.components.browser.state.action.ContentAction
 import mozilla.components.browser.state.state.BrowserState
 import mozilla.components.browser.state.state.TabSessionState
@@ -32,6 +33,7 @@ class PromptMiddlewareTest {
     }
 
     @Before
+    @ExperimentalCoroutinesApi
     fun setUp() {
         store = BrowserStore(
             BrowserState(

@@ -47,7 +47,7 @@ class LoadContextBase : public nsISupports {
 
   explicit LoadContextBase(ContextKind kind);
 
-  void SetRequest(ScriptLoadRequest* aRequest);
+  void SetRequest(JS::loader::ScriptLoadRequest* aRequest);
 
   // Used to output a string for the Gecko Profiler.
   virtual void GetProfilerLabel(nsACString& aOutString);
@@ -69,7 +69,7 @@ class LoadContextBase : public nsISupports {
   bool IsWorkletContext() const { return mKind == ContextKind::Worklet; }
   mozilla::dom::WorkletLoadContext* AsWorkletContext();
 
-  RefPtr<ScriptLoadRequest> mRequest;
+  RefPtr<JS::loader::ScriptLoadRequest> mRequest;
 };
 
 }  // namespace JS::loader

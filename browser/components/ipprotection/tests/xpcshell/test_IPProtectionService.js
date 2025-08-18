@@ -10,6 +10,14 @@ const { UIState } = ChromeUtils.importESModule(
   "resource://services-sync/UIState.sys.mjs"
 );
 
+add_setup(() => {
+  IPProtectionService.init();
+
+  registerCleanupFunction(() => {
+    IPProtectionService.uninit();
+  });
+});
+
 /**
  * Tests that starting the service gets a started event.
  */

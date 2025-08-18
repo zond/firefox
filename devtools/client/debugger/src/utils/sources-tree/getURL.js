@@ -32,12 +32,6 @@ function getFileExtension(path) {
   return lastIndex !== -1 ? path.slice(lastIndex + 1).toLowerCase() : "";
 }
 
-const bundlerGroups = {
-  "webpack:": "Webpack",
-  "ng:": "Angular",
-  "turbopack:": "Turbopack",
-};
-
 const NoDomain = "(no domain)";
 const def = {
   path: "",
@@ -113,7 +107,26 @@ export function getDisplayURL(url, extensionName = null) {
         group: `${protocol}//${host || ""}`,
         origin: `${protocol}//${host || ""}`,
       };
-
+    case "webpack:":
+      return {
+        ...def,
+        path: host + pathname,
+        search,
+        filename: filename ? filename : host,
+        fileExtension: getFileExtension(pathname),
+        group: `Webpack`,
+        origin: `${protocol}//`,
+      };
+    case "ng:":
+      return {
+        ...def,
+        path: pathname,
+        search,
+        filename,
+        fileExtension: getFileExtension(pathname),
+        group: `Angular`,
+        origin: `${protocol}//`,
+      };
     case "about:":
       // An about page is a special case
       return {
@@ -177,11 +190,11 @@ export function getDisplayURL(url, extensionName = null) {
 
   return {
     ...def,
-    path: host + pathname,
+    path: pathname,
     search,
     fileExtension: getFileExtension(pathname),
-    filename: filename ? filename : host,
-    group: protocol ? bundlerGroups[protocol] || `${protocol}//` : "",
+    filename,
+    group: protocol ? `${protocol}//` : "",
     origin: origin && origin !== "null" ? origin : `${protocol}//${host || ""}`,
   };
 }

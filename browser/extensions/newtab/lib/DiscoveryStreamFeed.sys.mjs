@@ -76,7 +76,6 @@ const PREF_UNIFIED_ADS_BLOCKED_LIST = "unifiedAds.blockedAds";
 const PREF_UNIFIED_ADS_SPOCS_ENABLED = "unifiedAds.spocs.enabled";
 const PREF_UNIFIED_ADS_ADSFEED_ENABLED = "unifiedAds.adsFeed.enabled";
 const PREF_UNIFIED_ADS_ENDPOINT = "unifiedAds.endpoint";
-const PREF_UNIFIED_ADS_OHTTP = "unifiedAds.ohttp.enabled";
 const PREF_USER_TOPSITES = "feeds.topsites";
 const PREF_SPOCS_CLEAR_ENDPOINT = "discoverystream.endpointSpocsClear";
 const PREF_SHOW_SPONSORED = "showSponsored";
@@ -86,7 +85,10 @@ const PREF_SHOW_SPONSORED_TOPSITES = "showSponsoredTopSites";
 const NIMBUS_VARIABLE_CONTILE_SOV_ENABLED = "topSitesContileSovEnabled";
 const PREF_SPOC_IMPRESSIONS = "discoverystream.spoc.impressions";
 const PREF_FLIGHT_BLOCKS = "discoverystream.flight.blocks";
+const PREF_COLLECTIONS_ENABLED =
+  "discoverystream.sponsored-collections.enabled";
 const PREF_POCKET_BUTTON = "extensions.pocket.enabled";
+const PREF_COLLECTION_DISMISSIBLE = "discoverystream.isCollectionDismissible";
 const PREF_SELECTED_TOPICS = "discoverystream.topicSelection.selectedTopics";
 const PREF_TOPIC_SELECTION_ENABLED = "discoverystream.topicSelection.enabled";
 const PREF_TOPIC_SELECTION_PREVIOUS_SELECTED =
@@ -115,7 +117,6 @@ const PREF_USER_INFERRED_PERSONALIZATION =
   "discoverystream.sections.personalization.inferred.user.enabled";
 const PREF_SYSTEM_INFERRED_PERSONALIZATION =
   "discoverystream.sections.personalization.inferred.enabled";
-const PREF_MERINO_OHTTP = "discoverystream.merino-provider.ohttp.enabled";
 const PREF_BILLBOARD_ENABLED = "newtabAdSize.billboard";
 const PREF_LEADERBOARD_ENABLED = "newtabAdSize.leaderboard";
 const PREF_LEADERBOARD_POSITION = "newtabAdSize.leaderboard.position";
@@ -219,7 +220,10 @@ export class DiscoveryStreamFeed {
       // We care about if the contextual ads pref is on, if contextual is supported,
       // and if inferred is on, but OHTTP is off.
       const state = this.store.getState();
-      const marsOhttpEnabled = state.Prefs.values[PREF_UNIFIED_ADS_OHTTP];
+      const marsOhttpEnabled = Services.prefs.getBoolPref(
+        "browser.newtabpage.activity-stream.unifiedAds.ohttp.enabled",
+        false
+      );
       const contextualAds = state.Prefs.values[PREF_CONTEXTUAL_ADS];
       const inferredPersonalization =
         state.Prefs.values[PREF_USER_INFERRED_PERSONALIZATION] &&
@@ -363,6 +367,13 @@ export class DiscoveryStreamFeed {
     const { region } = this.store.getState().Prefs.values;
 
     this.setupSpocsCacheUpdateTime();
+    const saveToPocketCardRegions = nimbusConfig.saveToPocketCardRegions
+      ?.split(",")
+      .map(s => s.trim());
+    const saveToPocketCard =
+      pocketButtonEnabled &&
+      (nimbusConfig.saveToPocketCard ||
+        saveToPocketCardRegions?.includes(region));
 
     const hideDescriptionsRegions = nimbusConfig.hideDescriptionsRegions
       ?.split(",")
@@ -381,6 +392,7 @@ export class DiscoveryStreamFeed {
         data: {
           recentSavesEnabled: nimbusConfig.recentSavesEnabled,
           pocketButtonEnabled,
+          saveToPocketCard,
           hideDescriptions,
           compactImages: nimbusConfig.compactImages,
           imageGradient: nimbusConfig.imageGradient,
@@ -397,6 +409,19 @@ export class DiscoveryStreamFeed {
 
     // sync redux store with PersistantCache personalization data
     this.configureFollowedSections(isStartup);
+
+    this.store.dispatch(
+      ac.BroadcastToContent({
+        type: at.DISCOVERY_STREAM_COLLECTION_DISMISSIBLE_TOGGLE,
+        data: {
+          value:
+            this.store.getState().Prefs.values[PREF_COLLECTION_DISMISSIBLE],
+        },
+        meta: {
+          isStartup,
+        },
+      })
+    );
   }
 
   async configureFollowedSections(isStartup = false) {
@@ -781,6 +806,9 @@ export class DiscoveryStreamFeed {
       this.store.getState().Prefs.values[PREF_HARDCODED_BASIC_LAYOUT] ||
       this.store.getState().Prefs.values[PREF_REGION_BASIC_LAYOUT];
 
+    const sponsoredCollectionsEnabled =
+      this.store.getState().Prefs.values[PREF_COLLECTIONS_ENABLED];
+
     // TODO: Add all pref logic
     const widgetsEnabled =
       this.store.getState().Prefs.values[PREF_WIDGET_LISTS_ENABLED];
@@ -890,6 +918,7 @@ export class DiscoveryStreamFeed {
       spocsUrl,
       feedUrl,
       items,
+      sponsoredCollectionsEnabled,
       spocPlacementData,
       spocTopsitesPlacementEnabled,
       spocTopsitesPlacementData,
@@ -910,6 +939,11 @@ export class DiscoveryStreamFeed {
       fourCardLayout: pocketConfig.fourCardLayout,
       newFooterSection: pocketConfig.newFooterSection,
       compactGrid: pocketConfig.compactGrid,
+      // For now essentialReadsHeader and editorsPicksHeader are English only.
+      essentialReadsHeader:
+        this.locale.startsWith("en-") && pocketConfig.essentialReadsHeader,
+      editorsPicksHeader:
+        this.locale.startsWith("en-") && pocketConfig.editorsPicksHeader,
       onboardingExperience,
       // For now button variants are for experimentation and English only.
       ctaButtonSponsors: this.locale.startsWith("en-") ? ctaButtonSponsors : [],
@@ -1170,6 +1204,18 @@ export class DiscoveryStreamFeed {
     };
   }
 
+  updateSponsoredCollectionsPref(collectionEnabled = false) {
+    const currentState =
+      this.store.getState().Prefs.values[PREF_COLLECTIONS_ENABLED];
+
+    // If the current state does not match the new state, update the pref.
+    if (currentState !== collectionEnabled) {
+      this.store.dispatch(
+        ac.SetPref(PREF_COLLECTIONS_ENABLED, collectionEnabled)
+      );
+    }
+  }
+
   // This returns ad placements that contain IAB content.
   // The results are ads that are contextual, and match an IAB category.
   getContextualAdsPlacements() {
@@ -1392,7 +1438,7 @@ export class DiscoveryStreamFeed {
           endpoint = `${endpointBaseUrl}v1/ads`;
           unifiedAdsPlacements = this.getAdsPlacements();
           const blockedSponsors =
-            state.Prefs.values[PREF_UNIFIED_ADS_BLOCKED_LIST];
+            this.store.getState().Prefs.values[PREF_UNIFIED_ADS_BLOCKED_LIST];
 
           body = {
             context_id: await lazy.ContextId.request(),
@@ -1402,7 +1448,10 @@ export class DiscoveryStreamFeed {
         }
 
         const headers = new Headers();
-        const marsOhttpEnabled = state.Prefs.values[PREF_UNIFIED_ADS_OHTTP];
+        const marsOhttpEnabled = Services.prefs.getBoolPref(
+          "browser.newtabpage.activity-stream.unifiedAds.ohttp.enabled",
+          false
+        );
         headers.append("content-type", "application/json");
 
         let spocsResponse;
@@ -1449,6 +1498,9 @@ export class DiscoveryStreamFeed {
                   override: !spocsResponse.settings.feature_flags.spoc_v2,
                 },
               })
+            );
+            this.updateSponsoredCollectionsPref(
+              spocsResponse.settings.feature_flags.collections
             );
           }
 
@@ -1624,7 +1676,10 @@ export class DiscoveryStreamFeed {
     }
     const headers = new Headers();
     headers.append("content-type", "application/json");
-    const marsOhttpEnabled = state.Prefs.values[PREF_UNIFIED_ADS_OHTTP];
+    const marsOhttpEnabled = Services.prefs.getBoolPref(
+      "browser.newtabpage.activity-stream.unifiedAds.ohttp.enabled",
+      false
+    );
 
     await this.fetchFromEndpoint(
       endpoint,
@@ -1884,7 +1939,10 @@ export class DiscoveryStreamFeed {
     let isFakespot;
     const selectedFeedPref = prefs[PREF_CONTEXTUAL_CONTENT_SELECTED_FEED];
     // Should we fetch /curated-recommendations over OHTTP
-    const merinoOhttpEnabled = prefs[PREF_MERINO_OHTTP];
+    const merinoOhttpEnabled = Services.prefs.getBoolPref(
+      "browser.newtabpage.activity-stream.discoverystream.merino-provider.ohttp.enabled",
+      false
+    );
     let sections = [];
     const { feeds } = cachedData;
 
@@ -2140,7 +2198,10 @@ export class DiscoveryStreamFeed {
     const inferredPersonalization =
       prefs[PREF_USER_INFERRED_PERSONALIZATION] &&
       prefs[PREF_SYSTEM_INFERRED_PERSONALIZATION];
-    const merinoOhttpEnabled = prefs[PREF_MERINO_OHTTP];
+    const merinoOhttpEnabled = Services.prefs.getBoolPref(
+      "browser.newtabpage.activity-stream.discoverystream.merino-provider.ohttp.enabled",
+      false
+    );
     const headers = new Headers();
     if (this.isMerino) {
       const topicSelectionEnabled = prefs[PREF_TOPIC_SELECTION_ENABLED];
@@ -2649,6 +2710,14 @@ export class DiscoveryStreamFeed {
     }
   }
 
+  onCollectionsChanged() {
+    // Update layout, and reload any off screen tabs.
+    // This does not change any existing open tabs.
+    // It also doesn't update any spoc or rec data, just the layout.
+    const dispatch = action => this.store.dispatch(ac.AlsoToPreloaded(action));
+    this.loadLayout(dispatch, false);
+  }
+
   async retreiveProfileAge() {
     let profileAccessor = await lazy.ProfileAge();
     let profileCreateTime = await profileAccessor.created;
@@ -2703,6 +2772,9 @@ export class DiscoveryStreamFeed {
       case PREF_USER_INFERRED_PERSONALIZATION:
       case PREF_SYSTEM_INFERRED_PERSONALIZATION:
         this._isContextualAds = undefined;
+        break;
+      case PREF_COLLECTIONS_ENABLED:
+        this.onCollectionsChanged();
         break;
       case PREF_SELECTED_TOPICS:
         this.store.dispatch(
@@ -3078,11 +3150,14 @@ export class DiscoveryStreamFeed {
      `spocPlacementData` Used to set the spoc content.
      `spocTopsitesPlacementEnabled` Tuns on and off the sponsored topsites placement.
      `spocTopsitesPlacementData` Used to set spoc content for topsites.
+     `sponsoredCollectionsEnabled` Tuns on and off the sponsored collection section.
      `hybridLayout` Changes cards to smaller more compact cards only for specific breakpoints.
      `hideCardBackground` Removes Pocket card background and borders.
      `fourCardLayout` Enable four Pocket cards per row.
      `newFooterSection` Changes the layout of the topics section.
      `compactGrid` Reduce the number of pixels between the Pocket cards.
+     `essentialReadsHeader` Updates the Pocket section header and title to say "Today’s Essential Reads", moves the "Recommended by Pocket" header to the right side.
+     `editorsPicksHeader` Updates the Pocket section header and title to say "Editor’s Picks", if used with essentialReadsHeader, creates a second section 2 rows down for editorsPicks.
      `onboardingExperience` Show new users some UI explaining Pocket above the Pocket section.
      `ctaButtonSponsors` An array of sponsors we want to show a cta button on the card for.
      `ctaButtonVariant` Sets the variant for the cta sponsor button.
@@ -3099,11 +3174,14 @@ getHardcodedLayout = ({
   spocTopsitesPlacementData = { ad_types: [3120], zone_ids: [280143] },
   widgetPositions = [],
   widgetData = [],
+  sponsoredCollectionsEnabled = false,
   hybridLayout = false,
   hideCardBackground = false,
   fourCardLayout = false,
   newFooterSection = false,
   compactGrid = false,
+  essentialReadsHeader = false,
+  editorsPicksHeader = false,
   onboardingExperience = false,
   ctaButtonSponsors = [],
   ctaButtonVariant = "",
@@ -3151,8 +3229,42 @@ getHardcodedLayout = ({
               },
             ]
           : []),
+        ...(sponsoredCollectionsEnabled
+          ? [
+              {
+                type: "CollectionCardGrid",
+                properties: {
+                  items: 3,
+                },
+                header: {
+                  title: "",
+                },
+                placement: {
+                  name: "sponsored-collection",
+                  ad_types: [3617],
+                  zone_ids: [217759, 218031],
+                },
+                spocs: {
+                  probability: 1,
+                  positions: [
+                    {
+                      index: 0,
+                    },
+                    {
+                      index: 1,
+                    },
+                    {
+                      index: 2,
+                    },
+                  ],
+                },
+              },
+            ]
+          : []),
         {
           type: "Message",
+          essentialReadsHeader,
+          editorsPicksHeader,
           header: {
             title: {
               id: pocketStoriesHeadlineId,
@@ -3179,6 +3291,8 @@ getHardcodedLayout = ({
             hideCardBackground,
             fourCardLayout,
             compactGrid,
+            essentialReadsHeader,
+            editorsPicksHeader,
             onboardingExperience,
             ctaButtonSponsors,
             ctaButtonVariant,

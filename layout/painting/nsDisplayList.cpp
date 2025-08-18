@@ -1584,8 +1584,10 @@ static bool IsStickyFrameActive(nsDisplayListBuilder* aBuilder,
   MOZ_ASSERT(aFrame->StyleDisplay()->mPosition ==
              StylePositionProperty::Sticky);
 
-  auto* ssc = StickyScrollContainer::GetOrCreateForFrame(aFrame);
-  return ssc && ssc->ScrollContainer()->IsMaybeAsynchronouslyScrolled();
+  StickyScrollContainer* stickyScrollContainer =
+      StickyScrollContainer::GetStickyScrollContainerForFrame(aFrame);
+  return stickyScrollContainer && stickyScrollContainer->ScrollContainer()
+                                      ->IsMaybeAsynchronouslyScrolled();
 }
 
 bool nsDisplayListBuilder::IsAnimatedGeometryRoot(nsIFrame* aFrame,
@@ -4727,14 +4729,14 @@ nsresult nsDisplayItemWrapper::WrapListsInPlace(
 nsDisplayOpacity::nsDisplayOpacity(
     nsDisplayListBuilder* aBuilder, nsIFrame* aFrame, nsDisplayList* aList,
     const ActiveScrolledRoot* aActiveScrolledRoot, bool aForEventsOnly,
-    bool aNeedsActiveLayer, bool aWrapsBackdropFilter, bool aForceIsolation)
+    bool aNeedsActiveLayer, bool aWrapsBackdropFilter, bool aForceBackdropRoot)
     : nsDisplayWrapList(aBuilder, aFrame, aList, aActiveScrolledRoot, true),
       mOpacity(aFrame->StyleEffects()->mOpacity),
       mForEventsOnly(aForEventsOnly),
       mNeedsActiveLayer(aNeedsActiveLayer),
       mChildOpacityState(ChildOpacityState::Unknown),
       mWrapsBackdropFilter(aWrapsBackdropFilter),
-      mForceIsolation(aForceIsolation) {
+      mForceBackdropRoot(aForceBackdropRoot) {
   MOZ_COUNT_CTOR(nsDisplayOpacity);
 }
 
@@ -4790,8 +4792,8 @@ bool nsDisplayOpacity::NeedsActiveLayer(nsDisplayListBuilder* aBuilder,
                                         nsIFrame* aFrame) {
   return EffectCompositor::HasAnimationsForCompositor(
              aFrame, DisplayItemType::TYPE_OPACITY) ||
-         ActiveLayerTracker::IsStyleAnimated(
-             aBuilder, aFrame, nsCSSPropertyIDSet::OpacityProperties());
+         (ActiveLayerTracker::IsStyleAnimated(
+             aBuilder, aFrame, nsCSSPropertyIDSet::OpacityProperties()));
 }
 
 bool nsDisplayOpacity::CanApplyOpacity(WebRenderLayerManager* aManager,
@@ -5023,8 +5025,8 @@ bool nsDisplayOpacity::CreateWebRenderCommands(
   if (mWrapsBackdropFilter) {
     params.flags |= wr::StackingContextFlags::WRAPS_BACKDROP_FILTER;
   }
-  if (mForceIsolation) {
-    params.flags |= wr::StackingContextFlags::FORCED_ISOLATION;
+  if (mForceBackdropRoot) {
+    params.flags |= wr::StackingContextFlags::IS_BACKDROP_ROOT;
   }
   StackingContextHelper sc(aSc, GetActiveScrolledRoot(), mFrame, this, aBuilder,
                            params);
@@ -5129,9 +5131,9 @@ bool nsDisplayBlendMode::CanMerge(const nsDisplayItem* aItem) const {
 nsDisplayBlendContainer* nsDisplayBlendContainer::CreateForMixBlendMode(
     nsDisplayListBuilder* aBuilder, nsIFrame* aFrame, nsDisplayList* aList,
     const ActiveScrolledRoot* aActiveScrolledRoot) {
-  return MakeDisplayItemWithIndex<nsDisplayBlendContainer>(
-      aBuilder, aFrame, uint16_t(BlendContainerType::MixBlendMode), aList,
-      aActiveScrolledRoot, BlendContainerType::MixBlendMode);
+  return MakeDisplayItem<nsDisplayBlendContainer>(
+      aBuilder, aFrame, aList, aActiveScrolledRoot,
+      BlendContainerType::MixBlendMode);
 }
 
 /* static */
@@ -5148,19 +5150,18 @@ nsDisplayBlendContainer* nsDisplayBlendContainer::CreateForBackgroundBlendMode(
   }
 
   return MakeDisplayItemWithIndex<nsDisplayBlendContainer>(
-      aBuilder, aFrame, uint16_t(BlendContainerType::BackgroundBlendMode),
-      aList, aActiveScrolledRoot, BlendContainerType::BackgroundBlendMode);
+      aBuilder, aFrame, 1, aList, aActiveScrolledRoot,
+      BlendContainerType::BackgroundBlendMode);
 }
 
 /* static */
-nsDisplayBlendContainer* nsDisplayBlendContainer::CreateForIsolation(
+nsDisplayBlendContainer* nsDisplayBlendContainer::CreateForBackdropRoot(
     nsDisplayListBuilder* aBuilder, nsIFrame* aFrame, nsDisplayList* aList,
-    const ActiveScrolledRoot* aActiveScrolledRoot, bool aNeedsIsolation) {
-  auto type = aNeedsIsolation ? BlendContainerType::NeedsIsolationNeedsContainer
-                              : BlendContainerType::NeedsIsolationNothing;
-  return MakeDisplayItemWithIndex<nsDisplayBlendContainer>(
-      aBuilder, aFrame, uint16_t(BlendContainerType::NeedsIsolationNothing),
-      aList, aActiveScrolledRoot, type);
+    const ActiveScrolledRoot* aActiveScrolledRoot, bool aNeedsBackdropRoot) {
+  return MakeDisplayItem<nsDisplayBlendContainer>(
+      aBuilder, aFrame, aList, aActiveScrolledRoot,
+      aNeedsBackdropRoot ? BlendContainerType::BackdropRootNeedsContainer
+                         : BlendContainerType::BackdropRootNothing);
 }
 
 nsDisplayBlendContainer::nsDisplayBlendContainer(
@@ -5267,7 +5268,7 @@ bool nsDisplayOwnLayer::HasDynamicToolbar() const {
 bool nsDisplayOwnLayer::CreateWebRenderCommands(
     wr::DisplayListBuilder& aBuilder, wr::IpcResourceUpdateQueue& aResources,
     const StackingContextHelper& aSc, RenderRootStateManager* aManager,
-    nsDisplayListBuilder* aDisplayListBuilder, bool aForceIsolation) {
+    nsDisplayListBuilder* aDisplayListBuilder) {
   Maybe<wr::WrAnimationProperty> prop;
   const bool needsProp = aManager->LayerManager()->AsyncPanZoomEnabled() &&
                          (IsScrollThumbLayer() || IsZoomingLayer() ||
@@ -5297,9 +5298,6 @@ bool nsDisplayOwnLayer::CreateWebRenderCommands(
   const bool rootScrollbarContainer = IsRootScrollbarContainer();
   if (rootScrollbarContainer) {
     params.prim_flags |= wr::PrimitiveFlags::IS_SCROLLBAR_CONTAINER;
-  }
-  if (aForceIsolation) {
-    params.flags |= wr::StackingContextFlags::FORCED_ISOLATION;
   }
   if (IsZoomingLayer() || ShouldGetFixedAnimationId() ||
       (rootScrollbarContainer && HasDynamicToolbar())) {
@@ -5501,11 +5499,10 @@ nsDisplayFixedPosition* nsDisplayFixedPosition::CreateForFixedBackground(
 nsDisplayFixedPosition::nsDisplayFixedPosition(
     nsDisplayListBuilder* aBuilder, nsIFrame* aFrame, nsDisplayList* aList,
     const ActiveScrolledRoot* aActiveScrolledRoot,
-    const ActiveScrolledRoot* aScrollTargetASR, bool aForceIsolation)
+    const ActiveScrolledRoot* aScrollTargetASR)
     : nsDisplayOwnLayer(aBuilder, aFrame, aList, aActiveScrolledRoot),
       mScrollTargetASR(aScrollTargetASR),
-      mIsFixedBackground(false),
-      mForceIsolation(aForceIsolation) {
+      mIsFixedBackground(false) {
   MOZ_COUNT_CTOR(nsDisplayFixedPosition);
 }
 
@@ -5516,8 +5513,7 @@ nsDisplayFixedPosition::nsDisplayFixedPosition(
                         aBuilder->CurrentActiveScrolledRoot()),
       // For fixed backgrounds, this is the ASR for the nearest scroll frame.
       mScrollTargetASR(aScrollTargetASR),
-      mIsFixedBackground(true),
-      mForceIsolation(false) {
+      mIsFixedBackground(true) {
   MOZ_COUNT_CTOR(nsDisplayFixedPosition);
 }
 
@@ -5677,26 +5673,28 @@ static nscoord NegativePart(nscoord min, nscoord max) {
 }
 
 StickyScrollContainer* nsDisplayStickyPosition::GetStickyScrollContainer() {
-  auto* ssc = StickyScrollContainer::GetOrCreateForFrame(mFrame);
-  if (!ssc) {
-    return nullptr;
+  StickyScrollContainer* stickyScrollContainer =
+      StickyScrollContainer::GetStickyScrollContainerForFrame(mFrame);
+  if (stickyScrollContainer) {
+    // If there's no ASR for the scrollframe that this sticky item is attached
+    // to, then don't create a WR sticky item for it either. Trying to do so
+    // will end in sadness because WR will interpret some coordinates as
+    // relative to the nearest enclosing scrollframe, which will correspond
+    // to the nearest ancestor ASR on the gecko side. That ASR will not be the
+    // same as the scrollframe this sticky item is actually supposed to be
+    // attached to, thus the sadness.
+    // Not sending WR the sticky item is ok, because the enclosing scrollframe
+    // will never be asynchronously scrolled. Instead we will always position
+    // the sticky items correctly on the gecko side and WR will never need to
+    // adjust their position itself.
+    MOZ_ASSERT(stickyScrollContainer->ScrollContainer()
+                   ->IsMaybeAsynchronouslyScrolled());
+    if (!stickyScrollContainer->ScrollContainer()
+             ->IsMaybeAsynchronouslyScrolled()) {
+      stickyScrollContainer = nullptr;
+    }
   }
-  // If there's no ASR for the scrollframe that this sticky item is attached
-  // to, then don't create a WR sticky item for it either. Trying to do so
-  // will end in sadness because WR will interpret some coordinates as
-  // relative to the nearest enclosing scrollframe, which will correspond
-  // to the nearest ancestor ASR on the gecko side. That ASR will not be the
-  // same as the scrollframe this sticky item is actually supposed to be
-  // attached to, thus the sadness.
-  // Not sending WR the sticky item is ok, because the enclosing scrollframe
-  // will never be asynchronously scrolled. Instead we will always position
-  // the sticky items correctly on the gecko side and WR will never need to
-  // adjust their position itself.
-  MOZ_ASSERT(ssc->ScrollContainer()->IsMaybeAsynchronouslyScrolled());
-  if (!ssc->ScrollContainer()->IsMaybeAsynchronouslyScrolled()) {
-    return nullptr;
-  }
-  return ssc;
+  return stickyScrollContainer;
 }
 
 bool nsDisplayStickyPosition::CreateWebRenderCommands(
@@ -6101,8 +6099,7 @@ nsDisplayTransform::nsDisplayTransform(nsDisplayListBuilder* aBuilder,
       mHasTransformGetter(false),
       mHasAssociatedPerspective(false),
       mContainsASRs(false),
-      mWrapsBackdropFilter(false),
-      mForceIsolation(false) {
+      mWrapsBackdropFilter(false) {
   MOZ_COUNT_CTOR(nsDisplayTransform);
   MOZ_ASSERT(aFrame, "Must have a frame!");
   Init(aBuilder, aList);
@@ -6112,8 +6109,7 @@ nsDisplayTransform::nsDisplayTransform(nsDisplayListBuilder* aBuilder,
                                        nsIFrame* aFrame, nsDisplayList* aList,
                                        const nsRect& aChildrenBuildingRect,
                                        PrerenderDecision aPrerenderDecision,
-                                       bool aWrapsBackdropFilter,
-                                       bool aForceIsolation)
+                                       bool aWrapsBackdropFilter)
     : nsPaintedDisplayItem(aBuilder, aFrame),
       mChildren(aBuilder),
       mChildrenBuildingRect(aChildrenBuildingRect),
@@ -6122,8 +6118,7 @@ nsDisplayTransform::nsDisplayTransform(nsDisplayListBuilder* aBuilder,
       mHasTransformGetter(false),
       mHasAssociatedPerspective(false),
       mContainsASRs(false),
-      mWrapsBackdropFilter(aWrapsBackdropFilter),
-      mForceIsolation(aForceIsolation) {
+      mWrapsBackdropFilter(aWrapsBackdropFilter) {
   MOZ_COUNT_CTOR(nsDisplayTransform);
   MOZ_ASSERT(aFrame, "Must have a frame!");
   SetReferenceFrameToAncestor(aBuilder);
@@ -6142,8 +6137,7 @@ nsDisplayTransform::nsDisplayTransform(nsDisplayListBuilder* aBuilder,
       mHasTransformGetter(true),
       mHasAssociatedPerspective(false),
       mContainsASRs(false),
-      mWrapsBackdropFilter(false),
-      mForceIsolation(false) {
+      mWrapsBackdropFilter(false) {
   MOZ_COUNT_CTOR(nsDisplayTransform);
   MOZ_ASSERT(aFrame, "Must have a frame!");
   MOZ_ASSERT(aFrame->GetTransformGetter());
@@ -6815,9 +6809,6 @@ bool nsDisplayTransform::CreateWebRenderCommands(
 
   if (mWrapsBackdropFilter) {
     params.flags |= wr::StackingContextFlags::WRAPS_BACKDROP_FILTER;
-  }
-  if (mForceIsolation) {
-    params.flags |= wr::StackingContextFlags::FORCED_ISOLATION;
   }
 
   wr::WrTransformInfo transform_info;
@@ -8486,7 +8477,7 @@ bool nsDisplayBackdropFilters::CreateWebRenderCommands(
   wr::StackingContextParams params;
   params.clip =
       wr::WrStackingContextClip::ClipChain(aBuilder.CurrentClipChainId());
-  params.flags = wr::StackingContextFlags::FORCED_ISOLATION;
+  params.flags = wr::StackingContextFlags::IS_BACKDROP_ROOT;
   StackingContextHelper sc(aSc, GetActiveScrolledRoot(), mFrame, this, aBuilder,
                            params);
 

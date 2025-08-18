@@ -78,7 +78,7 @@ def marionette_test(command_context, tests, allow_nonlocal_connections=False, **
     if "test_objects" in kwargs:
         tests = []
         for obj in kwargs["test_objects"]:
-            tests.append(obj["path"])
+            tests.append(obj["file_relpath"])
         del kwargs["test_objects"]
 
     if not tests:

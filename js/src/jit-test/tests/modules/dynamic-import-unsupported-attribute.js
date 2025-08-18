@@ -1,4 +1,4 @@
-// |jit-test|
+// |jit-test| --enable-import-attributes
 
 async function test() {
     try {

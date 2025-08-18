@@ -69,7 +69,10 @@ impl rpccore::Server for CallbackServer {
                 output_frame_size,
             } => {
                 trace!(
-                    "stream_thread: Data Callback: nframes={nframes} input_fs={input_frame_size} output_fs={output_frame_size}",
+                    "stream_thread: Data Callback: nframes={} input_fs={} output_fs={}",
+                    nframes,
+                    input_frame_size,
+                    output_frame_size,
                 );
 
                 let input_nbytes = nframes as usize * input_frame_size;
@@ -118,7 +121,7 @@ impl rpccore::Server for CallbackServer {
                 })
             }
             CallbackReq::State(state) => {
-                trace!("stream_thread: State Callback: {state:?}");
+                trace!("stream_thread: State Callback: {:?}", state);
                 run_in_callback(|| unsafe {
                     self.state_cb.unwrap()(ptr::null_mut(), self.user_ptr as *mut _, state);
                 });
@@ -173,7 +176,7 @@ impl<'ctx> ClientStream<'ctx> {
                         "SharedMem client mapping failed (size={}, err={:?})",
                         data.shm_area_size, e
                     );
-                    return Err(Error::Error);
+                    return Err(Error::default());
                 }
             };
 
@@ -189,7 +192,7 @@ impl<'ctx> ClientStream<'ctx> {
                         "duplex_input allocation failed (size={}, err={:?})",
                         data.shm_area_size, e
                     );
-                    return Err(Error::Error);
+                    return Err(Error::default());
                 }
             }
         } else {
@@ -219,7 +222,7 @@ impl<'ctx> ClientStream<'ctx> {
 
         ctx.callback_handle()
             .bind_server(server, stream)
-            .map_err(|_| Error::Error)?;
+            .map_err(|_| Error::default())?;
 
         let stream = Box::into_raw(Box::new(ClientStream {
             context: ctx,
@@ -314,7 +317,7 @@ impl StreamOps for ClientStream<'_> {
     fn device_destroy(&mut self, device: &DeviceRef) -> Result<()> {
         assert_not_in_callback();
         if device.as_ptr().is_null() {
-            Err(Error::Error)
+            Err(Error::error())
         } else {
             unsafe {
                 let _: Box<Device> = Box::from_raw(device.as_ptr() as *mut _);

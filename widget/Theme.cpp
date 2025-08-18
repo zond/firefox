@@ -603,9 +603,6 @@ void Theme::PaintCircleShadow(DrawTarget& aDrawTarget,
   if (dtSize.IsEmpty()) {
     return;
   }
-  if (!aDrawTarget.CanCreateSimilarDrawTarget(dtSize, SurfaceFormat::A8)) {
-    return;
-  }
   RefPtr<DrawTarget> ellipseDT = aDrawTarget.CreateSimilarDrawTargetForFilter(
       dtSize, SurfaceFormat::A8, blurFilter, blurFilter,
       sourceRectInFilterSpace, destinationPointOfSourceRect);

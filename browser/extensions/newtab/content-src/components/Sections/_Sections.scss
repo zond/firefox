@@ -72,13 +72,30 @@
     }
   }
 
-  .wrapper-topics {
+  .wrapper-topics,
+  .wrapper-cta + .wrapper-more-recommendations {
     @media (max-width: $break-point-large - 1) {
       display: none;
     }
   }
 
   @media (max-width: $break-point-medium - 1) {
+    .wrapper-cta {
+      text-align: center;
+
+      .pocket-logged-in-cta {
+        display: block;
+        margin-inline-end: 0;
+
+        .pocket-cta-button {
+          max-width: none;
+          display: block;
+          margin-inline-end: 0;
+          margin: var(--space-xsmall) 0 var(--space-small);
+        }
+      }
+    }
+
     .wrapper-more-recommendations {
       width: 100%;
 

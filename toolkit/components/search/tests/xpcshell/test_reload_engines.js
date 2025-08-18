@@ -216,7 +216,9 @@ add_task(async function test_config_updated_engine_changes() {
 
   Assert.deepEqual(
     enginesAdded,
-    ["engineOrderedInFR", "engineSameNameOther", "onlyInFRRegion"],
+    SearchUtils.rustSelectorFeatureGate
+      ? ["engineOrderedInFR", "engineSameNameOther", "onlyInFRRegion"]
+      : ["engineOrderedInFR", "onlyInFRRegion", "engineSameNameOther"],
     "Should have added the correct engines"
   );
 
@@ -228,7 +230,9 @@ add_task(async function test_config_updated_engine_changes() {
 
   Assert.deepEqual(
     enginesRemoved,
-    ["engineSameName", "notInFRRegion1", "notInFRRegion2"],
+    SearchUtils.rustSelectorFeatureGate
+      ? ["engineSameName", "notInFRRegion1", "notInFRRegion2"]
+      : ["notInFRRegion1", "notInFRRegion2", "engineSameName"],
     "Should have removed the expected engines"
   );
 

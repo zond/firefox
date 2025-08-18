@@ -7,26 +7,22 @@
 
 #include "CommandEncoder.h"
 #include "Device.h"
-#include "ExternalTexture.h"
 #include "ipc/WebGPUChild.h"
 #include "mozilla/dom/WebGPUBinding.h"
 #include "mozilla/webgpu/CanvasContext.h"
-#include "nsTArray.h"
 
 namespace mozilla::webgpu {
 
-GPU_IMPL_CYCLE_COLLECTION(CommandBuffer, mParent, mBridge, mExternalTextures)
+GPU_IMPL_CYCLE_COLLECTION(CommandBuffer, mParent, mBridge)
 GPU_IMPL_JS_WRAP(CommandBuffer)
 
 CommandBuffer::CommandBuffer(
     Device* const aParent, WebGPUChild* const aBridge, RawId aId,
-    nsTArray<WeakPtr<CanvasContext>>&& aPresentationContexts,
-    nsTArray<RefPtr<ExternalTexture>>&& aExternalTextures)
+    nsTArray<WeakPtr<CanvasContext>>&& aPresentationContexts)
     : ChildOf(aParent),
       mId(aId),
       mBridge(aBridge),
-      mPresentationContexts(std::move(aPresentationContexts)),
-      mExternalTextures(std::move(aExternalTextures)) {
+      mPresentationContexts(std::move(aPresentationContexts)) {
   MOZ_RELEASE_ASSERT(aId);
 }
 

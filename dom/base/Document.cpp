@@ -2291,13 +2291,8 @@ void Document::AccumulatePageLoadTelemetry() {
   TimeStamp navigationStart =
       GetNavigationTiming()->GetNavigationStartTimeStamp();
 
-  if (!navigationStart) {
+  if (!responseStart || !navigationStart) {
     return;
-  }
-
-  if (!responseStart) {
-    // This happens when getting a response from the cache.
-    responseStart = navigationStart;
   }
 
   nsAutoCString dnsKey("Native");
@@ -6240,16 +6235,24 @@ nsresult Document::TurnEditingOff() {
     return NS_ERROR_FAILURE;
   }
 
-  nsIDocShell* docshell = GetDocShell();
-  if (!docshell || docshell->IsBeingDestroyed()) {
+  nsIDocShell* docshell = window->GetDocShell();
+  if (!docshell) {
+    return NS_ERROR_FAILURE;
+  }
+
+  bool isBeingDestroyed = false;
+  docshell->IsBeingDestroyed(&isBeingDestroyed);
+  if (isBeingDestroyed) {
     return NS_ERROR_FAILURE;
   }
 
   nsCOMPtr<nsIEditingSession> editSession;
-  MOZ_TRY(docshell->GetEditingSession(getter_AddRefs(editSession)));
+  nsresult rv = docshell->GetEditingSession(getter_AddRefs(editSession));
+  NS_ENSURE_SUCCESS(rv, rv);
 
   // turn editing off
-  MOZ_TRY(editSession->TearDownEditorOnWindow(window));
+  rv = editSession->TearDownEditorOnWindow(window);
+  NS_ENSURE_SUCCESS(rv, rv);
 
   mEditingState = EditingState::eOff;
 
@@ -6264,6 +6267,14 @@ nsresult Document::TurnEditingOff() {
   }
 
   return NS_OK;
+}
+
+static bool HasPresShell(nsPIDOMWindowOuter* aWindow) {
+  nsIDocShell* docShell = aWindow->GetDocShell();
+  if (!docShell) {
+    return false;
+  }
+  return docShell->GetPresShell() != nullptr;
 }
 
 HTMLEditor* Document::GetHTMLEditor() const {
@@ -6349,15 +6360,24 @@ nsresult Document::EditingStateChanged() {
     return NS_ERROR_FAILURE;
   }
 
-  nsIDocShell* docshell = GetDocShell();
-  if (!docshell || docshell->IsBeingDestroyed()) {
+  nsIDocShell* docshell = window->GetDocShell();
+  if (!docshell) {
+    return NS_ERROR_FAILURE;
+  }
+
+  // FlushPendingNotifications might destroy our docshell.
+  bool isBeingDestroyed = false;
+  docshell->IsBeingDestroyed(&isBeingDestroyed);
+  if (isBeingDestroyed) {
     return NS_ERROR_FAILURE;
   }
 
   nsCOMPtr<nsIEditingSession> editSession;
-  MOZ_TRY(docshell->GetEditingSession(getter_AddRefs(editSession)));
+  nsresult rv = docshell->GetEditingSession(getter_AddRefs(editSession));
+  NS_ENSURE_SUCCESS(rv, rv);
 
-  if (RefPtr<HTMLEditor> htmlEditor = docshell->GetHTMLEditor()) {
+  RefPtr<HTMLEditor> htmlEditor = editSession->GetHTMLEditorForWindow(window);
+  if (htmlEditor) {
     // We might already have an editor if it was set up for mail, let's see
     // if this is actually the case.
     uint32_t flags = 0;
@@ -6369,8 +6389,7 @@ nsresult Document::EditingStateChanged() {
     }
   }
 
-  RefPtr<PresShell> presShell = GetPresShell();
-  if (!presShell) {
+  if (!HasPresShell(window)) {
     // We should not make the window editable or setup its editor.
     // It's probably style=display:none.
     return NS_OK;
@@ -6379,10 +6398,13 @@ nsresult Document::EditingStateChanged() {
   bool makeWindowEditable = mEditingState == EditingState::eOff;
   bool spellRecheckAll = false;
   bool putOffToRemoveScriptBlockerUntilModifyingEditingState = false;
+  htmlEditor = nullptr;
 
-  RefPtr<HTMLEditor> htmlEditor;
   {
     nsAutoEditingState push(this, EditingState::eSettingUp);
+
+    RefPtr<PresShell> presShell = GetPresShell();
+    NS_ENSURE_TRUE(presShell, NS_ERROR_FAILURE);
 
     // If we're entering the design mode from non-editable state, put the
     // selection at the beginning of the document for compatibility reasons.
@@ -6442,8 +6464,8 @@ nsresult Document::EditingStateChanged() {
       // Turn on editor.
       // XXX This can cause flushing which can change the editing state, so make
       //     sure to avoid recursing.
-      MOZ_TRY(
-          editSession->MakeWindowEditable(window, "html", false, false, true));
+      rv = editSession->MakeWindowEditable(window, "html", false, false, true);
+      NS_ENSURE_SUCCESS(rv, rv);
     }
 
     // XXX Need to call TearDownEditorOnWindow for all failures.
@@ -7457,9 +7479,6 @@ already_AddRefed<PresShell> Document::CreatePresShell(
     presShell->SetAuthorStyleDisabled(bc->Top()->AuthorStyleDisabledDefault());
   }
 
-  // We may need to set up the editor now if we haven't earlier, since we avoid
-  // setting up the editor without a pres shell.
-  MaybeEditingStateChanged();
   return presShell.forget();
 }
 
@@ -7509,6 +7528,11 @@ void Document::TakeVideoFrameRequestCallbacks(
     nsTArray<RefPtr<HTMLVideoElement>>& aVideoCallbacks) {
   MOZ_ASSERT(aVideoCallbacks.IsEmpty());
   mFrameRequestManager.Take(aVideoCallbacks);
+}
+
+void Document::TakeFrameRequestCallbacks(nsTArray<FrameRequest>& aCallbacks) {
+  MOZ_ASSERT(aCallbacks.IsEmpty());
+  mFrameRequestManager.Take(aCallbacks);
 }
 
 bool Document::ShouldThrottleFrameRequests() const {
@@ -14206,6 +14230,10 @@ void Document::CancelFrameRequestCallback(uint32_t aHandle) {
   mFrameRequestManager.Cancel(aHandle);
 }
 
+bool Document::IsCanceledFrameRequestCallback(uint32_t aHandle) const {
+  return mFrameRequestManager.IsCanceled(aHandle);
+}
+
 void Document::ScheduleVideoFrameCallbacks(HTMLVideoElement* aElement) {
   const bool wasEmpty = mFrameRequestManager.IsEmpty();
   mFrameRequestManager.Schedule(aElement);
@@ -17289,13 +17317,11 @@ void Document::ReportLCP() {
   timedChannel->GetResponseStart(&responseStart);
 
   if (!responseStart) {
-    // This happens when getting a response from the cache.
-    mozilla::glean::perf::largest_contentful_paint_from_response_start
-        .AccumulateRawDuration(lcpTime - timing->GetNavigationStartTimeStamp());
-  } else {
-    mozilla::glean::perf::largest_contentful_paint_from_response_start
-        .AccumulateRawDuration(lcpTime - responseStart);
+    return;
   }
+
+  mozilla::glean::perf::largest_contentful_paint_from_response_start
+      .AccumulateRawDuration(lcpTime - responseStart);
 
   if (profiler_thread_is_being_profiled_for_markers()) {
     MarkerInnerWindowId innerWindowID =

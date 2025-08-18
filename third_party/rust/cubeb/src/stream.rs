@@ -273,7 +273,7 @@ impl<'a, F> StreamBuilder<'a, F> {
     /// Build the stream
     pub fn init(self, ctx: &ContextRef) -> Result<Stream<F>> {
         if self.data_cb.is_none() || self.state_cb.is_none() {
-            return Err(Error::Error);
+            return Err(Error::error());
         }
 
         let has_device_changed = self.device_changed_cb.is_some();
@@ -315,7 +315,7 @@ impl<'a, F> StreamBuilder<'a, F> {
     }
 }
 
-impl<F> Default for StreamBuilder<'_, F> {
+impl<'a, F> Default for StreamBuilder<'a, F> {
     fn default() -> Self {
         StreamBuilder {
             name: None,

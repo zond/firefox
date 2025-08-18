@@ -26,12 +26,15 @@ function inject_input() {
         .send();
 }
 
-promise_test(async t => {
+
+addEventListener('load', () => {
+  input_gesture = inject_input();
+});
+
+async_test(t => {
     const link = document.getElementById('link');
     const expectedEventLog = ['pointerdown-link', 'touchstart-link', 'pointerup-link', 'touchend-link', 'click-link'];
     const eventLogRecorder = [];
-
-    await new Promise(resolve => addEventListener("load", resolve));
 
     const eventNames = ['touchstart', 'touchmove', 'touchend', 'pointerdown', 'pointermove', 'pointerup', 'click'];
     for (eventName of eventNames) {
@@ -60,6 +63,5 @@ promise_test(async t => {
             }
         }));
     }
-    input_gesture = inject_input();
 });
 </script>

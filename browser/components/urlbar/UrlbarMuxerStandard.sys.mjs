@@ -16,8 +16,6 @@ const lazy = {};
 ChromeUtils.defineESModuleGetters(lazy, {
   QuickSuggest: "resource:///modules/QuickSuggest.sys.mjs",
   UrlbarPrefs: "resource:///modules/UrlbarPrefs.sys.mjs",
-  UrlbarProviderGlobalActions:
-    "resource:///modules/UrlbarProviderGlobalActions.sys.mjs",
   UrlbarProviderOpenTabs: "resource:///modules/UrlbarProviderOpenTabs.sys.mjs",
   UrlbarProviderQuickSuggest:
     "resource:///modules/UrlbarProviderQuickSuggest.sys.mjs",
@@ -1385,17 +1383,11 @@ class MuxerUnifiedComplete extends UrlbarMuxer {
 
       // If same suggestedIndex, change the displaying order along to following
       // provider priority.
-      // GlobalActions == TabToSearch (legacy) > QuickSuggest > Other providers
-      if (
-        a.providerName === lazy.UrlbarProviderTabToSearch.name ||
-        a.providerName === lazy.UrlbarProviderGlobalActions.name
-      ) {
+      // TabToSearch > QuickSuggest > Other providers
+      if (a.providerName === lazy.UrlbarProviderTabToSearch.name) {
         return 1;
       }
-      if (
-        b.providerName === lazy.UrlbarProviderTabToSearch.name ||
-        b.providerName === lazy.UrlbarProviderGlobalActions.name
-      ) {
+      if (b.providerName === lazy.UrlbarProviderTabToSearch.name) {
         return -1;
       }
       if (a.providerName === lazy.UrlbarProviderQuickSuggest.name) {

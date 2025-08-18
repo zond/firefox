@@ -133,7 +133,7 @@ def find_mozconfig(topsrcdir: Union[str, Path], env=os.environ):
 
     if env_path is not None:
         path = env_path
-    elif existing:
+    elif len(existing):
         assert len(existing) == 1
         path = existing[0]
 

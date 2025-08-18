@@ -213,7 +213,10 @@
     }
 
     get _input() {
-      return this.querySelector(".textbox-input");
+      return (
+        this.getElementsByAttribute("anonid", "input")[0] ||
+        this.querySelector(".textbox-input")
+      );
     }
   }
 

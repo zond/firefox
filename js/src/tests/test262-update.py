@@ -53,6 +53,7 @@ RELEASE_OR_BETA = set(
     ]
 )
 SHELL_OPTIONS = {
+    "import-attributes": "--enable-import-attributes",
     "ShadowRealm": "--enable-shadow-realms",
     "iterator-helpers": "--enable-iterator-helpers",
     "symbols-as-weakmap-keys": "--enable-symbols-as-weakmap-keys",

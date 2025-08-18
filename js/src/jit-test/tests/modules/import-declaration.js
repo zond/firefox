@@ -1,4 +1,4 @@
-// |jit-test|
+// |jit-test| --enable-import-attributes
 
 load(libdir + "match.js");
 load(libdir + "asserts.js");
@@ -326,112 +326,114 @@ program([
     )
 ]).assert(parseAsModule("import 'a'"));
 
-program([
-    importDeclaration(
-        [
-            importSpecifier(
-                ident("default"),
-                ident("a")
-            )
-        ],
-        moduleRequest(
-            lit("b"),
-            []
-        )
-    )
-]).assert(parseAsModule("import a from 'b' with {}"));
-
-program([
-    importDeclaration(
-        [
-            importSpecifier(
-                ident("default"),
-                ident("a")
-            )
-        ],
-        moduleRequest(
-            lit("b"),
+if (getRealmConfiguration("importAttributes")) {
+    program([
+        importDeclaration(
             [
-                importAttribute(ident('type'), lit('js')),
-            ]
-        )
-    )
-]).assert(parseAsModule("import a from 'b' with { type: 'js' }"));
-
-program([
-    importDeclaration(
-        [
-            importSpecifier(
-                ident("default"),
-                ident("a")
+                importSpecifier(
+                    ident("default"),
+                    ident("a")
+                )
+            ],
+            moduleRequest(
+                lit("b"),
+                []
             )
-        ],
-        moduleRequest(
-            lit("b"),
-            [
-                importAttribute(ident('foo'), lit('bar')),
-            ]
         )
-    )
-]).assert(parseAsModule("import a from 'b' with { foo: 'bar' }"));
+    ]).assert(parseAsModule("import a from 'b' with {}"));
 
-program([
-    importDeclaration(
-        [
-            importSpecifier(
-                ident("default"),
-                ident("a")
+    program([
+        importDeclaration(
+            [
+                importSpecifier(
+                    ident("default"),
+                    ident("a")
+                )
+            ],
+            moduleRequest(
+                lit("b"),
+                [
+                    importAttribute(ident('type'), lit('js')),
+                ]
             )
-        ],
-        moduleRequest(
-            lit("b"),
-            [
-                importAttribute(ident('foo'), lit('bar')),
-            ]
         )
-    )
-]).assert(parseAsModule(`import a from 'b' with { foo: 'bar' }`));
+    ]).assert(parseAsModule("import a from 'b' with { type: 'js' }"));
 
-// `assert` has NLTH but `with` doesn't
-program([
-    importDeclaration(
-        [
-            importSpecifier(
-                ident("default"),
-                ident("a")
+    program([
+        importDeclaration(
+            [
+                importSpecifier(
+                    ident("default"),
+                    ident("a")
+                )
+            ],
+            moduleRequest(
+                lit("b"),
+                [
+                    importAttribute(ident('foo'), lit('bar')),
+                ]
             )
-        ],
-        moduleRequest(
-            lit("b"),
-            [
-                importAttribute(ident('foo'), lit('bar')),
-            ]
         )
-    )
-]).assert(parseAsModule(`import a from 'b'
-                         with { foo: 'bar' }`));
+    ]).assert(parseAsModule("import a from 'b' with { foo: 'bar' }"));
 
-program([
-    importDeclaration(
-        [
-            importSpecifier(
-                ident("default"),
-                ident("a")
+    program([
+        importDeclaration(
+            [
+                importSpecifier(
+                    ident("default"),
+                    ident("a")
+                )
+            ],
+            moduleRequest(
+                lit("b"),
+                [
+                    importAttribute(ident('foo'), lit('bar')),
+                ]
             )
-        ],
-        moduleRequest(
-            lit("b"),
-            [
-                importAttribute(ident('type'), lit('js')),
-                importAttribute(ident('foo'), lit('bar')),
-            ]
         )
-    )
-]).assert(parseAsModule("import a from 'b' with { type: 'js', foo: 'bar' }"));
+    ]).assert(parseAsModule(`import a from 'b' with { foo: 'bar' }`));
 
-assertThrowsInstanceOf(function () {
-    parseAsModule("import a from 'b' with { type: type }");
-}, SyntaxError);
+    // `assert` has NLTH but `with` doesn't
+    program([
+        importDeclaration(
+            [
+                importSpecifier(
+                    ident("default"),
+                    ident("a")
+                )
+            ],
+            moduleRequest(
+                lit("b"),
+                [
+                    importAttribute(ident('foo'), lit('bar')),
+                ]
+            )
+        )
+    ]).assert(parseAsModule(`import a from 'b'
+                             with { foo: 'bar' }`));
+
+    program([
+        importDeclaration(
+            [
+                importSpecifier(
+                    ident("default"),
+                    ident("a")
+                )
+            ],
+            moduleRequest(
+                lit("b"),
+                [
+                    importAttribute(ident('type'), lit('js')),
+                    importAttribute(ident('foo'), lit('bar')),
+                ]
+            )
+        )
+    ]).assert(parseAsModule("import a from 'b' with { type: 'js', foo: 'bar' }"));
+
+    assertThrowsInstanceOf(function () {
+        parseAsModule("import a from 'b' with { type: type }");
+    }, SyntaxError);
+}
 
 var loc = parseAsModule("import { a as b } from 'c'", {
     loc: true

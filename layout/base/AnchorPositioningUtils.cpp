@@ -6,7 +6,6 @@
 
 #include "AnchorPositioningUtils.h"
 
-#include "mozilla/Maybe.h"
 #include "mozilla/PresShell.h"
 #include "mozilla/dom/Document.h"
 #include "mozilla/dom/Element.h"
@@ -86,9 +85,8 @@ bool IsContainingBlockGeneratedByElement(const nsIFrame* aContainingBlock) {
            IsInitialContainingBlock(aContainingBlock));
 }
 
-bool IsAnchorLaidOutStrictlyBeforeElement(
-    const nsIFrame* aPossibleAnchorFrame, const nsIFrame* aPositionedFrame,
-    const nsTArray<const nsIFrame*>& aPositionedFrameAncestors) {
+bool IsAnchorLaidOutStrictlyBeforeElement(const nsIFrame* aPossibleAnchorFrame,
+                                          const nsIFrame* aPositionedFrame) {
   // 1. positioned el is in a higher top layer than possible anchor,
   // see https://drafts.csswg.org/css-position-4/#in-a-higher-top-layer
   const size_t positionedTopLayerIndex = GetTopLayerIndex(aPositionedFrame);
@@ -117,7 +115,7 @@ bool IsAnchorLaidOutStrictlyBeforeElement(
     }
 
     auto isLastContainingBlockOrderable =
-        [&aPositionedFrame, &aPositionedFrameAncestors, &anchorContainingBlock,
+        [&aPositionedFrame, &anchorContainingBlock,
          &positionedContainingBlock]() -> bool {
       const nsIFrame* it = anchorContainingBlock;
       while (it) {
@@ -127,10 +125,9 @@ bool IsAnchorLaidOutStrictlyBeforeElement(
         }
 
         if (parentContainingBlock == positionedContainingBlock) {
-          return !it->IsAbsolutelyPositioned() ||
-                 nsLayoutUtils::CompareTreePosition(it, aPositionedFrame,
-                                                    aPositionedFrameAncestors,
-                                                    nullptr) < 0;
+          return !parentContainingBlock->IsAbsPosContainingBlock() ||
+                 nsLayoutUtils::CompareTreePosition(
+                     parentContainingBlock, aPositionedFrame, nullptr) < 0;
         }
 
         it = parentContainingBlock;
@@ -173,9 +170,8 @@ bool IsAnchorLaidOutStrictlyBeforeElement(
   if (isAnchorAbsolutelyPositioned) {
     // We must have checked that the positioned element is absolutely
     // positioned by now.
-    return nsLayoutUtils::CompareTreePosition(
-               aPossibleAnchorFrame, aPositionedFrame,
-               aPositionedFrameAncestors, nullptr) < 0;
+    return nsLayoutUtils::CompareTreePosition(aPossibleAnchorFrame,
+                                              aPositionedFrame, nullptr) < 0;
   }
 
   // 4. Both elements are in the same top layer and have the same
@@ -225,26 +221,8 @@ bool IsPositionedElementAlsoSkippedWhenAnchorIsSkipped(
   return true;
 }
 
-struct LazyAncestorHolder {
-  const nsIFrame* mFrame;
-  Maybe<nsTArray<const nsIFrame*>> mAncestors;
-
-  explicit LazyAncestorHolder(const nsIFrame* aFrame) : mFrame(aFrame) {}
-
-  const nsTArray<const nsIFrame*>& GetAncestors() {
-    if (!mAncestors) {
-      AutoTArray<const nsIFrame*, 8> ancestors;
-      nsLayoutUtils::FillAncestors(mFrame, nullptr, &ancestors);
-      mAncestors.emplace(std::move(ancestors));
-    }
-
-    return *mAncestors;
-  }
-};
-
-bool IsAcceptableAnchorElement(
-    const nsIFrame* aPossibleAnchorFrame, const nsIFrame* aPositionedFrame,
-    LazyAncestorHolder& aPositionedFrameAncestorHolder) {
+bool IsAcceptableAnchorElement(const nsIFrame* aPossibleAnchorFrame,
+                               const nsIFrame* aPositionedFrame) {
   MOZ_ASSERT(aPossibleAnchorFrame);
   MOZ_ASSERT(aPositionedFrame);
 
@@ -264,9 +242,8 @@ bool IsAcceptableAnchorElement(
   return (IsFullyStyleableTreeAbidingOrNotPseudoElement(aPossibleAnchorFrame) &&
           IsAnchorInScopeForPositionedElement(aPossibleAnchorFrame,
                                               aPositionedFrame) &&
-          IsAnchorLaidOutStrictlyBeforeElement(
-              aPossibleAnchorFrame, aPositionedFrame,
-              aPositionedFrameAncestorHolder.GetAncestors()) &&
+          IsAnchorLaidOutStrictlyBeforeElement(aPossibleAnchorFrame,
+                                               aPositionedFrame) &&
           IsPositionedElementAlsoSkippedWhenAnchorIsSkipped(
               aPossibleAnchorFrame, aPositionedFrame));
 }
@@ -276,12 +253,10 @@ bool IsAcceptableAnchorElement(
 nsIFrame* AnchorPositioningUtils::FindFirstAcceptableAnchor(
     const nsIFrame* aPositionedFrame,
     const nsTArray<nsIFrame*>& aPossibleAnchorFrames) {
-  LazyAncestorHolder positionedFrameAncestorHolder(aPositionedFrame);
   for (auto it = aPossibleAnchorFrames.rbegin();
        it != aPossibleAnchorFrames.rend(); ++it) {
     // Check if the possible anchor is an acceptable anchor element.
-    if (IsAcceptableAnchorElement(*it, aPositionedFrame,
-                                  positionedFrameAncestorHolder)) {
+    if (IsAcceptableAnchorElement(*it, aPositionedFrame)) {
       return *it;
     }
   }

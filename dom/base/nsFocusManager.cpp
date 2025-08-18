@@ -4066,7 +4066,10 @@ nsIContent* nsFocusManager::GetNextTabbableContentInScope(
       }
 
       int32_t tabIndex = 0;
-      if (IsHostOrSlot(iterContent)) {
+      if (iterContent->IsInNativeAnonymousSubtree() &&
+          iterContent->GetPrimaryFrame()) {
+        tabIndex = iterContent->GetPrimaryFrame()->IsFocusable().mTabIndex;
+      } else if (IsHostOrSlot(iterContent)) {
         tabIndex = HostOrSlotTabIndexValue(iterContent);
       } else {
         nsIFrame* frame = iterContent->GetPrimaryFrame();
@@ -4089,6 +4092,7 @@ nsIContent* nsFocusManager::GetNextTabbableContentInScope(
         }
         if (!checkSubDocument) {
           if (aReachedToEndForDocumentNavigation &&
+              StaticPrefs::dom_disable_tab_focus_to_root_element() &&
               nsContentUtils::IsChromeDoc(iterContent->GetComposedDoc())) {
             // aReachedToEndForDocumentNavigation is true means
             //   1. This is a document navigation (i.e, VK_F6, Control + Tab)
@@ -4640,6 +4644,7 @@ nsresult nsFocusManager::GetNextTabbableContent(
               return NS_OK;
             }
           } else if (currentContent && aReachedToEndForDocumentNavigation &&
+                     StaticPrefs::dom_disable_tab_focus_to_root_element() &&
                      nsContentUtils::IsChromeDoc(
                          currentContent->GetComposedDoc())) {
             // aReachedToEndForDocumentNavigation is true means
@@ -4691,6 +4696,17 @@ nsresult nsFocusManager::GetNextTabbableContent(
     // If already at lowest priority tab (0), end search completely.
     // A bit counterintuitive but true, tabindex order goes 1, 2, ... 32767, 0
     if (aCurrentTabIndex == (aForward ? 0 : 1)) {
+      // if going backwards, the canvas should be focused once the beginning
+      // has been reached, so get the root element.
+      if (!aForward && !StaticPrefs::dom_disable_tab_focus_to_root_element()) {
+        nsCOMPtr<nsPIDOMWindowOuter> window = GetCurrentWindow(aRootContent);
+        NS_ENSURE_TRUE(window, NS_ERROR_FAILURE);
+
+        RefPtr<Element> docRoot = GetRootForFocus(
+            window, aRootContent->GetComposedDoc(), false, true);
+        FocusFirst(docRoot, aResultContent,
+                   false /* aReachedToEndForDocumentNavigation */);
+      }
       break;
     }
 
@@ -4738,6 +4754,17 @@ bool nsFocusManager::TryToMoveFocusToSubDocument(
   NS_ASSERTION(doc, "content not in document");
   Document* subdoc = doc->GetSubDocumentFor(aCurrentContent);
   if (subdoc && !subdoc->EventHandlingSuppressed()) {
+    if (aForward && !StaticPrefs::dom_disable_tab_focus_to_root_element()) {
+      // When tabbing forward into a frame, return the root
+      // frame so that the canvas becomes focused.
+      if (nsCOMPtr<nsPIDOMWindowOuter> subframe = subdoc->GetWindow()) {
+        *aResultContent = GetRootForFocus(subframe, subdoc, false, true);
+        if (*aResultContent) {
+          NS_ADDREF(*aResultContent);
+          return true;
+        }
+      }
+    }
     if (RefPtr<Element> rootElement = subdoc->GetRootElement()) {
       if (RefPtr<PresShell> subPresShell = subdoc->GetPresShell()) {
         nsresult rv = GetNextTabbableContent(
@@ -4749,7 +4776,8 @@ bool nsFocusManager::TryToMoveFocusToSubDocument(
         if (*aResultContent) {
           return true;
         }
-        if (rootElement->IsEditable()) {
+        if (rootElement->IsEditable() &&
+            StaticPrefs::dom_disable_tab_focus_to_root_element()) {
           // Only move to the root element with a valid reason
           *aResultContent = rootElement;
           NS_ADDREF(*aResultContent);
@@ -4902,8 +4930,10 @@ nsresult nsFocusManager::FocusFirst(Element* aRootElement,
       if (RefPtr<PresShell> presShell = doc->GetPresShell()) {
         return GetNextTabbableContent(
             presShell, aRootElement, nullptr, aRootElement, true, 1, false,
-            aReachedToEndForDocumentNavigation, true, false,
-            aReachedToEndForDocumentNavigation, aNextContent);
+            StaticPrefs::dom_disable_tab_focus_to_root_element()
+                ? aReachedToEndForDocumentNavigation
+                : false,
+            true, false, aReachedToEndForDocumentNavigation, aNextContent);
       }
     }
   }

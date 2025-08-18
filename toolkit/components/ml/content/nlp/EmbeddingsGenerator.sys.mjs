@@ -56,7 +56,6 @@ export class EmbeddingsGenerator {
     featureId: "simple-text-embedder",
     timeoutMS: -1,
     numThreads: 2,
-    backend: "onnx-native",
   };
 
   constructor(embeddingSize = 384) {

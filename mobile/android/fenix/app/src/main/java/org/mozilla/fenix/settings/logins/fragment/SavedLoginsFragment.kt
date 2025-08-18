@@ -161,7 +161,7 @@ class SavedLoginsFragment : SecureFragment(), MenuProvider {
                         )
 
                         LoginsStore(
-                            initialState = LoginsState.default.copy(
+                            initialState = LoginsState().copy(
                                 sortOrder = LoginsSortOrder.fromString(
                                     value = requireContext().settings().loginsListSortOrder,
                                     default = LoginsSortOrder.Alphabetical,

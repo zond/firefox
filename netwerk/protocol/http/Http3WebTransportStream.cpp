@@ -642,9 +642,6 @@ void Http3WebTransportStream::SendStopSending(uint8_t aErrorCode) {
 }
 
 void Http3WebTransportStream::SetSendOrder(Maybe<int64_t> aSendOrder) {
-  if (!mSession) {
-    return;
-  }
   mSession->SetSendOrder(this, aSendOrder);
 }
 

@@ -197,7 +197,7 @@ DispatcherDelegate.prototype = {
 
 export var EventDispatcher = {
   instance: new DispatcherDelegate(
-    IS_PARENT_PROCESS ? Services.geckoviewBridge : undefined
+    IS_PARENT_PROCESS ? Services.androidBridge : undefined
   ),
 
   /**
@@ -239,7 +239,7 @@ export var EventDispatcher = {
     if (!IS_PARENT_PROCESS) {
       return undefined;
     }
-    const dispatcher = Services.geckoviewBridge.getDispatcherByName(aName);
+    const dispatcher = Services.androidBridge.getDispatcherByName(aName);
     return new DispatcherDelegate(dispatcher);
   },
 

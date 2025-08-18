@@ -14,6 +14,8 @@ import android.widget.TextView
 import androidx.test.core.app.ActivityScenario
 import androidx.test.core.app.ActivityScenario.launch
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.test.advanceUntilIdle
 import mozilla.components.lib.crash.Crash
 import mozilla.components.lib.crash.CrashReporter
 import mozilla.components.lib.crash.prompt.CrashReporterActivity.Companion.PREFERENCE_KEY_SEND_REPORT
@@ -35,12 +37,12 @@ import org.mockito.Mockito.verify
 import org.mockito.MockitoAnnotations.openMocks
 import kotlin.coroutines.CoroutineContext
 
+@ExperimentalCoroutinesApi
 @RunWith(AndroidJUnit4::class)
 class CrashReporterActivityTest {
 
     @get:Rule
     val coroutinesTestRule = MainCoroutineRule()
-    private val dispatcher = coroutinesTestRule.testDispatcher
     private val scope = coroutinesTestRule.scope
 
     @Mock
@@ -69,7 +71,7 @@ class CrashReporterActivityTest {
         }
 
         // Await for all coroutines to be finished
-        dispatcher.scheduler.advanceUntilIdle()
+        advanceUntilIdle()
 
         // Then
         verify(service).report(crash)
@@ -93,7 +95,7 @@ class CrashReporterActivityTest {
         }
 
         // Await for all coroutines to be finished
-        dispatcher.scheduler.advanceUntilIdle()
+        advanceUntilIdle()
 
         // Then
         verify(service).report(crash)
@@ -227,6 +229,7 @@ class CrashReporterActivityTest {
 /**
  * Launch activity scenario for certain [crash].
  */
+@ExperimentalCoroutinesApi
 private fun CoroutineContext.launchActivityWithCrash(
     crash: Crash,
 ): ActivityScenario<CrashReporterActivity> = run {

@@ -60,6 +60,7 @@ class TabCounterViewTest {
 
         browsingModeManager = DefaultBrowsingModeManager(
             intent = null,
+            store = BrowserStore(),
             settings = settings,
             onModeChange = onModeChange,
         )

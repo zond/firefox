@@ -447,7 +447,7 @@ class TabbedBrowsingTest : TestSetup() {
 
     // TestRail link: https://mozilla.testrail.io/index.php?/cases/view/526244
     @Test
-    fun privateModeStaysAsDefaultAfterRestartTest() {
+    fun privateModeDoNotPersistAfterRestartTest() {
         val defaultWebPage = TestAssetHelper.getGenericAsset(mockWebServer, 1)
 
         navigationToolbar {
@@ -458,11 +458,8 @@ class TabbedBrowsingTest : TestSetup() {
         closeApp(composeTestRule.activityRule)
         restartApp(composeTestRule.activityRule)
 
-        homeScreen {
-            verifyPrivateBrowsingHomeScreenItems()
-        }.openTabDrawer(composeTestRule) {
-        }.toggleToNormalTabs {
-            verifyExistingOpenTabs(defaultWebPage.title)
+        browserScreen {
+            verifyUrl(defaultWebPage.url.toString())
         }
     }
 
@@ -485,7 +482,6 @@ class TabbedBrowsingTest : TestSetup() {
         closeApp(composeTestRule.activityRule)
         restartApp(composeTestRule.activityRule)
         homeScreen {
-            verifyPrivateBrowsingHomeScreenItems()
         }.openTabDrawer(composeTestRule) {
             verifyNoOpenTabsInPrivateBrowsing()
         }

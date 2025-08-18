@@ -1710,26 +1710,8 @@ export const kStencilTextureFormats = kDepthStencilFormats.filter(
   (v) => kTextureFormatInfo[v].stencil
 );
 
-export const kTextureFormatTier1AllowsResolve = [
-'r8snorm',
-'rg8snorm',
-'rgba8snorm',
-'rg11b10ufloat'];
-
-
-export const kTextureFormatTier1AllowsRenderAttachmentBlendableMultisample =
-[
-'r16unorm',
-'r16snorm',
-'rg16unorm',
-'rg16snorm',
-'rgba16unorm',
-'rgba16snorm',
-'r8snorm',
-'rg8snorm',
-'rgba8snorm',
-'rg11b10ufloat'];
-
+export const kTextureFormatTier1AllowsRenderAttachmentBlendableMultisampleResolve =
+['r8snorm', 'rg8snorm', 'rgba8snorm', 'rg11b10ufloat'];
 
 export const kTextureFormatsTier1EnablesStorageReadOnlyWriteOnly = [
 'r8unorm',
@@ -2201,14 +2183,12 @@ formats)
   return formats.filter((f) => f === undefined || kTextureFormatInfo[f].feature === feature);
 }
 
-function isTextureFormatTier1EnablesRenderAttachmentBlendableMultisample(format) {
-  return kTextureFormatTier1AllowsRenderAttachmentBlendableMultisample.includes(
+function isTextureFormatTier1EnablesRenderAttachmentBlendableMultisampleResolve(
+format)
+{
+  return kTextureFormatTier1AllowsRenderAttachmentBlendableMultisampleResolve.includes(
     format
   );
-}
-
-function isTextureFormatTier1EnablesResolve(format) {
-  return kTextureFormatTier1AllowsResolve.includes(format);
 }
 
 function isTextureFormatTier1EnablesStorageReadOnlyWriteOnly(format) {
@@ -2338,7 +2318,7 @@ format)
   if (format === 'rg11b10ufloat') {
     return device.features.has('rg11b10ufloat-renderable');
   }
-  if (isTextureFormatTier1EnablesRenderAttachmentBlendableMultisample(format)) {
+  if (isTextureFormatTier1EnablesRenderAttachmentBlendableMultisampleResolve(format)) {
     return device.features.has('texture-formats-tier1');
   }
   return !!kAllTextureFormatInfo[format].colorRender;
@@ -2389,7 +2369,7 @@ export function isTextureFormatPossiblyUsableAsRenderAttachment(format) {
   return (
     isDepthOrStencilTextureFormat(format) ||
     !!info.colorRender ||
-    isTextureFormatTier1EnablesRenderAttachmentBlendableMultisample(format));
+    isTextureFormatTier1EnablesRenderAttachmentBlendableMultisampleResolve(format));
 
 }
 
@@ -2400,7 +2380,8 @@ export function isTextureFormatPossiblyUsableAsRenderAttachment(format) {
 export function isTextureFormatPossiblyUsableAsColorRenderAttachment(format) {
   const info = kTextureFormatInfo[format];
   return (
-    !!info.colorRender || isTextureFormatTier1EnablesRenderAttachmentBlendableMultisample(format));
+    !!info.colorRender ||
+    isTextureFormatTier1EnablesRenderAttachmentBlendableMultisampleResolve(format));
 
 }
 
@@ -2411,7 +2392,8 @@ export function isTextureFormatPossiblyUsableAsColorRenderAttachment(format) {
 export function isTextureFormatPossiblyMultisampled(format) {
   const info = kTextureFormatInfo[format];
   return (
-    info.multisample || isTextureFormatTier1EnablesRenderAttachmentBlendableMultisample(format));
+    info.multisample ||
+    isTextureFormatTier1EnablesRenderAttachmentBlendableMultisampleResolve(format));
 
 }
 
@@ -2620,7 +2602,7 @@ export function isTextureFormatMultisampled(device, format) {
   if (format === 'rg11b10ufloat') {
     return device.features.has('rg11b10ufloat-renderable');
   }
-  if (isTextureFormatTier1EnablesRenderAttachmentBlendableMultisample(format)) {
+  if (isTextureFormatTier1EnablesRenderAttachmentBlendableMultisampleResolve(format)) {
     return device.features.has('texture-formats-tier1');
   }
   return kAllTextureFormatInfo[format].multisample;
@@ -2634,7 +2616,7 @@ export function isTextureFormatResolvable(device, format) {
   if (format === 'rg11b10ufloat') {
     return device.features.has('rg11b10ufloat-renderable');
   }
-  if (isTextureFormatTier1EnablesResolve(format)) {
+  if (isTextureFormatTier1EnablesRenderAttachmentBlendableMultisampleResolve(format)) {
     return device.features.has('texture-formats-tier1');
   }
   // You can't resolve a non-multisampled format.

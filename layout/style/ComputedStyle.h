@@ -22,9 +22,9 @@
 enum nsChangeHint : uint32_t;
 class nsWindowSizes;
 
-#define FORWARD_STRUCT(name_) struct nsStyle##name_;
-FOR_EACH_STYLE_STRUCT(FORWARD_STRUCT, FORWARD_STRUCT)
-#undef FORWARD_STRUCT
+#define STYLE_STRUCT(name_) struct nsStyle##name_;
+#include "nsStyleStructList.h"
+#undef STYLE_STRUCT
 
 extern "C" {
 void Gecko_ComputedStyle_Destroy(mozilla::ComputedStyle*);
@@ -224,12 +224,12 @@ class ComputedStyle {
     mCachedInheritingStyles.Insert(aStyle);
   }
 
-#define GENERATE_ACCESSOR(name_)                                         \
+#define STYLE_STRUCT(name_)                                              \
   inline const nsStyle##name_* Style##name_() const MOZ_NONNULL_RETURN { \
     return mSource.Style##name_();                                       \
   }
-  FOR_EACH_STYLE_STRUCT(GENERATE_ACCESSOR, GENERATE_ACCESSOR)
-#undef GENERATE_ACCESSOR
+#include "nsStyleStructList.h"
+#undef STYLE_STRUCT
 
   inline mozilla::StylePointerEvents PointerEvents() const;
   inline mozilla::StyleUserSelect UserSelect() const;

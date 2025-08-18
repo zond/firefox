@@ -25,8 +25,6 @@ ChromeUtils.defineESModuleGetters(lazy, {
     "resource:///modules/profiles/SelectableProfileService.sys.mjs",
   // eslint-disable-next-line mozilla/no-browser-refs-in-toolkit
   Spotlight: "resource:///modules/asrouter/Spotlight.sys.mjs",
-  // eslint-disable-next-line mozilla/no-browser-refs-in-toolkit
-  TaskbarTabs: "resource:///modules/taskbartabs/TaskbarTabs.sys.mjs",
   UIState: "resource://services-sync/UIState.sys.mjs",
   UITour: "moz-src:///browser/components/uitour/UITour.sys.mjs",
 });
@@ -777,10 +775,6 @@ export const SpecialMessageActions = {
       case "SUMMARIZE_PAGE":
         const entry = action.data ?? "message";
         await lazy.GenAI.summarizeCurrentPage(window, entry);
-        break;
-      case "CREATE_TASKBAR_TAB":
-        let currentTab = window.gBrowser.selectedTab;
-        await lazy.TaskbarTabs.moveTabIntoTaskbarTab(currentTab);
         break;
     }
     return undefined;

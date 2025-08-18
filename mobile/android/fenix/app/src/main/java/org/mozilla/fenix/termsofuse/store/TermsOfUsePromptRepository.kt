@@ -19,13 +19,6 @@ interface TermsOfUsePromptRepository {
      * Updates the hasPostponedAcceptingTermsOfService preference to true
      */
     fun updateHasPostponedAcceptingTermsOfUsePreference()
-
-    /**
-     * Updates the lastTermsOfUsePromptTimeInMillis preference to the current time
-     *
-     * @param time the current time in milliseconds
-     */
-    fun updateLastTermsOfUsePromptTimeInMillis(time: Long = System.currentTimeMillis())
 }
 
 /**
@@ -41,10 +34,6 @@ class DefaultTermsOfUsePromptRepository(
     }
 
     override fun updateHasPostponedAcceptingTermsOfUsePreference() {
-        settings.hasPostponedAcceptingTermsOfUse = true
-    }
-
-    override fun updateLastTermsOfUsePromptTimeInMillis(time: Long) {
-        settings.lastTermsOfUsePromptTimeInMillis = time
+        settings.hasPostponedAcceptingTermsOfService = true
     }
 }

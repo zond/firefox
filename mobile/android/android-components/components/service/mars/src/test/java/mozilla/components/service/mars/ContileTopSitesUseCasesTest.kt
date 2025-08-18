@@ -4,6 +4,7 @@
 
 package mozilla.components.service.mars
 
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.runTest
 import mozilla.components.service.mars.contile.ContileTopSitesProvider
 import mozilla.components.service.mars.contile.ContileTopSitesUseCases
@@ -15,6 +16,7 @@ import org.mockito.ArgumentMatchers.anyBoolean
 import org.mockito.Mockito.verify
 import java.io.IOException
 
+@ExperimentalCoroutinesApi // for runTest
 class ContileTopSitesUseCasesTest {
 
     @Test

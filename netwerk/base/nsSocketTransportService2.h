@@ -257,10 +257,14 @@ class nsSocketTransportService final : public nsPISocketTransportService,
 
   PRIntervalTime PollTimeout(
       PRIntervalTime now);  // computes ideal poll timeout
-  nsresult DoPollIteration();
+  nsresult DoPollIteration(TimeDuration* pollDuration);
   // perfoms a single poll iteration
-  int32_t Poll(PRIntervalTime ts);
-  // calls PR_Poll.
+  int32_t Poll(TimeDuration* pollDuration, PRIntervalTime ts);
+  // calls PR_Poll.  the out param
+  // interval indicates the poll
+  // duration in seconds.
+  // pollDuration is used only for
+  // telemetry
 
   //-------------------------------------------------------------------------
   // pending socket queue - see NotifyWhenCanAttachSocket

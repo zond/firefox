@@ -4,6 +4,7 @@
 
 package mozilla.components.compose.browser.awesomebar.internal
 
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
 import mozilla.components.concept.awesomebar.AwesomeBar
 import mozilla.components.concept.awesomebar.AwesomeBar.SuggestionProvider
@@ -19,6 +20,7 @@ import org.mockito.Mockito.doAnswer
 import org.mockito.Mockito.inOrder
 import org.mockito.Mockito.spy
 
+@ExperimentalCoroutinesApi // for runTestOnMain
 class SuggestionFetcherTest {
     @get:Rule
     val coroutinesTestRule = MainCoroutineRule()

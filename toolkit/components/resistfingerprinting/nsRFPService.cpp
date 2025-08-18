@@ -1739,7 +1739,7 @@ nsresult nsRFPService::RandomizePixels(nsICookieJarSettings* aCookieJarSettings,
     return NS_OK;
   }
 
-  if (aPrincipal && CanvasUtils::GetCanvasExtractDataPermission(aPrincipal) ==
+  if (aPrincipal && CanvasUtils::GetCanvasExtractDataPermission(*aPrincipal) ==
                         nsIPermissionManager::ALLOW_ACTION) {
     return NS_OK;
   }
@@ -2727,10 +2727,8 @@ bool nsRFPService::IsWebCodecsRFPTargetEnabled(JSContext* aCx) {
   // We know that the RFPTarget::WebCodecs is enabled, check if principal
   // is exempted.
 
-  if (NS_WARN_IF(!aCx)) {
-    MOZ_LOG(gResistFingerprintingLog, LogLevel::Warning,
-            ("nsRFPService::IsWebCodecsRFPTargetEnabled called with null "
-             "JSContext"));
+  // VideoFrame::PrefEnabled function can be called without a JSContext.
+  if (!aCx) {
     return true;
   }
 

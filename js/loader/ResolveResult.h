@@ -50,7 +50,6 @@ struct ResolveErrorInfo {
  */
 using ResolveResult =
     mozilla::Result<mozilla::NotNull<nsCOMPtr<nsIURI>>, ResolveError>;
-
 }  // namespace JS::loader
 
 #endif  // js_loader_ResolveResult_h

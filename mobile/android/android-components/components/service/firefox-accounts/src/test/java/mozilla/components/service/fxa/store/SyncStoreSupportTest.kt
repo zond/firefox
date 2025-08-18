@@ -36,7 +36,7 @@ import org.mockito.Mockito.verify
 import org.mockito.Mockito.`when`
 import java.lang.Exception
 
-@OptIn(ExperimentalCoroutinesApi::class) // runCurrent, setMain
+@OptIn(ExperimentalCoroutinesApi::class)
 class SyncStoreSupportTest {
 
     private val accountManager = mock<FxaAccountManager>()

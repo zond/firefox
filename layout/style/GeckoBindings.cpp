@@ -221,7 +221,7 @@ void ServoComputedData::AddSizeOfExcludingThis(nsWindowSizes& aSizes) const {
   // to measure it with a function that can handle an interior pointer. We use
   // ServoStyleStructsEnclosingMallocSizeOf to clearly identify in DMD's
   // output the memory measured here.
-#define MEASURE_STRUCT(name_)                                     \
+#define STYLE_STRUCT(name_)                                       \
   static_assert(alignof(nsStyle##name_) <= sizeof(size_t),        \
                 "alignment will break AddSizeOfExcludingThis()"); \
   const void* p##name_ = Style##name_();                          \
@@ -229,8 +229,8 @@ void ServoComputedData::AddSizeOfExcludingThis(nsWindowSizes& aSizes) const {
     aSizes.mStyleSizes.NS_STYLE_SIZES_FIELD(name_) +=             \
         ServoStyleStructsMallocEnclosingSizeOf(p##name_);         \
   }
-  FOR_EACH_STYLE_STRUCT(MEASURE_STRUCT, MEASURE_STRUCT)
-#undef MEASURE_STRUCT
+#include "nsStyleStructList.h"
+#undef STYLE_STRUCT
 
   if (visited_style && !aSizes.mState.HaveSeenPtr(visited_style)) {
     visited_style->AddSizeOfIncludingThis(aSizes,
@@ -1504,7 +1504,7 @@ void Construct(T* aPtr, const Document* aDoc) {
   }
 }
 
-#define GENERATE_GECKO_FUNCTIONS(name)                                 \
+#define STYLE_STRUCT(name)                                             \
   void Gecko_Construct_Default_nsStyle##name(nsStyle##name* ptr,       \
                                              const Document* doc) {    \
     Construct(ptr, doc);                                               \
@@ -1517,9 +1517,9 @@ void Construct(T* aPtr, const Document* aDoc) {
     ptr->~nsStyle##name();                                             \
   }
 
-FOR_EACH_STYLE_STRUCT(GENERATE_GECKO_FUNCTIONS, GENERATE_GECKO_FUNCTIONS)
+#include "nsStyleStructList.h"
 
-#undef GENERATE_GECKO_FUNCTIONS
+#undef STYLE_STRUCT
 
 bool Gecko_ErrorReportingEnabled(const StyleSheet* aSheet,
                                  const Loader* aLoader,

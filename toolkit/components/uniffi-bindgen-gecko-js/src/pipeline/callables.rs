@@ -56,7 +56,7 @@ pub fn pass(module: &mut Module) -> Result<()> {
             module_name
         );
 
-        for (spec, info, _) in &unconfigured_callables {
+        for (spec, info) in &unconfigured_callables {
             message.push_str(&format!("  - {}: {}\n", spec, info));
         }
 
@@ -65,8 +65,8 @@ pub fn pass(module: &mut Module) -> Result<()> {
         );
         message.push_str(&format!("[{}.async_wrappers]\n", module.crate_name));
 
-        for (spec, _, example) in &unconfigured_callables {
-            message.push_str(&format!("\"{spec}\" = {example}\n"));
+        for (spec, _) in &unconfigured_callables {
+            message.push_str(&format!("\"{}\" = \"AsyncWrapped\"  # or \"Sync\"\n", spec));
         }
 
         // Fail the build with a helpful error message
@@ -75,11 +75,10 @@ pub fn pass(module: &mut Module) -> Result<()> {
 
     Ok(())
 }
-
 fn handle_callable(
     callable: &mut Callable,
     async_wrappers: &indexmap::IndexMap<String, ConcurrencyMode>,
-    unconfigured_callables: &mut Vec<(String, String, String)>,
+    unconfigured_callables: &mut Vec<(String, String)>,
     module_name: &str,
 ) -> Result<()> {
     let name = &callable.name;
@@ -101,38 +100,44 @@ fn handle_callable(
         }
     };
 
-    let config = async_wrappers.get(&spec);
-    // If the config is not set, check for a parent config
-    let config = config.or_else(|| match &callable.kind {
-        CallableKind::Method {
-            interface_name: parent,
-            ..
+    if callable.async_data.is_some() {
+        callable.is_js_async = true;
+        callable.uniffi_scaffolding_method = "UniFFIScaffolding.callAsync".to_string();
+
+        // Check that there isn't an entry in async_wrappers for truly async methods
+        if async_wrappers.contains_key(&spec) {
+            bail!(
+                "Method '{}' has async_data and should not have an entry in async_wrappers config",
+                spec
+            );
         }
-        | CallableKind::Constructor {
-            interface_name: parent,
-            ..
-        }
-        | CallableKind::VTableMethod {
-            trait_name: parent, ..
-        } => async_wrappers.get(parent),
-        _ => None,
-    });
-    // Finally, default to `Async` for async methods
-    let config = config.or_else(|| {
-        if callable.async_data.is_some() {
-            Some(&ConcurrencyMode::Async)
-        } else {
-            None
-        }
-    });
+
+        return Ok(());
+    }
+
+    // We insist on a configuration.
+    let config = match async_wrappers.get(&spec) {
+        Some(config) => Some(config),
+        // but allow a parent.
+        None => match &callable.kind {
+            CallableKind::Method {
+                interface_name: parent,
+                ..
+            }
+            | CallableKind::Constructor {
+                interface_name: parent,
+                ..
+            }
+            | CallableKind::VTableMethod {
+                trait_name: parent, ..
+            } => async_wrappers.get(parent),
+            _ => None,
+        },
+    };
     match config {
         Some(ConcurrencyMode::Sync) => {
             callable.is_js_async = false;
             callable.uniffi_scaffolding_method = "UniFFIScaffolding.callSync".to_string();
-        }
-        Some(ConcurrencyMode::Async) => {
-            callable.is_js_async = true;
-            callable.uniffi_scaffolding_method = "UniFFIScaffolding.callAsync".to_string();
         }
         Some(ConcurrencyMode::AsyncWrapped) => {
             if matches!(callable.kind, CallableKind::VTableMethod { .. }) {
@@ -143,22 +148,6 @@ fn handle_callable(
             }
             callable.is_js_async = true;
             callable.uniffi_scaffolding_method = "UniFFIScaffolding.callAsyncWrapper".to_string();
-        }
-        Some(ConcurrencyMode::FireAndForget) => {
-            if !matches!(
-                callable.kind,
-                CallableKind::VTableMethod {
-                    for_callback_interface: true,
-                    ..
-                }
-            ) {
-                bail!(
-                    "VTable method '{}' cannot be FireAndForget as Rust-implemented functions don't support fire-and-forget wrapping",
-                    spec
-                );
-            }
-            // no need to set `is_js_async` or `uniffi_scaffolding_method` since these can only
-            // be called from Rust.
         }
         None => {
             // Store information about the unconfigured callable
@@ -180,14 +169,7 @@ fn handle_callable(
                 ),
             };
 
-            let example = match &callable.kind {
-                CallableKind::Function
-                | CallableKind::Method { .. }
-                | CallableKind::Constructor { .. } => "\"AsyncWrapped\"  # or \"Sync\"".to_string(),
-                CallableKind::VTableMethod { .. } => "\"FireAndForget\"  # or \"Sync\"".to_string(),
-            };
-
-            unconfigured_callables.push((spec.clone(), source_info, example));
+            unconfigured_callables.push((spec.clone(), source_info));
 
             // Default to async for now - this won't matter if we fail the build
             callable.is_js_async = true;

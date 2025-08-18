@@ -283,17 +283,13 @@ void wgpu_child_resolve_buffer_map_promise(WGPUWebGPUChildPtr aChild,
 void wgpu_child_resolve_on_submitted_work_done_promise(
     WGPUWebGPUChildPtr aChild, WGPUQueueId aQueueId) {
   auto* c = static_cast<WebGPUChild*>(aChild);
-  const auto& it = c->mPendingOnSubmittedWorkDonePromises.find(aQueueId);
-  MOZ_RELEASE_ASSERT(it != c->mPendingOnSubmittedWorkDonePromises.end());
-  auto& pending_promises = it->second;
+  auto& pending_promises = c->mPendingOnSubmittedWorkDonePromises;
   auto pending_promise = std::move(pending_promises.front());
   pending_promises.pop_front();
 
-  if (pending_promises.empty()) {
-    c->mPendingOnSubmittedWorkDonePromises.erase(it);
-  }
+  MOZ_RELEASE_ASSERT(pending_promise.queue_id == aQueueId);
 
-  pending_promise->MaybeResolveWithUndefined();
+  pending_promise.promise->MaybeResolveWithUndefined();
 };
 }  // namespace ffi
 
@@ -541,20 +537,12 @@ void WebGPUChild::ClearActorState() {
           pending_promise.promise);
     }
     // Pretend this worked, per spec; see "Listen for timeline event".
-    else if (auto it = mPendingOnSubmittedWorkDonePromises.begin();
-             it != mPendingOnSubmittedWorkDonePromises.end()) {
-      auto& pending_promises = it->second;
-      MOZ_ASSERT(!pending_promises.empty(),
-                 "Empty queues should have been removed from the map");
+    else if (!mPendingOnSubmittedWorkDonePromises.empty()) {
+      auto pending_promise =
+          std::move(mPendingOnSubmittedWorkDonePromises.front());
+      mPendingOnSubmittedWorkDonePromises.pop_front();
 
-      auto pending_promise = std::move(pending_promises.front());
-      pending_promises.pop_front();
-
-      if (pending_promises.empty()) {
-        mPendingOnSubmittedWorkDonePromises.erase(it);
-      }
-
-      pending_promise->MaybeResolveWithUndefined();
+      pending_promise.promise->MaybeResolveWithUndefined();
     } else {
       break;
     }

@@ -135,10 +135,11 @@ export class DynamicSuggestions extends SuggestProvider {
    * @typedef DatePayload
    *   The shape of an important dates suggestion payload.
    * @property {(string | [string, string])[]} dates
-   *   An array of dates or date tuples in the format "YYYY-MM-DD".
-   *   For a date tuple, the first value represents the start and the second
-   *   the end date. This is assumed to be ordered oldest to newest.
+   *   An array of dates in the format "YYYY-MM-DD" or of date tuples.
+   *   This is guaranteed to be ordered oldest to newest.
    * @property {string} name
+   *   The name of the event.
+   * @property {string} [notes]
    *   The name of the event.
    */
 
@@ -174,18 +175,16 @@ export class DynamicSuggestions extends SuggestProvider {
   }
 
   /**
-   * Returns a l10n object about the name of and time until an event
-   * that can be used as the description of a urlbar result.
+   * Returns a l10n object about the time until an event that can be displayed.
    *
    * @param {string | [string, string]} dateStr
    *   A string in the format "YYYY-MM-DD" representing a single
    *   day or a tuple of strings representing start and end days.
-   * @param {string} name
-   *   The name of the event.
    * @returns {?object}
-   *   A l10n object or null if the event is in the past.
+   *   A l10n object about the time until the event or null if
+   *   the event is in the past.
    */
-  #formatDateCountdown(dateStr, name) {
+  #formatDateCountdown(dateStr) {
     if (Array.isArray(dateStr)) {
       let daysUntilStart = this.#getDaysUntil(dateStr[0]);
       let daysUntilEnd = this.#getDaysUntil(dateStr[1]);
@@ -195,18 +194,17 @@ export class DynamicSuggestions extends SuggestProvider {
       if (daysUntilStart > 0) {
         return {
           id: "urlbar-result-dates-countdown-range",
-          args: { daysUntilStart, name },
+          args: { daysUntilStart },
         };
       }
       if (daysUntilEnd > 0) {
         return {
           id: "urlbar-result-dates-ongoing",
-          args: { daysUntilEnd, name },
+          args: { daysUntilEnd },
         };
       }
       return {
         id: "urlbar-result-dates-ends-today",
-        args: { name },
       };
     }
 
@@ -217,12 +215,11 @@ export class DynamicSuggestions extends SuggestProvider {
     if (daysUntil > 0) {
       return {
         id: "urlbar-result-dates-countdown",
-        args: { daysUntilStart: daysUntil, name },
+        args: { daysUntilStart: daysUntil },
       };
     }
     return {
       id: "urlbar-result-dates-today",
-      args: { name },
     };
   }
 
@@ -268,11 +265,16 @@ export class DynamicSuggestions extends SuggestProvider {
     );
 
     let description, descriptionL10n;
-    if (daysUntilStart > SHOW_COUNTDOWN_THRESHOLD_DAYS) {
-      description = payload.name;
+    if (
+      payload.hasOwnProperty("notes") &&
+      daysUntilStart > SHOW_COUNTDOWN_THRESHOLD_DAYS
+    ) {
+      // If there are more then SHOW_COUNTDOWN_THRESHOLD_DAYS days left until
+      // the event, show the formula.
+      description = payload.notes;
     } else {
       descriptionL10n = {
-        ...this.#formatDateCountdown(eventDateOrRange, payload.name),
+        ...this.#formatDateCountdown(eventDateOrRange),
         cacheable: true,
         excludeArgsFromCacheKey: true,
       };
@@ -288,24 +290,25 @@ export class DynamicSuggestions extends SuggestProvider {
         lazy.UrlbarUtils.RESULT_TYPE.URL,
         lazy.UrlbarUtils.RESULT_SOURCE.SEARCH,
         {
-          title: dateString,
+          titleL10n: {
+            id: "urlbar-result-dates-title",
+            args: { date: dateString, name: payload.name },
+            parseMarkup: true,
+            cacheable: true,
+            excludeArgsFromCacheKey: true,
+          },
           description,
           descriptionL10n,
           url,
-          icon: "chrome://browser/skin/calendar-24.svg",
+          icon: "chrome://global/skin/icons/search-glass.svg",
           helpUrl: lazy.QuickSuggest.HELP_URL,
           isManageable: true,
           isBlockable: true,
-        },
-        {
-          title: [
-            // Make whole title bold.
-            [0, dateString.length],
-          ],
         }
       ),
       {
         isBestMatch: true,
+        showFeedbackMenu: true,
         hideRowLabel: true,
         richSuggestionIconSize: 24,
       }

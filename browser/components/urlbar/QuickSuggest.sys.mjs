@@ -148,6 +148,8 @@ const FEATURES = {
   AddonSuggestions:
     "resource:///modules/urlbar/private/AddonSuggestions.sys.mjs",
   AmpSuggestions: "resource:///modules/urlbar/private/AmpSuggestions.sys.mjs",
+  FakespotSuggestions:
+    "resource:///modules/urlbar/private/FakespotSuggestions.sys.mjs",
   DynamicSuggestions:
     "resource:///modules/urlbar/private/DynamicSuggestions.sys.mjs",
   ImpressionCaps: "resource:///modules/urlbar/private/ImpressionCaps.sys.mjs",

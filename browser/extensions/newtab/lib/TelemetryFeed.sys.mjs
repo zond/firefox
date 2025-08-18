@@ -1280,36 +1280,7 @@ export class TelemetryFeed {
         break;
       case at.WIDGETS_LISTS_USER_EVENT:
       case at.WIDGETS_LISTS_USER_IMPRESSION:
-      case at.WIDGETS_TIMER_USER_EVENT:
-      case at.WIDGETS_TIMER_USER_IMPRESSION:
         this.handleWidgetsUserEvent(action);
-        break;
-      case at.PROMO_CARD_CLICK:
-      case at.PROMO_CARD_DISMISS:
-      case at.PROMO_CARD_IMPRESSION:
-        this.handlePromoCardUserEvent(action);
-        break;
-    }
-  }
-
-  handlePromoCardUserEvent(action) {
-    const session = this.sessions.get(au.getPortIdOfSender(action));
-    if (session) {
-      const payload = {
-        newtab_visit_id: session.visit_id,
-      };
-
-      switch (action.type) {
-        case at.PROMO_CARD_CLICK:
-          Glean.newtab.promoCardClick.record(payload);
-          break;
-        case at.PROMO_CARD_DISMISS:
-          Glean.newtab.promoCardDismiss.record(payload);
-          break;
-        case at.PROMO_CARD_IMPRESSION:
-          Glean.newtab.promoCardImpression.record(payload);
-          break;
-      }
     }
   }
 
@@ -1328,15 +1299,6 @@ export class TelemetryFeed {
           break;
         case "WIDGETS_LISTS_USER_IMPRESSION":
           Glean.newtab.widgetsListsImpression.record(payload);
-          break;
-        case "WIDGETS_TIMER_USER_EVENT":
-          Glean.newtab.widgetsTimerUserEvent.record({
-            ...payload,
-            user_action: action.data.userAction,
-          });
-          break;
-        case "WIDGETS_TIMER_USER_IMPRESSION":
-          Glean.newtab.widgetsTimerImpression.record(payload);
           break;
       }
     }
@@ -1608,12 +1570,6 @@ export class TelemetryFeed {
         break;
       case "widgets.lists.enabled":
         Glean.newtab.widgetsListsChangeDisplay.record({
-          newtab_visit_id: session.session_id,
-          display_status: action.data.value,
-        });
-        break;
-      case "widgets.focusTimer.enabled":
-        Glean.newtab.widgetsTimerChangeDisplay.record({
           newtab_visit_id: session.session_id,
           display_status: action.data.value,
         });

@@ -32,10 +32,6 @@ class TermsOfUsePromptPreferencesMiddleware(
             is TermsOfUsePromptAction.OnPromptManuallyDismissed -> {
                 repository.updateHasPostponedAcceptingTermsOfUsePreference()
             }
-
-            is TermsOfUsePromptAction.OnPromptDismissed -> {
-                repository.updateLastTermsOfUsePromptTimeInMillis()
-            }
         }
 
         next(action)

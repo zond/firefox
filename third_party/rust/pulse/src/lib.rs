@@ -39,9 +39,8 @@ pub use threaded_mainloop::ThreadedMainloop;
 
 #[allow(non_camel_case_types)]
 #[repr(i32)]
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum SampleFormat {
-    #[default]
     Invalid = ffi::PA_SAMPLE_INVALID,
     U8 = ffi::PA_SAMPLE_U8,
     Alaw = ffi::PA_SAMPLE_ALAW,
@@ -58,16 +57,21 @@ pub enum SampleFormat {
     Signed23_32BE = ffi::PA_SAMPLE_S24_32BE,
 }
 
-impl From<SampleFormat> for ffi::pa_sample_format_t {
-    fn from(val: SampleFormat) -> Self {
-        val as ffi::pa_sample_format_t
+impl Default for SampleFormat {
+    fn default() -> Self {
+        SampleFormat::Invalid
+    }
+}
+
+impl Into<ffi::pa_sample_format_t> for SampleFormat {
+    fn into(self) -> ffi::pa_sample_format_t {
+        self as ffi::pa_sample_format_t
     }
 }
 
 #[repr(i32)]
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ContextState {
-    #[default]
     Unconnected = ffi::PA_CONTEXT_UNCONNECTED,
     Connecting = ffi::PA_CONTEXT_CONNECTING,
     Authorizing = ffi::PA_CONTEXT_AUTHORIZING,
@@ -81,34 +85,39 @@ impl ContextState {
     // This function implements the PA_CONTENT_IS_GOOD macro from pulse/def.h
     // It must match the version from PA headers.
     pub fn is_good(self) -> bool {
-        matches!(
-            self,
+        match self {
             ContextState::Connecting
-                | ContextState::Authorizing
-                | ContextState::SettingName
-                | ContextState::Ready
-        )
+            | ContextState::Authorizing
+            | ContextState::SettingName
+            | ContextState::Ready => true,
+            _ => false,
+        }
     }
 
     pub fn try_from(x: ffi::pa_context_state_t) -> Option<Self> {
-        if (ffi::PA_CONTEXT_UNCONNECTED..=ffi::PA_CONTEXT_TERMINATED).contains(&x) {
-            Some(unsafe { ::std::mem::transmute::<ffi::pa_context_state_t, Self>(x) })
+        if x >= ffi::PA_CONTEXT_UNCONNECTED && x <= ffi::PA_CONTEXT_TERMINATED {
+            Some(unsafe { ::std::mem::transmute(x) })
         } else {
             None
         }
     }
 }
 
-impl From<ContextState> for ffi::pa_context_state_t {
-    fn from(val: ContextState) -> Self {
-        val as ffi::pa_context_state_t
+impl Default for ContextState {
+    fn default() -> Self {
+        ContextState::Unconnected
+    }
+}
+
+impl Into<ffi::pa_context_state_t> for ContextState {
+    fn into(self) -> ffi::pa_context_state_t {
+        self as ffi::pa_context_state_t
     }
 }
 
 #[repr(i32)]
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum StreamState {
-    #[default]
     Unconnected = ffi::PA_STREAM_UNCONNECTED,
     Creating = ffi::PA_STREAM_CREATING,
     Ready = ffi::PA_STREAM_READY,
@@ -120,21 +129,30 @@ impl StreamState {
     // This function implements the PA_STREAM_IS_GOOD macro from pulse/def.h
     // It must match the version from PA headers.
     pub fn is_good(self) -> bool {
-        matches!(self, StreamState::Creating | StreamState::Ready)
+        match self {
+            StreamState::Creating | StreamState::Ready => true,
+            _ => false,
+        }
     }
 
     pub fn try_from(x: ffi::pa_stream_state_t) -> Option<Self> {
-        if (ffi::PA_STREAM_UNCONNECTED..=ffi::PA_STREAM_TERMINATED).contains(&x) {
-            Some(unsafe { ::std::mem::transmute::<ffi::pa_stream_state_t, Self>(x) })
+        if x >= ffi::PA_STREAM_UNCONNECTED && x <= ffi::PA_STREAM_TERMINATED {
+            Some(unsafe { ::std::mem::transmute(x) })
         } else {
             None
         }
     }
 }
 
-impl From<StreamState> for ffi::pa_stream_state_t {
-    fn from(val: StreamState) -> Self {
-        val as ffi::pa_stream_state_t
+impl Default for StreamState {
+    fn default() -> Self {
+        StreamState::Unconnected
+    }
+}
+
+impl Into<ffi::pa_stream_state_t> for StreamState {
+    fn into(self) -> ffi::pa_stream_state_t {
+        self as ffi::pa_stream_state_t
     }
 }
 
@@ -148,17 +166,17 @@ pub enum OperationState {
 
 impl OperationState {
     pub fn try_from(x: ffi::pa_operation_state_t) -> Option<Self> {
-        if (ffi::PA_OPERATION_RUNNING..=ffi::PA_OPERATION_CANCELLED).contains(&x) {
-            Some(unsafe { ::std::mem::transmute::<ffi::pa_operation_state_t, Self>(x) })
+        if x >= ffi::PA_OPERATION_RUNNING && x <= ffi::PA_OPERATION_CANCELLED {
+            Some(unsafe { ::std::mem::transmute(x) })
         } else {
             None
         }
     }
 }
 
-impl From<OperationState> for ffi::pa_operation_state_t {
-    fn from(val: OperationState) -> Self {
-        val as ffi::pa_operation_state_t
+impl Into<ffi::pa_operation_state_t> for OperationState {
+    fn into(self) -> ffi::pa_operation_state_t {
+        self as ffi::pa_operation_state_t
     }
 }
 
@@ -169,9 +187,9 @@ bitflags! {
     }
 }
 
-impl From<ContextFlags> for ffi::pa_context_flags_t {
-    fn from(val: ContextFlags) -> Self {
-        val.bits() as ffi::pa_context_flags_t
+impl Into<ffi::pa_context_flags_t> for ContextFlags {
+    fn into(self) -> ffi::pa_context_flags_t {
+        self.bits() as ffi::pa_context_flags_t
     }
 }
 
@@ -184,17 +202,17 @@ pub enum DeviceType {
 
 impl DeviceType {
     pub fn try_from(x: ffi::pa_device_type_t) -> Option<Self> {
-        if (ffi::PA_DEVICE_TYPE_SINK..=ffi::PA_DEVICE_TYPE_SOURCE).contains(&x) {
-            Some(unsafe { ::std::mem::transmute::<ffi::pa_device_type_t, Self>(x) })
+        if x >= ffi::PA_DEVICE_TYPE_SINK && x <= ffi::PA_DEVICE_TYPE_SOURCE {
+            Some(unsafe { ::std::mem::transmute(x) })
         } else {
             None
         }
     }
 }
 
-impl From<DeviceType> for ffi::pa_device_type_t {
-    fn from(val: DeviceType) -> Self {
-        val as ffi::pa_device_type_t
+impl Into<ffi::pa_device_type_t> for DeviceType {
+    fn into(self) -> ffi::pa_device_type_t {
+        self as ffi::pa_device_type_t
     }
 }
 
@@ -209,17 +227,17 @@ pub enum StreamDirection {
 
 impl StreamDirection {
     pub fn try_from(x: ffi::pa_stream_direction_t) -> Option<Self> {
-        if (ffi::PA_STREAM_NODIRECTION..=ffi::PA_STREAM_UPLOAD).contains(&x) {
-            Some(unsafe { ::std::mem::transmute::<ffi::pa_stream_direction_t, Self>(x) })
+        if x >= ffi::PA_STREAM_NODIRECTION && x <= ffi::PA_STREAM_UPLOAD {
+            Some(unsafe { ::std::mem::transmute(x) })
         } else {
             None
         }
     }
 }
 
-impl From<StreamDirection> for ffi::pa_stream_direction_t {
-    fn from(val: StreamDirection) -> Self {
-        val as ffi::pa_stream_direction_t
+impl Into<ffi::pa_stream_direction_t> for StreamDirection {
+    fn into(self) -> ffi::pa_stream_direction_t {
+        self as ffi::pa_stream_direction_t
     }
 }
 
@@ -273,16 +291,16 @@ impl StreamFlags {
             | ffi::PA_STREAM_PASSTHROUGH))
             == 0
         {
-            Some(unsafe { ::std::mem::transmute::<ffi::pa_stream_flags_t, Self>(x) })
+            Some(unsafe { ::std::mem::transmute(x) })
         } else {
             None
         }
     }
 }
 
-impl From<StreamFlags> for ffi::pa_stream_flags_t {
-    fn from(val: StreamFlags) -> Self {
-        val.bits() as ffi::pa_stream_flags_t
+impl Into<ffi::pa_stream_flags_t> for StreamFlags {
+    fn into(self) -> ffi::pa_stream_flags_t {
+        self.bits() as ffi::pa_stream_flags_t
     }
 }
 
@@ -309,16 +327,16 @@ bitflags! {
 impl SubscriptionMask {
     pub fn try_from(x: ffi::pa_subscription_mask_t) -> Option<Self> {
         if (x & !ffi::PA_SUBSCRIPTION_MASK_ALL) == 0 {
-            Some(unsafe { ::std::mem::transmute::<ffi::pa_subscription_mask_t, Self>(x) })
+            Some(unsafe { ::std::mem::transmute(x) })
         } else {
             None
         }
     }
 }
 
-impl From<SubscriptionMask> for ffi::pa_subscription_mask_t {
-    fn from(val: SubscriptionMask) -> Self {
-        val.bits() as ffi::pa_subscription_mask_t
+impl Into<ffi::pa_subscription_mask_t> for SubscriptionMask {
+    fn into(self) -> ffi::pa_subscription_mask_t {
+        self.bits() as ffi::pa_subscription_mask_t
     }
 }
 
@@ -379,17 +397,17 @@ pub enum SeekMode {
 
 impl SeekMode {
     pub fn try_from(x: ffi::pa_seek_mode_t) -> Option<Self> {
-        if (ffi::PA_SEEK_RELATIVE..=ffi::PA_SEEK_RELATIVE_END).contains(&x) {
-            Some(unsafe { ::std::mem::transmute::<ffi::pa_seek_mode_t, Self>(x) })
+        if x >= ffi::PA_SEEK_RELATIVE && x <= ffi::PA_SEEK_RELATIVE_END {
+            Some(unsafe { ::std::mem::transmute(x) })
         } else {
             None
         }
     }
 }
 
-impl From<SeekMode> for ffi::pa_seek_mode_t {
-    fn from(val: SeekMode) -> Self {
-        val as ffi::pa_seek_mode_t
+impl Into<ffi::pa_seek_mode_t> for SeekMode {
+    fn into(self) -> ffi::pa_seek_mode_t {
+        self as ffi::pa_seek_mode_t
     }
 }
 
@@ -422,7 +440,7 @@ impl SinkFlags {
             | ffi::PA_SINK_SET_FORMATS))
             == 0
         {
-            Some(unsafe { ::std::mem::transmute::<ffi::pa_sink_flags_t, Self>(x) })
+            Some(unsafe { ::std::mem::transmute(x) })
         } else {
             None
         }
@@ -453,9 +471,9 @@ bitflags! {
     }
 }
 
-impl From<SourceFlags> for ffi::pa_source_flags_t {
-    fn from(val: SourceFlags) -> Self {
-        val.bits() as ffi::pa_source_flags_t
+impl Into<ffi::pa_source_flags_t> for SourceFlags {
+    fn into(self) -> ffi::pa_source_flags_t {
+        self.bits() as ffi::pa_source_flags_t
     }
 }
 
@@ -480,24 +498,23 @@ pub enum PortAvailable {
 
 impl PortAvailable {
     pub fn try_from(x: ffi::pa_port_available_t) -> Option<Self> {
-        if (ffi::PA_PORT_AVAILABLE_UNKNOWN..=ffi::PA_PORT_AVAILABLE_YES).contains(&x) {
-            Some(unsafe { ::std::mem::transmute::<ffi::pa_port_available_t, Self>(x) })
+        if x >= ffi::PA_PORT_AVAILABLE_UNKNOWN && x <= ffi::PA_PORT_AVAILABLE_YES {
+            Some(unsafe { ::std::mem::transmute(x) })
         } else {
             None
         }
     }
 }
 
-impl From<PortAvailable> for ffi::pa_port_available_t {
-    fn from(val: PortAvailable) -> Self {
-        val as ffi::pa_port_available_t
+impl Into<ffi::pa_port_available_t> for PortAvailable {
+    fn into(self) -> ffi::pa_port_available_t {
+        self as ffi::pa_port_available_t
     }
 }
 
 #[repr(i32)]
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ChannelPosition {
-    #[default]
     Invalid = ffi::PA_CHANNEL_POSITION_INVALID,
     Mono = ffi::PA_CHANNEL_POSITION_MONO,
     FrontLeft = ffi::PA_CHANNEL_POSITION_FRONT_LEFT,
@@ -554,17 +571,23 @@ pub enum ChannelPosition {
 
 impl ChannelPosition {
     pub fn try_from(x: ffi::pa_channel_position_t) -> Option<Self> {
-        if (ffi::PA_CHANNEL_POSITION_INVALID..ffi::PA_CHANNEL_POSITION_MAX).contains(&x) {
-            Some(unsafe { ::std::mem::transmute::<ffi::pa_channel_position_t, Self>(x) })
+        if x >= ffi::PA_CHANNEL_POSITION_INVALID && x < ffi::PA_CHANNEL_POSITION_MAX {
+            Some(unsafe { ::std::mem::transmute(x) })
         } else {
             None
         }
     }
 }
 
-impl From<ChannelPosition> for ffi::pa_channel_position_t {
-    fn from(val: ChannelPosition) -> Self {
-        val as ffi::pa_channel_position_t
+impl Default for ChannelPosition {
+    fn default() -> Self {
+        ChannelPosition::Invalid
+    }
+}
+
+impl Into<ffi::pa_channel_position_t> for ChannelPosition {
+    fn into(self) -> ffi::pa_channel_position_t {
+        self as ffi::pa_channel_position_t
     }
 }
 pub type Result<T> = ::std::result::Result<T, error::ErrorCode>;

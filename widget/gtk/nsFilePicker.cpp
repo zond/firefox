@@ -617,27 +617,19 @@ void nsFilePicker::ClearPortalState() {
 void nsFilePicker::DonePortal(GVariant* aResult) {
   LOG("nsFilePicker::DonePortal(%s)\n",
       GUniquePtr<char>(g_variant_print(aResult, TRUE)).get());
-  auto result = [&]() -> Maybe<ResultCode> {
+  ResultCode result = [&] {
     RefPtr<GVariant> resultCode =
         dont_AddRef(g_variant_get_child_value(aResult, 0));
     switch (g_variant_get_uint32(resultCode)) {
       case 0:
-        return Some(ResultCode::returnOK);
+        return ResultCode::returnOK;
       case 1:
-        return Some(ResultCode::returnCancel);
       default:
-        return Nothing();
+        return ResultCode::returnCancel;
     }
   }();
 
-  if (!result) {
-    // This can happen if the portal is available but no existing backend works,
-    // see bug 1982187. In that case, fall back to the GTK impl.
-    ClearPortalState();
-    return OpenNonPortal();
-  }
-
-  if (*result == returnOK) {
+  if (result == returnOK) {
     RefPtr<GVariant> results =
         dont_AddRef(g_variant_get_child_value(aResult, 1));
     GVariantIter iter;
@@ -666,7 +658,7 @@ void nsFilePicker::DonePortal(GVariant* aResult) {
   }
 
   ClearPortalState();
-  DoneCommon(*result);
+  DoneCommon(result);
 }
 #endif
 
@@ -689,7 +681,7 @@ void nsFilePicker::OpenNonPortal() {
 
   GtkFileChooser* file_chooser = GTK_FILE_CHOOSER(gtk_file_chooser_dialog_new(
       title.get(), parent_widget, action, g_dgettext("gtk30", "_Cancel"),
-      GTK_RESPONSE_CANCEL, accept_button, GTK_RESPONSE_ACCEPT, nullptr));
+      accept_button, nullptr));
 
   // If we have --enable-proxy-bypass-protection, then don't allow
   // remote URLs to be used.
@@ -788,7 +780,6 @@ void nsFilePicker::OpenNonPortal() {
                                                  TRUE);
 
   mFileChooser = file_chooser;
-  NS_ADDREF_THIS();  // Balanced by the NS_RELEASE_THIS in DoneNonPortal.
   g_signal_connect(file_chooser, "response", G_CALLBACK(OnNonPortalResponse),
                    this);
   g_signal_connect(file_chooser, "destroy", G_CALLBACK(OnNonPortalDestroy),

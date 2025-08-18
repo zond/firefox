@@ -306,8 +306,6 @@ class AutoplayValueTest {
         assertEquals(sitePermissions.notification, result.notification)
         assertEquals(sitePermissions.localStorage, result.localStorage)
         assertEquals(sitePermissions.mediaKeySystemAccess, result.mediaKeySystemAccess)
-        assertEquals(sitePermissions.localDeviceAccess, result.localDeviceAccess)
-        assertEquals(sitePermissions.localNetworkAccess, result.localNetworkAccess)
     }
 
     @Test
@@ -335,8 +333,6 @@ class AutoplayValueTest {
         assertEquals(sitePermissions.notification, result.notification)
         assertEquals(sitePermissions.localStorage, result.localStorage)
         assertEquals(sitePermissions.mediaKeySystemAccess, result.mediaKeySystemAccess)
-        assertEquals(sitePermissions.localDeviceAccess, result.localDeviceAccess)
-        assertEquals(sitePermissions.localNetworkAccess, result.localNetworkAccess)
     }
 
     @Test
@@ -364,8 +360,6 @@ class AutoplayValueTest {
         assertEquals(sitePermissions.notification, result.notification)
         assertEquals(sitePermissions.localStorage, result.localStorage)
         assertEquals(sitePermissions.mediaKeySystemAccess, result.mediaKeySystemAccess)
-        assertEquals(sitePermissions.localDeviceAccess, result.localDeviceAccess)
-        assertEquals(sitePermissions.localNetworkAccess, result.localNetworkAccess)
     }
 
     @Test
@@ -387,7 +381,5 @@ class AutoplayValueTest {
         persistentStorage = Action.ASK_TO_ALLOW,
         mediaKeySystemAccess = Action.ASK_TO_ALLOW,
         crossOriginStorageAccess = Action.ASK_TO_ALLOW,
-        localDeviceAccess = Action.ASK_TO_ALLOW,
-        localNetworkAccess = Action.ASK_TO_ALLOW,
     )
 }

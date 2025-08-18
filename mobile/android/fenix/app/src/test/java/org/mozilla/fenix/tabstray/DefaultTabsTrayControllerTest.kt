@@ -1082,6 +1082,7 @@ class DefaultTabsTrayControllerTest {
         var appStateModeUpdate: BrowsingMode? = null
         browsingModeManager = DefaultBrowsingModeManager(
             intent = null,
+            store = browserStore,
             settings = settings,
             onModeChange = { updatedMode ->
                 appStateModeUpdate = updatedMode

@@ -10,6 +10,31 @@ ChromeUtils.defineESModuleGetters(lazy, {
   ExtensionParent: "resource://gre/modules/ExtensionParent.sys.mjs",
 });
 
+ChromeUtils.defineLazyGetter(lazy, "MOBILE_USER_AGENT", function () {
+  if (ChromeUtils.shouldResistFingerprinting("HttpUserAgent", null)) {
+    return Services.rfp.getSpoofedUserAgent(false);
+  }
+
+  return Cc["@mozilla.org/network/protocol;1?name=http"].getService(
+    Ci.nsIHttpProtocolHandler
+  ).userAgent;
+});
+
+ChromeUtils.defineLazyGetter(lazy, "DESKTOP_USER_AGENT", function () {
+  if (ChromeUtils.shouldResistFingerprinting("HttpUserAgent", null)) {
+    return Services.rfp.getSpoofedUserAgent(true);
+  }
+
+  return lazy.MOBILE_USER_AGENT.replace(
+    /Android \d.+?; [a-zA-Z]+/,
+    "X11; Linux x86_64"
+  ).replace(/Gecko\/[0-9\.]+/, "Gecko/20100101");
+});
+
+ChromeUtils.defineLazyGetter(lazy, "VR_USER_AGENT", function () {
+  return lazy.MOBILE_USER_AGENT.replace(/Mobile/, "Mobile VR");
+});
+
 // This needs to match GeckoSessionSettings.java
 const USER_AGENT_MODE_MOBILE = 0;
 const USER_AGENT_MODE_DESKTOP = 1;
@@ -42,33 +67,9 @@ export class GeckoViewSettings extends GeckoViewModule {
 
     switch (aEvent) {
       case "GeckoView:GetUserAgent": {
-        aCallback.onSuccess(this.customUserAgent ?? this.getMobileUserAgent());
+        aCallback.onSuccess(this.customUserAgent ?? lazy.MOBILE_USER_AGENT);
       }
     }
-  }
-
-  getMobileUserAgent() {
-    if (ChromeUtils.shouldResistFingerprinting("HttpUserAgent", null)) {
-      return Services.rfp.getSpoofedUserAgent(false);
-    }
-
-    return Cc["@mozilla.org/network/protocol;1?name=http"].getService(
-      Ci.nsIHttpProtocolHandler
-    ).userAgent;
-  }
-
-  getDesktopUserAgent() {
-    if (ChromeUtils.shouldResistFingerprinting("HttpUserAgent", null)) {
-      return Services.rfp.getSpoofedUserAgent(true);
-    }
-
-    return this.getMobileUserAgent()
-      .replace(/Android \d.+?; [a-zA-Z]+/, "X11; Linux x86_64")
-      .replace(/Gecko\/[0-9\.]+/, "Gecko/20100101");
-  }
-
-  getVrUserAgent() {
-    return this.getMobileUserAgent().replace(/Mobile/, "Mobile VR");
   }
 
   onSettingsUpdate() {
@@ -118,10 +119,10 @@ export class GeckoViewSettings extends GeckoViewModule {
       return this.userAgentOverride;
     }
     if (this.userAgentMode === USER_AGENT_MODE_DESKTOP) {
-      return this.getDesktopUserAgent();
+      return lazy.DESKTOP_USER_AGENT;
     }
     if (this.userAgentMode === USER_AGENT_MODE_VR) {
-      return this.getVrUserAgent();
+      return lazy.VR_USER_AGENT;
     }
     return null;
   }

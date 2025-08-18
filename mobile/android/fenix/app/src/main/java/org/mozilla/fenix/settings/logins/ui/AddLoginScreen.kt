@@ -250,8 +250,19 @@ private fun AddLoginPassword(store: LoginsStore) {
 @FlexibleWindowLightDarkPreview
 private fun AddLoginScreenPreview() {
     val store = LoginsStore(
-        initialState = LoginsState.default,
+        initialState = LoginsState(
+            loginItems = listOf(),
+            searchText = "",
+            sortOrder = LoginsSortOrder.default,
+            biometricAuthenticationDialogState = null,
+            loginsListState = null,
+            loginsAddLoginState = null,
+            loginsEditLoginState = null,
+            loginsLoginDetailState = null,
+            loginsDeletionState = null,
+        ),
     )
+
     FirefoxTheme {
         Box(modifier = Modifier.background(color = FirefoxTheme.colors.layer1)) {
             AddLoginScreen(store)

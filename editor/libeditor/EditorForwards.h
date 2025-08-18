@@ -123,8 +123,6 @@ class JoinNodesResult;                    // HTMLEditHelpers.h
 class JoinNodesTransaction;               // JoinNodesTransaction.h
 class MoveNodeResult;                     // HTMLEditHelpers.h
 class MoveNodeTransaction;                // MoveNodeTransaction.h
-class MoveNodeTransactionBase;            // MoveNodeTransaction.h
-class MoveSiblingsTransaction;            // MoveNodeTransaction.h
 class PlaceholderTransaction;             // PlaceholderTransaction.h
 class ReplaceTextInTextNodeTransaction;   // ReplaceTextTransaction.h
 class ReplaceTextTransaction;             // ReplaceTextTransaction.h

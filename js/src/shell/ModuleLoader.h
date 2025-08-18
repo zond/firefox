@@ -26,9 +26,10 @@ class ModuleLoader {
   void clearModules(JSContext* cx);
 
  private:
-  static bool LoadImportedModule(JSContext* cx, JS::Handle<JSScript*> referrer,
+  static bool LoadImportedModule(JSContext* cx, JS::Handle<JSObject*> referrer,
+                                 HandleValue referencingPrivate,
                                  HandleObject moduleRequest,
-                                 HandleValue hostDefined, HandleValue payload);
+                                 HandleValue payload);
 
   static bool GetImportMetaProperties(JSContext* cx, HandleValue privateValue,
                                       HandleObject metaObject);
@@ -46,7 +47,8 @@ class ModuleLoader {
   static bool LoadResolved(JSContext* cx, HandleValue hostDefined);
   static bool LoadRejected(JSContext* cx, HandleValue hostDefined,
                            HandleValue error);
-  bool loadImportedModule(JSContext* cx, HandleScript referrer,
+  bool loadImportedModule(JSContext* cx, HandleObject referrer,
+                          HandleValue referencingPrivate,
                           HandleObject moduleRequest, HandleValue payload);
   bool populateImportMeta(JSContext* cx, HandleValue privateValue,
                           HandleObject metaObject);
@@ -54,9 +56,9 @@ class ModuleLoader {
                          JS::Handle<JS::Value> referencingPrivate,
                          JS::Handle<JSString*> specifier,
                          JS::MutableHandle<JSString*> urlOut);
-  bool dynamicImport(JSContext* cx, HandleScript referrer,
+  bool dynamicImport(JSContext* cx, HandleValue referencingPrivate,
                      HandleObject moduleRequest, HandleValue payload);
-  bool doDynamicImport(JSContext* cx, HandleScript referrer,
+  bool doDynamicImport(JSContext* cx, HandleValue referencingPrivate,
                        HandleObject moduleRequest, HandleValue payload);
   JSObject* loadAndParse(JSContext* cx, HandleString path,
                          HandleObject moduleRequestArg);
@@ -65,7 +67,7 @@ class ModuleLoader {
   bool addModuleToRegistry(JSContext* cx, JS::ModuleType moduleType,
                            HandleString path, HandleObject module);
   JSLinearString* resolve(JSContext* cx, HandleObject moduleRequestArg,
-                          HandleScript referrer);
+                          HandleValue referencingInfo);
   JSLinearString* resolve(JSContext* cx, HandleString specifier,
                           HandleValue referencingInfo);
   bool getScriptPath(JSContext* cx, HandleValue privateValue,

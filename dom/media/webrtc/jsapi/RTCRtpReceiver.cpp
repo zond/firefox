@@ -1143,8 +1143,7 @@ const RTCStatsTimestampMaker* RTCRtpReceiver::GetTimestampMaker() const {
 
 Maybe<gfx::IntSize> RTCRtpReceiver::ReceivingSize() const {
   MOZ_ASSERT(NS_IsMainThread());
-  MOZ_ASSERT_IF(mPipeline,
-                mPipeline->mConduit->type() == MediaSessionConduit::VIDEO);
+  MOZ_ASSERT(mPipeline->mConduit->type() == MediaSessionConduit::VIDEO);
   return mReceivingSize.Ref();
 }
 

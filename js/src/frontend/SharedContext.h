@@ -490,7 +490,6 @@ class FunctionBox : public SuspendableContext {
     }
   }
 
-  [[nodiscard]] bool setUseAsm();
   [[nodiscard]] bool setAsmJSModule(const JS::WasmModule* module);
   bool isAsmJSModule() const { return flags_.isAsmJSNative(); }
 

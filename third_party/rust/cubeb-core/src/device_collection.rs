@@ -14,8 +14,8 @@ type CType = ffi::cubeb_device_collection;
 #[derive(Debug)]
 pub struct DeviceCollection<'ctx>(CType, &'ctx ContextRef);
 
-impl DeviceCollection<'_> {
-    pub(crate) fn init_with_ctx(ctx: &ContextRef, coll: CType) -> DeviceCollection<'_> {
+impl<'ctx> DeviceCollection<'ctx> {
+    pub(crate) fn init_with_ctx(ctx: &ContextRef, coll: CType) -> DeviceCollection {
         DeviceCollection(coll, ctx)
     }
 
@@ -24,7 +24,7 @@ impl DeviceCollection<'_> {
     }
 }
 
-impl Drop for DeviceCollection<'_> {
+impl<'ctx> Drop for DeviceCollection<'ctx> {
     fn drop(&mut self) {
         unsafe {
             let _ = call!(ffi::cubeb_device_collection_destroy(
@@ -35,7 +35,7 @@ impl Drop for DeviceCollection<'_> {
     }
 }
 
-impl ::std::ops::Deref for DeviceCollection<'_> {
+impl<'ctx> ::std::ops::Deref for DeviceCollection<'ctx> {
     type Target = DeviceCollectionRef;
 
     #[inline]
@@ -45,7 +45,7 @@ impl ::std::ops::Deref for DeviceCollection<'_> {
     }
 }
 
-impl ::std::convert::AsRef<DeviceCollectionRef> for DeviceCollection<'_> {
+impl<'ctx> ::std::convert::AsRef<DeviceCollectionRef> for DeviceCollection<'ctx> {
     #[inline]
     fn as_ref(&self) -> &DeviceCollectionRef {
         self

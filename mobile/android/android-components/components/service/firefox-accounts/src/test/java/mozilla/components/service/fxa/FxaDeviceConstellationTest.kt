@@ -8,6 +8,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleOwner
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.plus
 import mozilla.appservices.fxaclient.CloseTabsResult
@@ -59,6 +60,7 @@ import mozilla.appservices.fxaclient.DevicePushSubscription as NativeDevicePushS
 import mozilla.appservices.fxaclient.FxaClient as NativeFirefoxAccount
 import mozilla.appservices.sync15.DeviceType as RustDeviceType
 
+@ExperimentalCoroutinesApi
 @RunWith(AndroidJUnit4::class)
 class FxaDeviceConstellationTest {
     lateinit var account: NativeFirefoxAccount
@@ -116,6 +118,7 @@ class FxaDeviceConstellationTest {
     }
 
     @Test
+    @ExperimentalCoroutinesApi
     fun `updating device name`() = runTestOnMain {
         val currentDevice = testDevice("currentTestDevice", true)
         `when`(account.getDevices()).thenReturn(arrayOf(currentDevice))
@@ -158,6 +161,7 @@ class FxaDeviceConstellationTest {
     }
 
     @Test
+    @ExperimentalCoroutinesApi
     fun `set device push subscription`() = runTestOnMain {
         val subscription = DevicePushSubscription("http://endpoint.com", "pk", "auth key")
         constellation.setDevicePushSubscription(subscription)
@@ -166,6 +170,7 @@ class FxaDeviceConstellationTest {
     }
 
     @Test
+    @ExperimentalCoroutinesApi
     fun `process raw device command`() = runTestOnMain {
         // No commands, no observer.
         `when`(account.handlePushMessage("raw events payload")).thenReturn(mozilla.appservices.fxaclient.AccountEvent.Unknown)
@@ -270,6 +275,7 @@ class FxaDeviceConstellationTest {
     }
 
     @Test
+    @ExperimentalCoroutinesApi
     fun `refreshing constellation`() = runTestOnMain {
         // No devices, no observers.
         `when`(account.getDevices()).thenReturn(emptyArray())
@@ -358,6 +364,7 @@ class FxaDeviceConstellationTest {
     }
 
     @Test
+    @ExperimentalCoroutinesApi
     fun `polling for commands triggers observers`() = runTestOnMain {
         // No commands, no observers.
         `when`(account.gatherTelemetry()).thenReturn("{}")

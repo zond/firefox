@@ -5,7 +5,6 @@
 package org.mozilla.fenix.settings.logins.ui
 
 import mozilla.components.lib.state.State
-import kotlin.collections.List
 
 /**
  * Represents the state of the Logins list screen and its various subscreens.
@@ -18,36 +17,22 @@ import kotlin.collections.List
  * @property loginsAddLoginState State representing the add login subscreen, if visible.
  * @property loginsEditLoginState State representing the edit login subscreen, if visible.
  * @property loginsLoginDetailState State representing the login detail subscreen, if visible.
- * @property loginDeletionDialogState State representing the deletion state.
+ * @property loginsDeletionState State representing the deletion state.
  * @property newLoginState State representing the new login to be added state.
  */
 internal data class LoginsState(
-    val loginItems: List<LoginItem>,
-    val searchText: String?,
-    val sortOrder: LoginsSortOrder,
-    val biometricAuthenticationDialogState: BiometricAuthenticationDialogState?,
-    val loginsListState: LoginsListState?,
-    val loginsAddLoginState: LoginsAddLoginState?,
-    val loginsEditLoginState: LoginsEditLoginState?,
-    val loginsLoginDetailState: LoginsLoginDetailState?,
-    val loginDeletionDialogState: LoginDeletionDialogState,
-    val newLoginState: NewLoginState?,
-) : State {
-    companion object {
-        val default: LoginsState = LoginsState(
-            loginItems = listOf(),
-            searchText = null,
-            sortOrder = LoginsSortOrder.default,
-            biometricAuthenticationDialogState = BiometricAuthenticationDialogState.None,
-            loginsListState = null,
-            loginsAddLoginState = null,
-            loginsEditLoginState = null,
-            loginsLoginDetailState = null,
-            loginDeletionDialogState = LoginDeletionDialogState.None,
-            newLoginState = NewLoginState.None,
-        )
-    }
-}
+    val loginItems: List<LoginItem> = listOf(),
+    val searchText: String? = null,
+    val sortOrder: LoginsSortOrder = LoginsSortOrder.default,
+    val biometricAuthenticationDialogState: BiometricAuthenticationDialogState? =
+        BiometricAuthenticationDialogState.None,
+    val loginsListState: LoginsListState? = null,
+    val loginsAddLoginState: LoginsAddLoginState? = null,
+    val loginsEditLoginState: LoginsEditLoginState? = null,
+    val loginsLoginDetailState: LoginsLoginDetailState? = null,
+    val loginsDeletionState: LoginDeletionState? = null,
+    val newLoginState: NewLoginState? = NewLoginState.None,
+) : State
 
 internal sealed class BiometricAuthenticationDialogState {
     data object None : BiometricAuthenticationDialogState()
@@ -60,11 +45,11 @@ internal sealed class NewLoginState {
     data object Duplicate : NewLoginState()
 }
 
-internal sealed class LoginDeletionDialogState {
-    data object None : LoginDeletionDialogState()
+internal sealed class LoginDeletionState {
+    data object None : LoginDeletionState()
     data class Presenting(
         val guidToDelete: String,
-    ) : LoginDeletionDialogState()
+    ) : LoginDeletionState()
 }
 
 internal data class LoginsListState(
@@ -136,8 +121,8 @@ sealed class LoginsSortOrder {
         }
     }
 
-    internal fun LoginsState.isGuidToDelete(guid: String): Boolean = when (loginDeletionDialogState) {
-        is LoginDeletionDialogState.Presenting -> loginDeletionDialogState.guidToDelete == guid
+    internal fun LoginsState.isGuidToDelete(guid: String): Boolean = when (loginsDeletionState) {
+        is LoginDeletionState.Presenting -> loginsDeletionState.guidToDelete == guid
         else -> false
     }
 }

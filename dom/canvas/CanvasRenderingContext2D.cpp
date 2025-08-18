@@ -375,13 +375,7 @@ class AdjustedTargetForFilter {
       return;
     }
 
-    if (!(mFillPaintRect.IsEmpty() ||
-          mFinalTarget->CanCreateSimilarDrawTarget(mFillPaintRect.Size(),
-                                                   SurfaceFormat::B8G8R8A8)) ||
-        !(mStrokePaintRect.IsEmpty() ||
-          mFinalTarget->CanCreateSimilarDrawTarget(mStrokePaintRect.Size(),
-                                                   SurfaceFormat::B8G8R8A8)) ||
-        !mFinalTarget->CanCreateSimilarDrawTarget(mSourceGraphicRect.Size(),
+    if (!mFinalTarget->CanCreateSimilarDrawTarget(mSourceGraphicRect.Size(),
                                                   SurfaceFormat::B8G8R8A8)) {
       mTarget = mFinalTarget;
       mCtx = nullptr;
@@ -2259,7 +2253,6 @@ CanvasRenderingContext2D::SetContextOptions(JSContext* aCx,
 }
 
 UniquePtr<uint8_t[]> CanvasRenderingContext2D::GetImageBuffer(
-    mozilla::CanvasUtils::ImageExtraction aExtractionBehavior,
     int32_t* out_format, gfx::IntSize* out_imageSize) {
   UniquePtr<uint8_t[]> ret;
 
@@ -2282,7 +2275,7 @@ UniquePtr<uint8_t[]> CanvasRenderingContext2D::GetImageBuffer(
 
   mBufferProvider->ReturnSnapshot(snapshot.forget());
 
-  if (ret && aExtractionBehavior == CanvasUtils::ImageExtraction::Randomize) {
+  if (ret && ShouldResistFingerprinting(RFPTarget::CanvasRandomization)) {
     nsRFPService::RandomizePixels(
         GetCookieJarSettings(), PrincipalOrNull(), ret.get(),
         out_imageSize->width, out_imageSize->height,
@@ -2294,10 +2287,9 @@ UniquePtr<uint8_t[]> CanvasRenderingContext2D::GetImageBuffer(
 }
 
 NS_IMETHODIMP
-CanvasRenderingContext2D::GetInputStream(
-    const char* aMimeType, const nsAString& aEncoderOptions,
-    mozilla::CanvasUtils::ImageExtraction aExtractionBehavior,
-    nsIInputStream** aStream) {
+CanvasRenderingContext2D::GetInputStream(const char* aMimeType,
+                                         const nsAString& aEncoderOptions,
+                                         nsIInputStream** aStream) {
   nsCString enccid("@mozilla.org/image/encoder;2?type=");
   enccid += aMimeType;
   nsCOMPtr<imgIEncoder> encoder = do_CreateInstance(enccid.get());
@@ -2307,8 +2299,7 @@ CanvasRenderingContext2D::GetInputStream(
 
   int32_t format = 0;
   gfx::IntSize imageSize = {};
-  UniquePtr<uint8_t[]> imageBuffer =
-      GetImageBuffer(aExtractionBehavior, &format, &imageSize);
+  UniquePtr<uint8_t[]> imageBuffer = GetImageBuffer(&format, &imageSize);
   if (!imageBuffer) {
     return NS_ERROR_FAILURE;
   }
@@ -5415,7 +5406,7 @@ bool CanvasRenderingContext2D::IsPointInPath(JSContext* aCx, double aX,
   if (mCanvasElement) {
     nsCOMPtr<Document> ownerDoc = mCanvasElement->OwnerDoc();
     if (!CanvasUtils::IsImageExtractionAllowed(ownerDoc, aCx,
-                                               &aSubjectPrincipal)) {
+                                               aSubjectPrincipal)) {
       return false;
     }
   } else if (mOffscreenCanvas && mOffscreenCanvas->ShouldResistFingerprinting(
@@ -5459,7 +5450,7 @@ bool CanvasRenderingContext2D::IsPointInStroke(
   if (mCanvasElement) {
     nsCOMPtr<Document> ownerDoc = mCanvasElement->OwnerDoc();
     if (!CanvasUtils::IsImageExtractionAllowed(ownerDoc, aCx,
-                                               &aSubjectPrincipal)) {
+                                               aSubjectPrincipal)) {
       return false;
     }
   } else if (mOffscreenCanvas && mOffscreenCanvas->ShouldResistFingerprinting(
@@ -5943,13 +5934,6 @@ void CanvasRenderingContext2D::DrawImage(const CanvasImageSource& aImage,
 
   if (aSw <= 0.0 || aSh <= 0.0 || aDw <= 0.0 || aDh <= 0.0) {
     // source and/or destination are fully clipped, so nothing is painted
-    return;
-  }
-
-  if (static_cast<float>(aSw) <= 0.0 || static_cast<float>(aSh) <= 0.0 ||
-      static_cast<float>(aDw) <= 0.0 || static_cast<float>(aDh) <= 0.0) {
-    // When we actually draw we convert to float, so also check the values as
-    // floats.
     return;
   }
 
@@ -6523,10 +6507,10 @@ nsresult CanvasRenderingContext2D::GetImageDataArray(
       CanvasUtils::ImageExtraction::Unrestricted;
   if (mCanvasElement) {
     permission = CanvasUtils::ImageExtractionResult(mCanvasElement, aCx,
-                                                    &aSubjectPrincipal);
+                                                    aSubjectPrincipal);
   } else if (mOffscreenCanvas) {
     permission = CanvasUtils::ImageExtractionResult(mOffscreenCanvas, aCx,
-                                                    &aSubjectPrincipal);
+                                                    aSubjectPrincipal);
   }
 
   // Clone the data source surface if canvas randomization is enabled. We need

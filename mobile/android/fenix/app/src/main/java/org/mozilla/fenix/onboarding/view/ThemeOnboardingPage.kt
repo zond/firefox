@@ -30,12 +30,8 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
@@ -46,7 +42,6 @@ import androidx.compose.ui.semantics.testTag
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.times
 import mozilla.components.compose.base.annotation.FlexibleWindowLightDarkPreview
 import mozilla.components.compose.base.button.PrimaryButton
 import mozilla.components.compose.base.utils.inComposePreview
@@ -227,12 +222,11 @@ private fun SelectableImageItem(
     selectedOption: ThemeOptionType,
     onClick: (ThemeOptionType) -> Unit,
 ) {
-    var isMultilineLabel by remember { mutableStateOf(false) }
     val isSelectedOption = themeOption.themeType == selectedOption
 
     Column(
         modifier = Modifier
-            .width(if (isMultilineLabel) LocalDensity.current.fontScale * columnWidth else columnWidth)
+            .width(columnWidth)
             .clickable(
                 onClickLabel = stringResource(R.string.onboarding_customize_theme_a11y_action_label_select),
                 onClick = {
@@ -269,7 +263,6 @@ private fun SelectableImageItem(
 
         Text(
             text = themeOption.label,
-            onTextLayout = { if (!isMultilineLabel) { isMultilineLabel = it.lineCount > 1 } },
             color = FirefoxTheme.colors.textPrimary,
             modifier = Modifier.padding(vertical = 6.dp),
             style = FirefoxTheme.typography.caption,

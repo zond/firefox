@@ -1562,7 +1562,7 @@ void Statistics::recordParallelPhase(PhaseKind phaseKind,
                                      TimeDuration duration) {
   MOZ_ASSERT(CurrentThreadCanAccessRuntime(gc->rt));
 
-  if (slices_.empty()) {
+  if (aborted) {
     return;
   }
 

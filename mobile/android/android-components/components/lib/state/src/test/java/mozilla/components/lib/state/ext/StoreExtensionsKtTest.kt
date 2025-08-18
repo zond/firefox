@@ -14,6 +14,7 @@ import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.LifecycleRegistry
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import kotlinx.coroutines.DelicateCoroutinesApi
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.cancelAndJoin
@@ -39,6 +40,7 @@ import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 
 @RunWith(AndroidJUnit4::class)
+@ExperimentalCoroutinesApi
 @OptIn(DelicateCoroutinesApi::class) // GlobalScope usage.
 class StoreExtensionsKtTest {
 
@@ -139,6 +141,7 @@ class StoreExtensionsKtTest {
 
     @Test
     @Synchronized
+    @ExperimentalCoroutinesApi // Channel
     fun `Reading state updates from channel`() = runTestOnMain {
         val owner = MockedLifecycleOwner(Lifecycle.State.INITIALIZED)
 
@@ -193,6 +196,7 @@ class StoreExtensionsKtTest {
     }
 
     @Test(expected = IllegalArgumentException::class)
+    @ExperimentalCoroutinesApi // Channel
     fun `Creating channel throws if lifecycle is already DESTROYED`() {
         val owner = MockedLifecycleOwner(Lifecycle.State.STARTED)
 
@@ -210,6 +214,7 @@ class StoreExtensionsKtTest {
 
     @Test
     @Synchronized
+    @ExperimentalCoroutinesApi
     fun `Reading state updates from Flow with lifecycle owner`() = runTestOnMain {
         val owner = MockedLifecycleOwner(Lifecycle.State.INITIALIZED)
 
@@ -265,6 +270,7 @@ class StoreExtensionsKtTest {
     }
 
     @Test
+    @ExperimentalCoroutinesApi
     fun `Subscription is not added if owner destroyed before flow created`() {
         val owner = MockedLifecycleOwner(Lifecycle.State.STARTED)
         val latch = CountDownLatch(1)
@@ -288,6 +294,7 @@ class StoreExtensionsKtTest {
     }
 
     @Test
+    @ExperimentalCoroutinesApi
     fun `Subscription is not added if owner destroyed before flow produced`() {
         val owner = MockedLifecycleOwner(Lifecycle.State.STARTED)
         val latch = CountDownLatch(1)
@@ -312,6 +319,7 @@ class StoreExtensionsKtTest {
 
     @Test
     @Synchronized
+    @ExperimentalCoroutinesApi
     fun `Reading state updates from Flow without lifecycle owner`() = runTestOnMain {
         val store = Store(
             TestState(counter = 23),
@@ -361,6 +369,7 @@ class StoreExtensionsKtTest {
 
     @Test
     @Synchronized
+    @ExperimentalCoroutinesApi
     fun `Reading state from scoped flow without lifecycle owner`() {
         val store = Store(
             TestState(counter = 23),
@@ -407,6 +416,7 @@ class StoreExtensionsKtTest {
 
     @Test
     @Synchronized
+    @ExperimentalCoroutinesApi
     fun `Reading state from scoped flow with lifecycle owner`() {
         val owner = MockedLifecycleOwner(Lifecycle.State.INITIALIZED)
 

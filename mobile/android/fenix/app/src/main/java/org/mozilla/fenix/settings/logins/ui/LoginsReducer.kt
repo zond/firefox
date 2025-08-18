@@ -42,12 +42,10 @@ internal fun loginsReducer(state: LoginsState, action: LoginsAction) = when (act
         ),
     )
     is DetailLoginMenuAction.DeleteLoginMenuItemClicked -> state.copy(
-        loginDeletionDialogState = LoginDeletionDialogState.Presenting(action.item.guid),
-    )
-    is LoginDeletionDialogAction.DeleteTapped -> state.withDeletedLoginRemoved()
-        .copy(loginDeletionDialogState = LoginDeletionDialogState.None, loginsLoginDetailState = null)
-    is LoginDeletionDialogAction.CancelTapped -> state.copy(
-        loginDeletionDialogState = LoginDeletionDialogState.None,
+        loginsDeletionState = state.loginsLoginDetailState?.let {
+            LoginDeletionState.Presenting(it.login.guid)
+        },
+        loginsLoginDetailState = null,
     )
     is LoginsListBackClicked -> state.respondToLoginsListBackClick()
     is AddLoginBackClicked -> state.respondToAddLoginBackClick()
@@ -55,14 +53,6 @@ internal fun loginsReducer(state: LoginsState, action: LoginsAction) = when (act
     ViewDisposed,
     is Init, LearnMoreAboutSync,
     -> state
-}
-
-private fun LoginsState.withDeletedLoginRemoved(): LoginsState = when {
-    loginDeletionDialogState is LoginDeletionDialogState.Presenting -> copy(
-        loginItems = loginItems.filterNot { it.guid == loginDeletionDialogState.guidToDelete },
-    )
-
-    else -> this
 }
 
 private fun LoginsState.handleSearchLogins(action: SearchLogins): LoginsState = copy(
@@ -164,7 +154,7 @@ private fun LoginsState.handleAddLoginAction(action: AddLoginAction): LoginsStat
 private fun LoginsState.respondToLoginsDetailBackClick(): LoginsState = when {
     loginsLoginDetailState != null -> copy(
         loginsLoginDetailState = null,
-        loginDeletionDialogState = LoginDeletionDialogState.None,
+        loginsDeletionState = null,
     )
 
     else -> this

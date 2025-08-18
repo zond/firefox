@@ -107,7 +107,7 @@ HANDLE nsLookAndFeel::GetTheme(UXThemeClass aClass) {
 }
 
 uint32_t nsLookAndFeel::SystemColorFilter() {
-  if (!mColorFilterWatcher) {
+  if (NS_WARN_IF(!mColorFilterWatcher)) {
     return 0;
   }
 

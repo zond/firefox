@@ -547,10 +547,7 @@ inline bool IsConstructor(const Value& v) {
 }
 
 static inline bool MaybePreserveDOMWrapper(JSContext* cx, HandleObject obj) {
-  const JSClass* clasp = obj->getClass();
-  // If this ever changes, we'll just need to reevaluate the check below
-  MOZ_ASSERT_IF(clasp->preservesWrapper(), clasp->isDOMClass());
-  if (!clasp->isDOMClass()) {
+  if (!obj->getClass()->isDOMClass()) {
     return true;
   }
 

@@ -4,6 +4,7 @@
 
 package mozilla.components.support.utils
 
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import mozilla.components.support.test.mock
 import mozilla.components.support.test.rule.MainCoroutineRule
 import mozilla.components.support.test.rule.runTestOnMain
@@ -15,6 +16,7 @@ import org.mockito.Mockito.inOrder
 import org.mockito.Mockito.never
 import org.mockito.Mockito.verify
 
+@ExperimentalCoroutinesApi
 class RunWhenReadyQueueTest {
 
     @get:Rule

@@ -843,7 +843,7 @@ bool RenderCompositorANGLE::ShouldUseNativeCompositor() {
   return UseCompositor();
 }
 
-bool RenderCompositorANGLE::ShouldUseLayerCompositor() const {
+bool RenderCompositorANGLE::ShouldUseLayerCompositor() {
   return UseLayerCompositor();
 }
 
@@ -972,7 +972,8 @@ bool RenderCompositorANGLE::EnableAsyncScreenshot() {
   if (!UseLayerCompositor()) {
     return false;
   }
-  return mDCLayerTree->EnableAsyncScreenshot();
+  mDCLayerTree->EnableAsyncScreenshot();
+  return true;
 }
 
 bool RenderCompositorANGLE::RecreateNonNativeCompositorSwapChain() {

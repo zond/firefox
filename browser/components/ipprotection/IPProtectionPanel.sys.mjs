@@ -9,8 +9,6 @@ ChromeUtils.defineESModuleGetters(lazy, {
     "resource:///modules/ipprotection/IPProtectionService.sys.mjs",
 });
 
-import { LINKS } from "chrome://browser/content/ipprotection/ipprotection-constants.mjs";
-
 /**
  * Manages updates for a IP Protection panelView in a given browser window.
  */
@@ -22,6 +20,9 @@ export class IPProtectionPanel {
   static PANEL_ID = "PanelUI-ipprotection";
   static TITLE_L10N_ID = "ipprotection-title";
 
+  // TODO: this is temporary URL. Update it once finalized (Bug 1972462).
+  static HELP_PAGE_URL =
+    "https://support.mozilla.org/en-US/products/firefox-private-network-vpn";
   /**
    * Loads the ipprotection custom element script
    * into a given window.
@@ -48,16 +49,8 @@ export class IPProtectionPanel {
    *  The timestamp in milliseconds since IP Protection was enabled
    * @property {boolean} isSignedIn
    *  True if signed in to account
-   * @property {object} location
-   *  Data about the server location the proxy is connected to
-   * @property {string} location.name
-   *  The location country name
-   * @property {string} location.code
-   *  The location country code
-   * @property {"generic" | ""} error
-   *  The error type as a string if an error occurred, or empty string if there are no errors.
-   * @property {"alpha"} variant
-   * The feature variant type as a string.
+   * @property {string} location
+   *  The name of the location the proxy is connected to
    */
 
   /**
@@ -85,10 +78,8 @@ export class IPProtectionPanel {
    *
    * @param {Window} window
    *   Window containing the panelView to manage.
-   * @param {string} variant
-   *   Variant of the panel that should be used.
    */
-  constructor(window, variant = "") {
+  constructor(window) {
     this.handleEvent = this.#handleEvent.bind(this);
 
     let {
@@ -101,12 +92,7 @@ export class IPProtectionPanel {
       isSignedIn,
       isProtectionEnabled,
       protectionEnabledSince,
-      location: {
-        name: "United States",
-        code: "us",
-      },
-      error: "",
-      variant,
+      location: "United States",
     };
 
     if (window) {
@@ -166,7 +152,7 @@ export class IPProtectionPanel {
   showHelpPage() {
     let win = this.panel.ownerGlobal;
     if (win && !Cu.isInAutomation) {
-      win.openWebLinkIn(LINKS.SUPPORT_URL, "tab");
+      win.openWebLinkIn(IPProtectionPanel.HELP_PAGE_URL, "tab");
       this.close();
     }
   }

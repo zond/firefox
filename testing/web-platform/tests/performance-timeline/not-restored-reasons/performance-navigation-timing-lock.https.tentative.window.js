@@ -21,7 +21,6 @@ promise_test(async t => {
     return new Promise((resolve) => {
       navigator.locks.request('resource', () => {
         resolve(42);
-        return new Promise(() => {});
       });
     })
   });

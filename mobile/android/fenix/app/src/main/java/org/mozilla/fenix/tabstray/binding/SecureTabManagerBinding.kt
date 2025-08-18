@@ -43,11 +43,4 @@ class SecureTabManagerBinding(
                 }
             }
     }
-
-    override fun stop() {
-        super.stop()
-        if (!settings.lastKnownMode.isPrivate) {
-            fragment.removeSecure()
-        }
-    }
 }

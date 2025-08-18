@@ -895,7 +895,9 @@ static bool RecomputePosition(nsIFrame* aFrame) {
           nsLayoutUtils::FirstContinuationOrIBSplitSibling(aFrame);
 
       StickyScrollContainer::ComputeStickyOffsets(firstContinuation);
-      auto* ssc = StickyScrollContainer::GetOrCreateForFrame(firstContinuation);
+      StickyScrollContainer* ssc =
+          StickyScrollContainer::GetStickyScrollContainerForFrame(
+              firstContinuation);
       if (ssc) {
         ssc->PositionContinuations(firstContinuation);
       }
@@ -3338,9 +3340,6 @@ void RestyleManager::DoProcessPendingRestyles(ServoTraversalFlags aFlags) {
       // case.
       IncrementRestyleGeneration();
     }
-
-    // See https://bugzilla.mozilla.org/show_bug.cgi?id=1980206
-    presContext->PresShell()->MergeAnchorPosAnchorChanges();
 
     mInStyleRefresh = false;
     presContext->UpdateContainerQueryStyles();

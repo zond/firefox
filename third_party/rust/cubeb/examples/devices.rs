@@ -95,7 +95,7 @@ fn main() {
 
     let devices = match ctx.enumerate_devices(DeviceType::INPUT) {
         Ok(devices) => devices,
-        Err(cubeb::Error::NotSupported) => {
+        Err(e) if e.code() == cubeb::ErrorCode::NotSupported => {
             println!("Device enumeration not support for this backend.");
             return;
         }

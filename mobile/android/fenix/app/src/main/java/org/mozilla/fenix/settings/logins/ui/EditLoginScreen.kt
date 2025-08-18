@@ -173,8 +173,7 @@ private fun EditLoginUsername(store: LoginsStore, user: String) {
             store.dispatch(EditLoginAction.UsernameChanged(newUsername))
         },
         placeholder = "",
-        errorText = stringResource(R.string.saved_login_username_required_2),
-        isError = username.isBlank(),
+        errorText = "",
         modifier = Modifier
             .padding(
                 horizontal = FirefoxTheme.layout.space.static200,
@@ -208,8 +207,7 @@ private fun EditLoginPassword(store: LoginsStore, pass: String) {
                 store.dispatch(EditLoginAction.PasswordChanged(newPassword))
             },
             placeholder = "",
-            errorText = stringResource(R.string.saved_login_password_required_2),
-            isError = password.isBlank(),
+            errorText = "",
             modifier = Modifier
                 .padding(
                     horizontal = FirefoxTheme.layout.space.static200,
@@ -250,7 +248,13 @@ private fun EditLoginPassword(store: LoginsStore, pass: String) {
 @FlexibleWindowLightDarkPreview
 private fun EditLoginScreenPreview() {
     val store = LoginsStore(
-        initialState = LoginsState.default.copy(
+        initialState = LoginsState(
+            loginItems = listOf(),
+            searchText = "",
+            sortOrder = LoginsSortOrder.default,
+            biometricAuthenticationDialogState = null,
+            loginsListState = null,
+            loginsAddLoginState = null,
             loginsEditLoginState = LoginsEditLoginState(
                 login = LoginItem(
                     guid = "123",
@@ -262,6 +266,8 @@ private fun EditLoginScreenPreview() {
                 newPassword = "password 456",
                 isPasswordVisible = true,
             ),
+            loginsLoginDetailState = null,
+            loginsDeletionState = null,
         ),
     )
 

@@ -1,4 +1,4 @@
-// |jit-test|
+// |jit-test| --enable-import-attributes
 
 load(libdir + "match.js");
 load(libdir + "asserts.js");
@@ -388,68 +388,70 @@ program([
     )
 ]).assert(parseAsModule("export default 1234"));
 
-program([
-    exportDeclaration(
-        null,
-        [
-            exportSpecifier(
-                ident("a"),
-                ident("a")
-            )
-        ],
-        moduleRequest(
-            lit("b"),
+if (getRealmConfiguration("importAttributes")) {
+    program([
+        exportDeclaration(
+            null,
             [
-                importAttribute(ident('type'), lit('js')),
-            ]
-        ),
-        false
-    )
-]).assert(parseAsModule("export { a } from 'b'  with { type: 'js' } "));
-
-program([
-    exportDeclaration(
-        null,
-        [
-            exportSpecifier(
-                ident("a"),
-                ident("a")
-            )
-        ],
-        moduleRequest(
-            lit("b"),
-            [
-                importAttribute(ident('foo'), lit('bar')),
+                exportSpecifier(
+                    ident("a"),
+                    ident("a")
+                )
             ],
-        ),
-        false
-    )
-]).assert(parseAsModule("export { a } from 'b'  with { foo: 'bar', } "));
+            moduleRequest(
+                lit("b"),
+                [
+                    importAttribute(ident('type'), lit('js')),
+                ]
+            ),
+            false
+        )
+    ]).assert(parseAsModule("export { a } from 'b'  with { type: 'js' } "));
 
-program([
-    exportDeclaration(
-        null,
-        [
-            exportSpecifier(
-                ident("a"),
-                ident("a")
-            )
-        ],
-        moduleRequest(
-            lit("b"),
+    program([
+        exportDeclaration(
+            null,
             [
-                importAttribute(ident('type'), lit('js')),
-                importAttribute(ident('foo'), lit('bar')),
-                importAttribute(ident('test'), lit('123')),
-            ]
-        ),
-        false
-    )
-]).assert(parseAsModule("export { a } from 'b'  with { type: 'js', foo: 'bar', 'test': '123' } "));
+                exportSpecifier(
+                    ident("a"),
+                    ident("a")
+                )
+            ],
+            moduleRequest(
+                lit("b"),
+                [
+                    importAttribute(ident('foo'), lit('bar')),
+                ],
+            ),
+            false
+        )
+    ]).assert(parseAsModule("export { a } from 'b'  with { foo: 'bar', } "));
 
-assertThrowsInstanceOf(function () {
-    parseAsModule("export { a } from 'b'  with { type: type }");
-}, SyntaxError);
+    program([
+        exportDeclaration(
+            null,
+            [
+                exportSpecifier(
+                    ident("a"),
+                    ident("a")
+                )
+            ],
+            moduleRequest(
+                lit("b"),
+                [
+                    importAttribute(ident('type'), lit('js')),
+                    importAttribute(ident('foo'), lit('bar')),
+                    importAttribute(ident('test'), lit('123')),
+                ]
+            ),
+            false
+        )
+    ]).assert(parseAsModule("export { a } from 'b'  with { type: 'js', foo: 'bar', 'test': '123' } "));
+
+    assertThrowsInstanceOf(function () {
+        parseAsModule("export { a } from 'b'  with { type: type }");
+    }, SyntaxError);
+}
 
 assertThrowsInstanceOf(function () {
    parseAsModule("export default 1234 5678");

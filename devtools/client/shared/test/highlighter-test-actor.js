@@ -410,8 +410,8 @@ class HighlighterTestActor extends protocol.Actor {
       return false;
     }
 
-    const root = pauseOverlay.getElement("paused-dbg-root");
-    const toolbar = pauseOverlay.getElement("paused-dbg-toolbar");
+    const root = pauseOverlay.getElement("root");
+    const toolbar = pauseOverlay.getElement("toolbar");
 
     return (
       !root.hasAttribute("hidden") &&
@@ -455,10 +455,7 @@ class HighlighterTestActor extends protocol.Actor {
       return false;
     }
 
-    return (
-      eyeDropper.getElement("eye-dropper-root").getAttribute("hidden") !==
-      "true"
-    );
+    return eyeDropper.getElement("root").getAttribute("hidden") !== "true";
   }
 
   getEyeDropperElementAttribute(elementId, attributeName) {
@@ -479,9 +476,7 @@ class HighlighterTestActor extends protocol.Actor {
     // It might happen that while the eyedropper isn't hidden anymore, the color-value
     // is not set yet.
     const color = await TestUtils.waitForCondition(() => {
-      const colorValueElement = eyeDropper.getElement(
-        "eye-dropper-color-value"
-      );
+      const colorValueElement = eyeDropper.getElement("color-value");
       const textContent = colorValueElement.getTextContent();
       return textContent;
     }, "Couldn't get a non-empty text content for the color-value element");
@@ -532,14 +527,14 @@ class HighlighterTestActor extends protocol.Actor {
 
     const nodeTabbingOrderHighlighters = [
       ...highlighter._highlighter._highlighters.values(),
-    ].filter(h => !h.getElement("tabbing-order-root").hasAttribute("hidden"));
+    ].filter(h => !h.getElement("root").hasAttribute("hidden"));
 
     return nodeTabbingOrderHighlighters.map(h => {
       let nodeStr = h.currentNode.nodeName.toLowerCase();
       if (h.currentNode.id) {
         nodeStr = `${nodeStr}#${h.currentNode.id}`;
       }
-      return `${nodeStr} : ${h.getElement("tabbing-order-root").getTextContent()}`;
+      return `${nodeStr} : ${h.getElement("root").getTextContent()}`;
     });
   }
 }

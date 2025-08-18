@@ -3878,10 +3878,7 @@ bool Parser<FullParseHandler, Unit>::asmJS(ListNodeType list) {
     return true;
   }
 
-  // Mark this function as being in a "use asm" directive.
-  if (!pc_->functionBox()->setUseAsm()) {
-    return false;
-  }
+  pc_->functionBox()->useAsm = true;
 
   // Attempt to validate and compile this asm.js module. On success, the
   // tokenStream has been advanced to the closing }. On failure, the
@@ -5003,11 +5000,16 @@ bool GeneralParser<ParseHandler, Unit>::withClause(ListNodeType attributesSet) {
   MOZ_ASSERT(anyChars.isCurrentTokenType(TokenKind::Assert) ||
              anyChars.isCurrentTokenType(TokenKind::With));
 
+  if (!options().importAttributes()) {
+    error(JSMSG_IMPORT_ATTRIBUTES_NOT_SUPPORTED);
+    return false;
+  }
+
   if (!abortIfSyntaxParser()) {
     return false;
   }
 
-  if (!mustMatchToken(TokenKind::LeftCurly, JSMSG_CURLY_AFTER_WITH)) {
+  if (!mustMatchToken(TokenKind::LeftCurly, JSMSG_CURLY_AFTER_ASSERT)) {
     return false;
   }
 
@@ -5031,7 +5033,7 @@ bool GeneralParser<ParseHandler, Unit>::withClause(ListNodeType attributesSet) {
     } else if (token == TokenKind::String) {
       keyName = anyChars.currentToken().atom();
     } else {
-      error(JSMSG_ATTRIBUTE_KEY_EXPECTED);
+      error(JSMSG_ASSERT_KEY_EXPECTED);
       return false;
     }
 
@@ -5042,7 +5044,7 @@ bool GeneralParser<ParseHandler, Unit>::withClause(ListNodeType attributesSet) {
         ReportOutOfMemory(this->fc_);
         return false;
       }
-      error(JSMSG_DUPLICATE_ATTRIBUTE_KEY, str.get());
+      error(JSMSG_DUPLICATE_ASSERT_KEY, str.get());
       return false;
     }
     if (!usedAssertionKeys.add(p, keyName)) {
@@ -5053,10 +5055,10 @@ bool GeneralParser<ParseHandler, Unit>::withClause(ListNodeType attributesSet) {
     NameNodeType keyNode;
     MOZ_TRY_VAR_OR_RETURN(keyNode, newName(keyName), false);
 
-    if (!mustMatchToken(TokenKind::Colon, JSMSG_COLON_AFTER_ATTRIBUTE_KEY)) {
+    if (!mustMatchToken(TokenKind::Colon, JSMSG_COLON_AFTER_ASSERT_KEY)) {
       return false;
     }
-    if (!mustMatchToken(TokenKind::String, JSMSG_WITH_CLAUSE_STRING_LITERAL)) {
+    if (!mustMatchToken(TokenKind::String, JSMSG_ASSERT_STRING_LITERAL)) {
       return false;
     }
 
@@ -12647,25 +12649,30 @@ GeneralParser<ParseHandler, Unit>::importExpr(YieldHandling yieldHandling,
     }
 
     Node optionalArg;
-    if (next == TokenKind::Comma) {
-      tokenStream.consumeKnownToken(TokenKind::Comma,
-                                    TokenStream::SlashIsRegExp);
-
-      if (!tokenStream.peekToken(&next, TokenStream::SlashIsRegExp)) {
-        return errorResult();
-      }
-
-      if (next != TokenKind::RightParen) {
-        MOZ_TRY_VAR(optionalArg,
-                    assignExpr(InAllowed, yieldHandling, TripledotProhibited));
+    if (options().importAttributes()) {
+      if (next == TokenKind::Comma) {
+        tokenStream.consumeKnownToken(TokenKind::Comma,
+                                      TokenStream::SlashIsRegExp);
 
         if (!tokenStream.peekToken(&next, TokenStream::SlashIsRegExp)) {
           return errorResult();
         }
 
-        if (next == TokenKind::Comma) {
-          tokenStream.consumeKnownToken(TokenKind::Comma,
-                                        TokenStream::SlashIsRegExp);
+        if (next != TokenKind::RightParen) {
+          MOZ_TRY_VAR(optionalArg, assignExpr(InAllowed, yieldHandling,
+                                              TripledotProhibited));
+
+          if (!tokenStream.peekToken(&next, TokenStream::SlashIsRegExp)) {
+            return errorResult();
+          }
+
+          if (next == TokenKind::Comma) {
+            tokenStream.consumeKnownToken(TokenKind::Comma,
+                                          TokenStream::SlashIsRegExp);
+          }
+        } else {
+          MOZ_TRY_VAR(optionalArg,
+                      handler_.newPosHolder(TokenPos(pos().end, pos().end)));
         }
       } else {
         MOZ_TRY_VAR(optionalArg,

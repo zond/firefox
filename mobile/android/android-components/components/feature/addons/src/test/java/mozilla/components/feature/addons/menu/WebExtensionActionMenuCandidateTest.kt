@@ -6,6 +6,7 @@ package mozilla.components.feature.addons.menu
 
 import android.graphics.Color
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.runTest
 import mozilla.components.concept.engine.webextension.Action
 import mozilla.components.concept.menu.candidate.AsyncDrawableMenuIcon
@@ -21,6 +22,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 @RunWith(AndroidJUnit4::class)
+@ExperimentalCoroutinesApi
 class WebExtensionActionMenuCandidateTest {
 
     private val baseAction = Action(

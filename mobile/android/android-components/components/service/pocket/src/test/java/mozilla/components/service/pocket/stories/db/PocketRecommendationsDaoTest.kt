@@ -9,6 +9,7 @@ import androidx.arch.core.executor.testing.InstantTaskExecutorRule
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.runTest
 import mozilla.components.service.pocket.helpers.PocketTestResources
 import org.junit.After
@@ -21,6 +22,7 @@ import org.junit.runner.RunWith
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 
+@OptIn(ExperimentalCoroutinesApi::class)
 @RunWith(AndroidJUnit4::class)
 class PocketRecommendationsDaoTest {
     private val context: Context

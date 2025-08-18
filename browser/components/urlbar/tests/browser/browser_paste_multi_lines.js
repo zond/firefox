@@ -217,23 +217,11 @@ async function assertResult(expected) {
   Assert.equal(result.type, expected.type, "Type of autocomplete is correct");
 
   if (gURLBar.value) {
-    Assert.ok(
-      gURLBar.hasAttribute("usertyping"),
-      "Should have usertyping attribute"
-    );
-    Assert.ok(
-      BrowserTestUtils.isVisible(gURLBar.goButton),
-      "Go button should be visible"
-    );
+    Assert.ok(gURLBar.hasAttribute("usertyping"));
+    Assert.ok(BrowserTestUtils.isVisible(gURLBar.goButton));
   } else {
-    Assert.ok(
-      !gURLBar.hasAttribute("usertyping"),
-      "Should not have usertyping attribute"
-    );
-    Assert.ok(
-      BrowserTestUtils.isHidden(gURLBar.goButton),
-      "Go button should be hidden"
-    );
+    Assert.ok(!gURLBar.hasAttribute("usertyping"));
+    Assert.ok(BrowserTestUtils.isHidden(gURLBar.goButton));
   }
 }
 

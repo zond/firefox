@@ -4,6 +4,7 @@
 
 package mozilla.components.browser.toolbar
 
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.async
 import kotlinx.coroutines.cancelChildren
@@ -24,6 +25,7 @@ import org.mockito.Mockito.spy
 import org.mockito.Mockito.verify
 import java.util.concurrent.Executor
 
+@ExperimentalCoroutinesApi // for runTest
 class AsyncFilterListenerTest {
     @Test
     fun `filter listener cancels prior filter executions`() = runTest {

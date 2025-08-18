@@ -28,27 +28,32 @@ NS_IMPL_CYCLE_COLLECTION_CLASS(ModuleLoadRequest)
 
 NS_IMPL_CYCLE_COLLECTION_UNLINK_BEGIN_INHERITED(ModuleLoadRequest,
                                                 ScriptLoadRequest)
-  tmp->mReferrerScript = nullptr;
+  tmp->mReferencingPrivate.setUndefined();
+  tmp->mReferrerObj = nullptr;
   tmp->mModuleRequestObj = nullptr;
-  tmp->mPayload.setUndefined();
-  NS_IMPL_CYCLE_COLLECTION_UNLINK(mLoader, mRootModule, mModuleScript)
+  tmp->mStatePrivate.setUndefined();
+  NS_IMPL_CYCLE_COLLECTION_UNLINK(mLoader, mRootModule, mModuleScript,
+                                  mDynamicReferencingScript)
   tmp->ClearDynamicImport();
 NS_IMPL_CYCLE_COLLECTION_UNLINK_END
 
 NS_IMPL_CYCLE_COLLECTION_TRAVERSE_BEGIN_INHERITED(ModuleLoadRequest,
                                                   ScriptLoadRequest)
-  NS_IMPL_CYCLE_COLLECTION_TRAVERSE(mLoader, mRootModule, mModuleScript)
+  NS_IMPL_CYCLE_COLLECTION_TRAVERSE(mLoader, mRootModule, mModuleScript,
+                                    mDynamicReferencingScript)
 NS_IMPL_CYCLE_COLLECTION_TRAVERSE_END
 
 NS_IMPL_CYCLE_COLLECTION_TRACE_BEGIN_INHERITED(ModuleLoadRequest,
                                                ScriptLoadRequest)
-  NS_IMPL_CYCLE_COLLECTION_TRACE_JS_MEMBER_CALLBACK(mReferrerScript)
+  NS_IMPL_CYCLE_COLLECTION_TRACE_JS_MEMBER_CALLBACK(mDynamicPromise)
+  NS_IMPL_CYCLE_COLLECTION_TRACE_JS_MEMBER_CALLBACK(mReferrerObj)
   NS_IMPL_CYCLE_COLLECTION_TRACE_JS_MEMBER_CALLBACK(mModuleRequestObj)
-  NS_IMPL_CYCLE_COLLECTION_TRACE_JS_MEMBER_CALLBACK(mPayload)
+  NS_IMPL_CYCLE_COLLECTION_TRACE_JS_MEMBER_CALLBACK(mReferencingPrivate)
+  NS_IMPL_CYCLE_COLLECTION_TRACE_JS_MEMBER_CALLBACK(mStatePrivate)
 NS_IMPL_CYCLE_COLLECTION_TRACE_END
 
 ModuleLoadRequest::ModuleLoadRequest(
-    nsIURI* aURI, ModuleType aModuleType,
+    nsIURI* aURI, JS::ModuleType aModuleType,
     mozilla::dom::ReferrerPolicy aReferrerPolicy,
     ScriptFetchOptions* aFetchOptions,
     const mozilla::dom::SRIMetadata& aIntegrity, nsIURI* aReferrer,
@@ -84,7 +89,7 @@ void ModuleLoadRequest::Cancel() {
   ScriptLoadRequest::Cancel();
 
   mModuleScript = nullptr;
-  mReferrerScript = nullptr;
+  mReferrerObj = nullptr;
   mModuleRequestObj = nullptr;
 }
 
@@ -170,20 +175,20 @@ void ModuleLoadRequest::LoadFinished() {
   mLoader->OnModuleLoadComplete(request);
 }
 
-void ModuleLoadRequest::SetDynamicImport(LoadedScript* aReferencingScript,
-                                         Handle<JSObject*> aModuleRequestObj,
-                                         Handle<JSObject*> aPromise) {
-  MOZ_ASSERT(mPayload.isUndefined());
-
+void ModuleLoadRequest::SetDynamicImport(
+    LoadedScript* aReferencingScript, JS::Handle<JSObject*> aModuleRequestObj,
+    JS::Handle<JSObject*> aPromise) {
+  mDynamicReferencingScript = aReferencingScript;
   mModuleRequestObj = aModuleRequestObj;
-  mPayload = ObjectValue(*aPromise);
+  mDynamicPromise = aPromise;
 
   mozilla::HoldJSObjects(this);
 }
 
 void ModuleLoadRequest::ClearDynamicImport() {
+  mDynamicReferencingScript = nullptr;
   mModuleRequestObj = nullptr;
-  mPayload = UndefinedValue();
+  mDynamicPromise = nullptr;
 }
 
 }  // namespace JS::loader

@@ -1,4 +1,4 @@
-// |reftest| skip-if(!xulRuntime.shell)
+// |reftest| skip-if(!xulRuntime.shell) shell-option(--enable-import-attributes)
 
 function moduleRequest(source, attributes) {
   return {
@@ -104,11 +104,13 @@ assertModule(`
 `, [
   exportDecl(null, [exportNamespaceSpec(literal("x"))], moduleRequest(literal("module"), []), false),
 ]);
-assertModule(`
-  import {"x" as y} from "module" with {type: "json"};
-`, [
-  importDecl([importSpec(literal("x"), ident("y"))], moduleRequest(literal("module"), [importAttribute(ident("type"), literal("json"))])),
-]);
+if (getRealmConfiguration("importAttributes")) {
+  assertModule(`
+    import {"x" as y} from "module" with {type: "json"};
+  `, [
+    importDecl([importSpec(literal("x"), ident("y"))], moduleRequest(literal("module"), [importAttribute(ident("type"), literal("json"))])),
+  ]);
+}
 
 if (typeof reportCompare === "function")
   reportCompare(true, true);

@@ -30,12 +30,11 @@ class CssTransformHighlighter extends AutoRefreshHighlighter {
   constructor(highlighterEnv) {
     super(highlighterEnv);
 
+    this.ID_CLASS_PREFIX = "css-transform-";
+
     this.markup = new CanvasFrameAnonymousContentHelper(
       this.highlighterEnv,
-      this._buildMarkup.bind(this),
-      {
-        contentRootHostClassName: "devtools-highlighter-css-transform",
-      }
+      this._buildMarkup.bind(this)
     );
     this.isReady = this.markup.initialize();
   }
@@ -48,27 +47,29 @@ class CssTransformHighlighter extends AutoRefreshHighlighter {
     });
 
     // The root wrapper is used to unzoom the highlighter when needed.
-    this.rootEl = this.markup.createNode({
+    const rootWrapper = this.markup.createNode({
       parent: container,
       attributes: {
-        id: "css-transform-root",
-        class: "css-transform-root",
+        id: "root",
+        class: "root",
       },
+      prefix: this.ID_CLASS_PREFIX,
     });
 
     const svg = this.markup.createSVGNode({
       nodeType: "svg",
-      parent: this.rootEl,
+      parent: rootWrapper,
       attributes: {
-        id: "css-transform-elements",
+        id: "elements",
         hidden: "true",
         width: "100%",
         height: "100%",
       },
+      prefix: this.ID_CLASS_PREFIX,
     });
 
     // Add a marker tag to the svg root for the arrow tip
-    this.markerId = "css-transform-arrow-marker-" + MARKER_COUNTER;
+    this.markerId = "arrow-marker-" + MARKER_COUNTER;
     MARKER_COUNTER++;
     const marker = this.markup.createSVGNode({
       nodeType: "marker",
@@ -83,6 +84,7 @@ class CssTransformHighlighter extends AutoRefreshHighlighter {
         refY: "5",
         viewBox: "0 0 10 10",
       },
+      prefix: this.ID_CLASS_PREFIX,
     });
     this.markup.createSVGNode({
       nodeType: "path",
@@ -103,17 +105,19 @@ class CssTransformHighlighter extends AutoRefreshHighlighter {
       nodeType: "polygon",
       parent: shapesGroup,
       attributes: {
-        id: "css-transform-untransformed",
-        class: "css-transform-untransformed",
+        id: "untransformed",
+        class: "untransformed",
       },
+      prefix: this.ID_CLASS_PREFIX,
     });
     this.markup.createSVGNode({
       nodeType: "polygon",
       parent: shapesGroup,
       attributes: {
-        id: "css-transform-transformed",
-        class: "css-transform-transformed",
+        id: "transformed",
+        class: "transformed",
       },
+      prefix: this.ID_CLASS_PREFIX,
     });
 
     // Create the arrows
@@ -122,10 +126,11 @@ class CssTransformHighlighter extends AutoRefreshHighlighter {
         nodeType: "line",
         parent: shapesGroup,
         attributes: {
-          id: "css-transform-line" + nb,
-          class: "css-transform-line",
+          id: "line" + nb,
+          class: "line",
           "marker-end": "url(#" + this.markerId + ")",
         },
+        prefix: this.ID_CLASS_PREFIX,
       });
     }
 
@@ -138,11 +143,10 @@ class CssTransformHighlighter extends AutoRefreshHighlighter {
   destroy() {
     AutoRefreshHighlighter.prototype.destroy.call(this);
     this.markup.destroy();
-    this.rootEl = null;
   }
 
   getElement(id) {
-    return this.markup.getElement(id);
+    return this.markup.getElement(this.ID_CLASS_PREFIX + id);
   }
 
   /**
@@ -212,15 +216,21 @@ class CssTransformHighlighter extends AutoRefreshHighlighter {
     // Getting the points for the untransformed shape
     const untransformedQuad = getNodeBounds(this.win, this.currentNode);
 
-    this._setPolygonPoints(quad, "css-transform-transformed");
-    this._setPolygonPoints(untransformedQuad, "css-transform-untransformed");
-    this._setLinePoints(untransformedQuad.p1, quad.p1, "css-transform-line1");
-    this._setLinePoints(untransformedQuad.p2, quad.p2, "css-transform-line2");
-    this._setLinePoints(untransformedQuad.p3, quad.p3, "css-transform-line3");
-    this._setLinePoints(untransformedQuad.p4, quad.p4, "css-transform-line4");
+    this._setPolygonPoints(quad, "transformed");
+    this._setPolygonPoints(untransformedQuad, "untransformed");
+    for (const nb of ["1", "2", "3", "4"]) {
+      this._setLinePoints(
+        untransformedQuad["p" + nb],
+        quad["p" + nb],
+        "line" + nb
+      );
+    }
 
     // Adapt to the current zoom
-    this.markup.scaleRootElement(this.currentNode, "css-transform-root");
+    this.markup.scaleRootElement(
+      this.currentNode,
+      this.ID_CLASS_PREFIX + "root"
+    );
 
     this._showShapes();
 
@@ -244,11 +254,11 @@ class CssTransformHighlighter extends AutoRefreshHighlighter {
   }
 
   _hideShapes() {
-    this.getElement("css-transform-elements").setAttribute("hidden", "true");
+    this.getElement("elements").setAttribute("hidden", "true");
   }
 
   _showShapes() {
-    this.getElement("css-transform-elements").removeAttribute("hidden");
+    this.getElement("elements").removeAttribute("hidden");
   }
 }
 

@@ -638,9 +638,9 @@ impl WebGpuError for ColorAttachmentError {
 pub enum AttachmentError {
     #[error("The format of the depth-stencil attachment ({0:?}) is not a depth-or-stencil format")]
     InvalidDepthStencilAttachmentFormat(wgt::TextureFormat),
-    #[error("LoadOp must be None for read-only attachments")]
+    #[error("Read-only attachment with load")]
     ReadOnlyWithLoad,
-    #[error("StoreOp must be None for read-only attachments")]
+    #[error("Read-only attachment with store")]
     ReadOnlyWithStore,
     #[error("Attachment without load")]
     NoLoad,

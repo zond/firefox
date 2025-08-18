@@ -6,7 +6,6 @@ package org.mozilla.geckoview.test
 
 import android.content.ClipData
 import android.os.Build
-import android.os.Parcel
 import android.os.SystemClock
 import android.view.DragEvent
 import android.view.MotionEvent
@@ -25,38 +24,39 @@ import org.mozilla.geckoview.test.rule.GeckoSessionTestRule.WithDisplay
 class DragAndDropTest : BaseSessionTest() {
     // DragEvent has no constructor, so we create it via Java reflection.
     fun createDragEvent(action: Int, x: Float = 0.0F, y: Float = 0.0F): DragEvent {
-        val p = Parcel.obtain()
-        p.writeInt(action) // mAction
+        val method = DragEvent::class.java.getDeclaredMethod("obtain")
+        method.setAccessible(true)
+        val dragEvent = method.invoke(null) as DragEvent
+
+        val fieldAction = DragEvent::class.java.getDeclaredField("mAction")
+        fieldAction.setAccessible(true)
+        fieldAction.set(dragEvent, action)
 
         if (listOf(DragEvent.ACTION_DRAG_STARTED, DragEvent.ACTION_DRAG_LOCATION, DragEvent.ACTION_DROP).contains(action)) {
-            p.writeFloat(x) // mX
-            p.writeFloat(y) // mY
-        } else {
-            p.writeFloat(0.0F) // mX
-            p.writeFloat(0.0F) // mY
+            val fieldX = DragEvent::class.java.getDeclaredField("mX")
+            fieldX.setAccessible(true)
+            fieldX.set(dragEvent, x)
+
+            val fieldY = DragEvent::class.java.getDeclaredField("mY")
+            fieldY.setAccessible(true)
+            fieldY.set(dragEvent, y)
         }
-        p.writeInt(0) // mDragResult
 
         val clipData = ClipData.newPlainText("label", "foo")
-        // mClipData
         if (action == DragEvent.ACTION_DROP) {
-            p.writeInt(1) // indicator of ClipData presence
-
-            clipData.writeToParcel(p, 0)
-        } else {
-            p.writeInt(0) // indicator of ClipData presence
+            val fieldClipData = DragEvent::class.java.getDeclaredField("mClipData")
+            fieldClipData.setAccessible(true)
+            fieldClipData.set(dragEvent, clipData)
         }
-        // mClipDescription
+
         if (action != DragEvent.ACTION_DRAG_ENDED) {
-            val clipDescription = clipData.getDescription()
-            p.writeInt(1) // indicator of ClipDescription presence
-            clipDescription.writeToParcel(p, 0)
-        } else {
-            p.writeInt(0) // indicator of ClipDescription presence
+            var clipDescription = clipData.getDescription()
+            val fieldClipDescription = DragEvent::class.java.getDeclaredField("mClipDescription")
+            fieldClipDescription.setAccessible(true)
+            fieldClipDescription.set(dragEvent, clipDescription)
         }
 
-        p.setDataPosition(0)
-        return DragEvent.CREATOR.createFromParcel(p)
+        return dragEvent
     }
 
     fun sendDragEvent(startX: Float, startY: Float, endY: Float) {
@@ -146,7 +146,7 @@ class DragAndDropTest : BaseSessionTest() {
 
         sendDragEvent(100.0F, 250.0F, 450.0F)
 
-        val value = promiseDragOver.value as JSONObject
+        var value = promiseDragOver.value as JSONObject
         assertThat("dataTransfer type is text/plain", value.getJSONArray("types").getString(0), equalTo("text/plain"))
         assertThat("dataTransfer set empty string during dragover event", value.getString("data"), equalTo(""))
         assertThat("input event is fired correctly", promiseSetValue.value as String, equalTo("foo"))

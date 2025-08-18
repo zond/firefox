@@ -1,4 +1,3 @@
 {
-    "stages": "2",
-    "targets": "X86;WebAssembly"
+    "stages": "2"
 }

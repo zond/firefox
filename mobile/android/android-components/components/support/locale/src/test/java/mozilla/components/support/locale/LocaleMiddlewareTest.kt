@@ -5,6 +5,7 @@
 package mozilla.components.support.locale
 
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.runTest
 import mozilla.components.browser.state.action.LocaleAction
 import mozilla.components.browser.state.state.BrowserState
@@ -24,6 +25,7 @@ import org.mockito.Mockito.spy
 import org.mockito.Mockito.verify
 import org.robolectric.annotation.Config
 
+@ExperimentalCoroutinesApi
 @RunWith(AndroidJUnit4::class)
 class LocaleMiddlewareTest {
 

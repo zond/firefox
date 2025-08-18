@@ -10,6 +10,7 @@ import androidx.work.Configuration
 import androidx.work.WorkInfo
 import androidx.work.WorkManager
 import androidx.work.testing.WorkManagerTestInitHelper
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.runTest
 import mozilla.components.service.mars.contile.ContileTopSitesUpdater
 import mozilla.components.service.mars.contile.ContileTopSitesUpdater.Companion.PERIODIC_WORK_TAG
@@ -25,6 +26,7 @@ import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 
+@ExperimentalCoroutinesApi // for runTest
 @RunWith(AndroidJUnit4::class)
 class ContileTopSitesUpdaterTest {
 

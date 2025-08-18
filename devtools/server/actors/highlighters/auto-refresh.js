@@ -339,14 +339,16 @@ class AutoRefreshHighlighter extends EventEmitter {
       return;
     }
 
-    if (!this.rootEl) {
-      // Highlighters which support simple highlighters are expected to use a root element.
+    const root = this.getElement("root");
+    if (!root) {
+      // Highlighters which support simple highlighters are expected to use a
+      // root element with the id "root".
       return;
     }
 
     // Add/remove the `user-simple-highlighters` class based on the current
     // toolbox configuration.
-    this.rootEl.classList.toggle(
+    root.classList?.toggle(
       "use-simple-highlighters",
       this.highlighterEnv.useSimpleHighlightersForReducedMotion
     );

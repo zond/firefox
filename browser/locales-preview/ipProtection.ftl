@@ -30,15 +30,19 @@ ipprotection-feature-introduction-button-secondary-no-thanks = No thanks
 
 ##
 
-# The panel status card has a header and a connection time displayed under it when the VPN is on.
+# The panel status card has a header and a connection time displayed under it.
 # Variables:
 #   $time (String) - The amount of time connected to the proxy as HH:MM:SS (hours, minutes, seconds).
 ipprotection-connection-status-on =
   .label = VPN on
   .description = { $time }
 
+# The panel status card has a header and a connection time displayed under it.
+# Variables:
+#   $time (String) - The amount of time connected to the proxy as HH:MM:SS (hours, minutes, seconds).
 ipprotection-connection-status-off =
   .label = VPN off
+  .description = { $time }
 
 # When VPN is toggled on
 ipprotection-toggle-active =
@@ -65,12 +69,3 @@ sign-in-vpn = Next
 active-subscription-vpn-title = Finish setting up { -mozilla-vpn-brand-name }
 active-subscription-vpn-message = Download it and install the extension to unlock your upgrade.
 get-vpn-button = Download
-
-## Messages and errors
-
-# TODO: This is placeholder text. Error heading and message need to be finalized.
-ipprotection-message-generic-error =
-  .heading = Something went wrong
-  .message = An error occurred with your VPN connection. Please try again later.
-
-##

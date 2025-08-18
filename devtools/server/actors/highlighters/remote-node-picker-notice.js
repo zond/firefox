@@ -37,11 +37,7 @@ class RemoteNodePickerNotice {
 
     this.markup = new CanvasFrameAnonymousContentHelper(
       this.#highlighterEnvironment,
-      this.#buildMarkup,
-      {
-        contentRootHostClassName:
-          "devtools-highlighter-remote-node-picker-notice",
-      }
+      this.#buildMarkup
     );
     this.isReady = this.markup.initialize();
   }

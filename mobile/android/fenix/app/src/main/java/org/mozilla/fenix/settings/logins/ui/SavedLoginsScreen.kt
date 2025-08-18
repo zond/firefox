@@ -396,9 +396,16 @@ private fun LoginsListScreenPreview() {
 
     val store = { _: NavHostController ->
         LoginsStore(
-            initialState = LoginsState.default.copy(
+            initialState = LoginsState(
                 loginItems = loginItems,
                 searchText = "",
+                sortOrder = LoginsSortOrder.default,
+                biometricAuthenticationDialogState = null,
+                loginsListState = null,
+                loginsAddLoginState = null,
+                loginsEditLoginState = null,
+                loginsLoginDetailState = null,
+                loginsDeletionState = null,
             ),
         )
     }
@@ -415,9 +422,16 @@ private fun LoginsListScreenPreview() {
 private fun EmptyLoginsListScreenPreview() {
     val store = { _: NavHostController ->
         LoginsStore(
-            initialState = LoginsState.default.copy(
+            initialState = LoginsState(
                 loginItems = listOf(),
                 searchText = "",
+                sortOrder = LoginsSortOrder.default,
+                biometricAuthenticationDialogState = null,
+                loginsListState = null,
+                loginsAddLoginState = null,
+                loginsEditLoginState = null,
+                loginsLoginDetailState = null,
+                loginsDeletionState = null,
             ),
         )
     }

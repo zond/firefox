@@ -505,13 +505,13 @@ already_AddRefed<Promise> OffscreenCanvas::ConvertToBlob(
   RefPtr<EncodeCompleteCallback> callback =
       CreateEncodeCompleteCallback(promise);
 
-  CanvasUtils::ImageExtraction spoofing = CanvasUtils::ImageExtractionResult(
-      this, nsContentUtils::GetCurrentJSContext(),
-      mCurrentContext ? mCurrentContext->PrincipalOrNull() : nullptr);
-
+  bool usePlaceholder = mCurrentContext && mCurrentContext->PrincipalOrNull() &&
+                        !CanvasUtils::IsImageExtractionAllowed(
+                            this, nsContentUtils::GetCurrentJSContext(),
+                            *mCurrentContext->PrincipalOrNull());
   CanvasRenderingContextHelper::ToBlob(callback, type, encodeOptions,
                                        /* aUsingCustomOptions */ false,
-                                       spoofing, aRv);
+                                       usePlaceholder, aRv);
   if (aRv.Failed()) {
     promise->MaybeReject(std::move(aRv));
   }
@@ -549,11 +549,12 @@ already_AddRefed<Promise> OffscreenCanvas::ToBlob(JSContext* aCx,
 
   RefPtr<EncodeCompleteCallback> callback =
       CreateEncodeCompleteCallback(promise);
-  CanvasUtils::ImageExtraction spoofing = CanvasUtils::ImageExtractionResult(
-      this, aCx,
-      mCurrentContext ? mCurrentContext->PrincipalOrNull() : nullptr);
-  CanvasRenderingContextHelper::ToBlob(aCx, callback, aType, aParams, spoofing,
-                                       aRv);
+  bool usePlaceholder = mCurrentContext && mCurrentContext->PrincipalOrNull() &&
+                        !CanvasUtils::IsImageExtractionAllowed(
+                            this, nsContentUtils::GetCurrentJSContext(),
+                            *mCurrentContext->PrincipalOrNull());
+  CanvasRenderingContextHelper::ToBlob(aCx, callback, aType, aParams,
+                                       usePlaceholder, aRv);
 
   return promise.forget();
 }
@@ -572,10 +573,6 @@ void OffscreenCanvas::SetWriteOnly(RefPtr<nsIPrincipal>&& aExpandedReader) {
                          mExpandedReader.forget());
   mExpandedReader = std::move(aExpandedReader);
   mIsWriteOnly = true;
-
-  if (mDisplay) {
-    mDisplay->SetWriteOnly(mExpandedReader);
-  }
 }
 
 bool OffscreenCanvas::CallerCanRead(nsIPrincipal& aPrincipal) const {

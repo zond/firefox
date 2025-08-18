@@ -19,16 +19,16 @@ use cubeb_core::ffi;
 use std::convert::TryInto;
 use std::ffi::CStr;
 use std::mem::size_of;
-use std::os::raw::{c_int, c_long, c_void};
+use std::os::raw::{c_long, c_void};
 use std::rc::Rc;
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::{cell::RefCell, sync::Mutex};
 use std::{panic, slice};
 
-use audioipc::errors::Result;
+use crate::errors::*;
 
 fn error(error: cubeb::Error) -> ClientMessage {
-    ClientMessage::Error(error as c_int)
+    ClientMessage::Error(error.raw_code())
 }
 
 struct CubebDeviceCollectionManager {
@@ -163,7 +163,7 @@ fn cubeb_init_from_context_params() -> cubeb::Result<cubeb::Context> {
     let backend_name = params.backend_name.as_deref();
     let r = cubeb::Context::init(context_name, backend_name);
     r.inspect_err(|e| {
-        info!("cubeb::Context::init failed r={e:?}");
+        info!("cubeb::Context::init failed r={:?}", e);
     })
 }
 
@@ -282,14 +282,14 @@ impl ServerStreamCallbacks {
                 frames
             }
             _ => {
-                debug!("Unexpected message {r:?} during data_callback");
+                debug!("Unexpected message {:?} during data_callback", r);
                 cubeb::ffi::CUBEB_ERROR.try_into().unwrap()
             }
         }
     }
 
     fn state_callback(&self, state: cubeb::State) {
-        trace!("Stream state callback: {state:?}");
+        trace!("Stream state callback: {:?}", state);
         if !self.connected.load(Ordering::Acquire) {
             warn!("Stream state callback triggered before stream connected");
             return;
@@ -301,7 +301,7 @@ impl ServerStreamCallbacks {
         match r {
             Ok(CallbackResp::State) => {}
             _ => {
-                debug!("Unexpected message {r:?} during state callback");
+                debug!("Unexpected message {:?} during state callback", r);
             }
         }
     }
@@ -318,7 +318,7 @@ impl ServerStreamCallbacks {
         match r {
             Ok(CallbackResp::DeviceChange) => {}
             _ => {
-                debug!("Unexpected message {r:?} during device change callback");
+                debug!("Unexpected message {:?} during device change callback", r);
             }
         }
     }
@@ -358,7 +358,10 @@ struct DeviceCollectionChangeCallback {
 impl DeviceCollectionChangeCallback {
     fn device_collection_changed_callback(&self, device_type: ffi::cubeb_device_type) {
         // TODO: Assert device_type is in devtype.
-        debug!("Sending device collection ({device_type:?}) changed event");
+        debug!(
+            "Sending device collection ({:?}) changed event",
+            device_type
+        );
         let _ = self
             .rpc
             .call(DeviceCollectionReq::DeviceChange(device_type));
@@ -393,7 +396,7 @@ impl Drop for CubebServer {
                             devtype,
                         );
                         if r.is_err() {
-                            debug!("CubebServer: unregister failed: {r:?}");
+                            debug!("CubebServer: unregister failed: {:?}", r);
                         }
                     }
                 }
@@ -416,7 +419,7 @@ impl rpccore::Server for CubebServer {
             self.remote_pid = Some(pid);
         }
         with_local_context(|context, manager| match *context {
-            Err(_) => error(cubeb::Error::Error),
+            Err(_) => error(cubeb::Error::error()),
             Ok(ref context) => self.process_msg(context, manager, &req),
         })
     }
@@ -438,7 +441,7 @@ macro_rules! try_stream {
                 column!(),
                 $stm_tok
             );
-            return error(cubeb::Error::InvalidParameter);
+            return error(cubeb::Error::invalid_parameter());
         }
     };
 }
@@ -534,20 +537,20 @@ impl CubebServer {
 
             ServerMessage::StreamCreate(ref params) => self
                 .process_stream_create(params)
-                .unwrap_or_else(|_| error(cubeb::Error::Error)),
+                .unwrap_or_else(|_| error(cubeb::Error::error())),
 
             ServerMessage::StreamInit(stm_tok, ref params) => self
                 .process_stream_init(context, stm_tok, params)
-                .unwrap_or_else(|_| error(cubeb::Error::Error)),
+                .unwrap_or_else(|_| error(cubeb::Error::error())),
 
             ServerMessage::StreamDestroy(stm_tok) => {
                 if self.streams.contains(stm_tok) {
-                    debug!("Unregistering stream {stm_tok:?}");
+                    debug!("Unregistering stream {:?}", stm_tok);
                     self.streams.remove(stm_tok);
                 } else {
                     // Debugging for BMO 1594216/1612044.
-                    error!("StreamDestroy({stm_tok}): invalid token");
-                    return error(cubeb::Error::InvalidParameter);
+                    error!("StreamDestroy({}): invalid token", stm_tok);
+                    return error(cubeb::Error::invalid_parameter());
                 }
                 ClientMessage::StreamDestroyed
             }
@@ -620,9 +623,10 @@ impl CubebServer {
                     Ok((server_pipe, client_pipe)) => (server_pipe, client_pipe),
                     Err(e) => {
                         debug!(
-                            "ContextSetupDeviceCollectionCallback - make_pipe_pair failed: {e:?}"
+                            "ContextSetupDeviceCollectionCallback - make_pipe_pair failed: {:?}",
+                            e
                         );
-                        return error(cubeb::Error::Error);
+                        return error(cubeb::Error::error());
                     }
                 };
 
@@ -636,8 +640,11 @@ impl CubebServer {
                 {
                     Ok(rpc) => rpc,
                     Err(e) => {
-                        debug!("ContextSetupDeviceCollectionCallback - bind_client: {e:?}");
-                        return error(cubeb::Error::Error);
+                        debug!(
+                            "ContextSetupDeviceCollectionCallback - bind_client: {:?}",
+                            e
+                        );
+                        return error(cubeb::Error::error());
                     }
                 };
 
@@ -674,7 +681,7 @@ impl CubebServer {
             }
         };
 
-        trace!("process_msg: req={msg:?}, resp={resp:?}");
+        trace!("process_msg: req={:?}, resp={:?}", msg, resp);
 
         resp
     }
@@ -687,7 +694,7 @@ impl CubebServer {
         enable: bool,
     ) -> cubeb::Result<ClientMessage> {
         if devtype == cubeb::DeviceType::UNKNOWN {
-            return Err(cubeb::Error::InvalidParameter);
+            return Err(cubeb::Error::invalid_parameter());
         }
 
         assert!(self.device_collection_change_callbacks.is_some());
@@ -740,7 +747,7 @@ impl CubebServer {
         } else {
             self.shm_area_size
         };
-        debug!("shm_area_size = {shm_area_size}");
+        debug!("shm_area_size = {}", shm_area_size);
 
         let shm = SharedMem::new(&get_shm_id(), shm_area_size)?;
         let shm_handle = unsafe { shm.make_handle()? };
@@ -764,7 +771,7 @@ impl CubebServer {
 
         let entry = self.streams.vacant_entry();
         let key = entry.key();
-        debug!("Registering stream {key:?}");
+        debug!("Registering stream {:?}", key);
 
         entry.insert(ServerStream {
             stream: None,
@@ -844,7 +851,7 @@ impl CubebServer {
             match stream {
                 Ok(stream) => stream,
                 Err(e) => {
-                    debug!("Unregistering stream {stm_tok:?} (stream error {e:?})");
+                    debug!("Unregistering stream {:?} (stream error {:?})", stm_tok, e);
                     self.streams.remove(stm_tok);
                     return Err(e.into());
                 }

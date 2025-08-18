@@ -81,7 +81,6 @@
 #include "nsPresContext.h"
 #include "nsQueryFrame.h"
 #include "nsStyleStruct.h"
-#include "nsStyleStructList.h"
 #include "nsTHashSet.h"
 
 #ifdef ACCESSIBILITY
@@ -972,7 +971,7 @@ class nsIFrame : public nsQueryFrame {
  * Callers can use Style*WithOptionalParam if they're in a function that
  * accepts an *optional* pointer the style struct.
  */
-#define FRAME_STYLE_ACCESSORS(name_)                                 \
+#define STYLE_STRUCT(name_)                                          \
   const nsStyle##name_* Style##name_() const MOZ_NONNULL_RETURN {    \
     NS_ASSERTION(mComputedStyle, "No style found!");                 \
     return mComputedStyle->Style##name_();                           \
@@ -985,8 +984,8 @@ class nsIFrame : public nsQueryFrame {
     }                                                                \
     return Style##name_();                                           \
   }
-  FOR_EACH_STYLE_STRUCT(FRAME_STYLE_ACCESSORS, FRAME_STYLE_ACCESSORS)
-#undef FRAME_STYLE_ACCESSORS
+#include "nsStyleStructList.h"
+#undef STYLE_STRUCT
 
   /** Also forward GetVisitedDependentColor to the style */
   template <typename T, typename S>
@@ -3200,13 +3199,6 @@ class nsIFrame : public nsQueryFrame {
    */
   virtual void UnionChildOverflow(mozilla::OverflowAreas& aOverflowAreas,
                                   bool aAsIfScrolled = false);
-  /**
-   * Computes the clipping rectangle for the given frame based on its 'overflow'
-   * properties. Returns true if the clip has a border radius.
-   */
-  bool ComputeOverflowClipRectRelativeToSelf(
-      const mozilla::PhysicalAxes aClipAxes, nsRect& aOutRect,
-      nscoord aOutRadii[8]) const;
 
   // Returns the applicable overflow-clip-margin values.
   nsSize OverflowClipMargin(mozilla::PhysicalAxes aClipAxes) const;

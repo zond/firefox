@@ -90,6 +90,9 @@ add_task(async function usingTabCloseButton() {
   // Closing a tab which is not multiselected
   let tab4CloseBtn = tab4.closeButton;
   let tab4Closing = BrowserTestUtils.waitForTabClosing(tab4);
+
+  tab4.mOverCloseButton = true;
+  ok(tab4.mOverCloseButton, "Mouse over tab4 close button");
   tab4CloseBtn.click();
   await tab4Closing;
 
@@ -105,6 +108,7 @@ add_task(async function usingTabCloseButton() {
 
   // Closing a selected tab
   let tab2CloseBtn = tab2.closeButton;
+  tab2.mOverCloseButton = true;
   let tab1Closing = BrowserTestUtils.waitForTabClosing(tab1);
   let tab2Closing = BrowserTestUtils.waitForTabClosing(tab2);
   tab2CloseBtn.click();

@@ -16,9 +16,6 @@ const {
   search,
 } = require("resource://devtools/client/netmonitor/src/reducers/search.js");
 const {
-  statisticsReducer,
-} = require("resource://devtools/client/netmonitor/src/reducers/statistics.js");
-const {
   sortReducer,
 } = require("resource://devtools/client/netmonitor/src/reducers/sort.js");
 const {
@@ -44,7 +41,6 @@ module.exports = batchingReducer(
     requests: requestsReducer,
     search,
     sort: sortReducer,
-    statistics: statisticsReducer,
     timingMarkers,
     ui,
   })

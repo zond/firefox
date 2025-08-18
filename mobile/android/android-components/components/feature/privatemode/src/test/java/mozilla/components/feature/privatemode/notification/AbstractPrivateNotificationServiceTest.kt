@@ -14,7 +14,9 @@ import androidx.core.app.NotificationCompat
 import androidx.core.content.getSystemService
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.TestScope
+import kotlinx.coroutines.test.advanceUntilIdle
 import mozilla.components.browser.state.action.LocaleAction
 import mozilla.components.browser.state.action.TabListAction
 import mozilla.components.browser.state.state.BrowserState
@@ -44,6 +46,7 @@ import org.mockito.Mockito.spy
 import org.mockito.Mockito.verify
 import java.util.Locale
 
+@ExperimentalCoroutinesApi
 @RunWith(AndroidJUnit4::class)
 class AbstractPrivateNotificationServiceTest {
 
@@ -80,7 +83,7 @@ class AbstractPrivateNotificationServiceTest {
 
         val notification = argumentCaptor<Notification>()
         service.onCreate()
-        dispatcher.scheduler.advanceUntilIdle()
+        advanceUntilIdle()
 
         verify(service).startForeground(anyInt(), notification.capture())
         assertEquals(Notification.CATEGORY_STATUS, notification.value.category)

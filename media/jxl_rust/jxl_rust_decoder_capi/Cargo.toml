@@ -1,0 +1,12 @@
+[package]
+name = "jxl_rust_decoder_capi"
+version = "0.1.0"
+authors = ["Google"]
+edition = "2021"
+license = "MPL-2.0"
+
+[lib]
+crate-type = ["rlib", "staticlib"]
+
+[dependencies]
+jxl_rust_decoder = { path = "../jxl_rust_decoder" }

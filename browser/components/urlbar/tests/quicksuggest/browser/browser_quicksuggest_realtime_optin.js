@@ -11,7 +11,6 @@ const OFFLINE_REMOTE_SETTINGS = [
         data: {
           result: {
             isBestMatch: true,
-            hideRowLabel: true,
             realtimeType: "market",
             testAttribute: "market-test",
             payload: {
@@ -32,7 +31,6 @@ const OFFLINE_REMOTE_SETTINGS = [
         data: {
           result: {
             isBestMatch: true,
-            hideRowLabel: true,
             realtimeType: "sports",
             testAttribute: "sports-test",
             payload: {
@@ -94,7 +92,6 @@ add_task(async function opt_in() {
 
   let { element, result } = await openRealtimeSuggestion({ input: "stock" });
   Assert.ok(result.isBestMatch);
-  Assert.ok(result.hideRowLabel);
   Assert.equal(result.realtimeType, "market");
   Assert.equal(result.testAttribute, "market-test");
   Assert.equal(result.type, UrlbarUtils.RESULT_TYPE.TIP);

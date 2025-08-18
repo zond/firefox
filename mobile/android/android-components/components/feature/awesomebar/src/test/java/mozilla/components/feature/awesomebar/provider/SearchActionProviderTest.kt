@@ -4,11 +4,13 @@
 
 package mozilla.components.feature.awesomebar.provider
 
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.runTest
 import mozilla.components.support.test.mock
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
+@ExperimentalCoroutinesApi // for runTest
 class SearchActionProviderTest {
     @Test
     fun `provider returns no suggestion for empty text`() = runTest {

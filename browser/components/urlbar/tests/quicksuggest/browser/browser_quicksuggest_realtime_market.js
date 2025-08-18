@@ -115,12 +115,7 @@ add_task(async function ui_single() {
     window,
     value: "only match the Merino suggestion",
   });
-  let { element, result } = await UrlbarTestUtils.getDetailsOfResultAt(
-    window,
-    1
-  );
-  Assert.ok(result.isBestMatch);
-  Assert.ok(result.hideRowLabel);
+  let { element } = await UrlbarTestUtils.getDetailsOfResultAt(window, 1);
 
   let items = element.row.querySelectorAll(".urlbarView-dynamic-market-item");
   Assert.equal(items.length, 1);

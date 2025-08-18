@@ -20,12 +20,8 @@
 
 @class AppShellDelegate;
 
-class nsWindow;
-
 class nsAppShell : public nsBaseAppShell {
  public:
-  NS_DECL_NSIOBSERVER
-
   NS_IMETHOD ResumeNative(void) override;
 
   nsAppShell();
@@ -38,6 +34,8 @@ class nsAppShell : public nsBaseAppShell {
   void WillTerminate(void);
 
   static nsAppShell* gAppShell;
+  static UIWindow* gWindow;
+  static NSMutableArray* gTopLevelViews;
 
  protected:
   virtual ~nsAppShell();

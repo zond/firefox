@@ -8,18 +8,15 @@ import android.app.Activity
 import android.content.Intent
 import android.os.Bundle
 import kotlinx.coroutines.MainScope
-import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 import org.mozilla.samples.browser.ext.components
 
 class IntentReceiverActivity : Activity() {
 
-    private val scope = MainScope()
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        scope.launch {
+        MainScope().launch {
             val intent = intent?.let { Intent(it) } ?: Intent()
             val intentProcessors = components.externalAppIntentProcessors + components.tabIntentProcessor
 
@@ -45,10 +42,5 @@ class IntentReceiverActivity : Activity() {
             finish()
             startActivity(intent)
         }
-    }
-
-    override fun onDestroy() {
-        super.onDestroy()
-        scope.cancel()
     }
 }

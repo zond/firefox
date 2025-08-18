@@ -4,6 +4,7 @@
 
 package mozilla.components.service.fxa
 
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.runTest
 import mozilla.components.concept.sync.ServiceResult
 import mozilla.components.service.fxa.manager.FxaAccountManager
@@ -20,6 +21,7 @@ import org.mockito.Mockito.reset
 import org.mockito.Mockito.verify
 import org.mockito.Mockito.verifyNoInteractions
 
+@ExperimentalCoroutinesApi // for runTest
 class UtilsKtTest {
     @Test
     fun `handleFxaExceptions form 1 returns correct data back`() = runTest {

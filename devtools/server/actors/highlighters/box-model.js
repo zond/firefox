@@ -102,12 +102,10 @@ class BoxModelHighlighter extends AutoRefreshHighlighter {
   constructor(highlighterEnv) {
     super(highlighterEnv);
 
+    this.ID_CLASS_PREFIX = "box-model-";
     this.markup = new CanvasFrameAnonymousContentHelper(
       this.highlighterEnv,
-      this._buildMarkup.bind(this),
-      {
-        contentRootHostClassName: "devtools-highlighter-box-model",
-      }
+      this._buildMarkup.bind(this)
     );
     this.isReady = this.markup.initialize();
 
@@ -145,40 +143,43 @@ class BoxModelHighlighter extends AutoRefreshHighlighter {
     highlighterContainer.setAttribute("aria-hidden", "true");
 
     // Build the root wrapper, used to adapt to the page zoom.
-    this.rootEl = this.markup.createNode({
+    const rootWrapper = this.markup.createNode({
       parent: highlighterContainer,
       attributes: {
-        id: "box-model-root",
+        id: "root",
         class:
-          "box-model-root" +
+          "root" +
           (this.highlighterEnv.useSimpleHighlightersForReducedMotion
             ? " use-simple-highlighters"
             : ""),
         role: "presentation",
       },
+      prefix: this.ID_CLASS_PREFIX,
     });
 
     // Building the SVG element with its polygons and lines
 
     const svg = this.markup.createSVGNode({
       nodeType: "svg",
-      parent: this.rootEl,
+      parent: rootWrapper,
       attributes: {
-        id: "box-model-elements",
+        id: "elements",
         width: "100%",
         height: "100%",
         hidden: "true",
         role: "presentation",
       },
+      prefix: this.ID_CLASS_PREFIX,
     });
 
     const regions = this.markup.createSVGNode({
       nodeType: "g",
       parent: svg,
       attributes: {
-        class: "box-model-regions",
+        class: "regions",
         role: "presentation",
       },
+      prefix: this.ID_CLASS_PREFIX,
     });
 
     for (const region of BOX_MODEL_REGIONS) {
@@ -186,10 +187,11 @@ class BoxModelHighlighter extends AutoRefreshHighlighter {
         nodeType: "path",
         parent: regions,
         attributes: {
-          class: "box-model-" + region,
-          id: "box-model-" + region,
+          class: region,
+          id: region,
           role: "presentation",
         },
+        prefix: this.ID_CLASS_PREFIX,
       });
     }
 
@@ -198,96 +200,107 @@ class BoxModelHighlighter extends AutoRefreshHighlighter {
         nodeType: "line",
         parent: svg,
         attributes: {
-          class: "box-model-guide-" + side,
-          id: "box-model-guide-" + side,
+          class: "guide-" + side,
+          id: "guide-" + side,
           "stroke-width": GUIDE_STROKE_WIDTH,
           role: "presentation",
         },
+        prefix: this.ID_CLASS_PREFIX,
       });
     }
 
     // Building the nodeinfo bar markup
 
     const infobarContainer = this.markup.createNode({
-      parent: this.rootEl,
+      parent: rootWrapper,
       attributes: {
-        class: "box-model-infobar-container",
-        id: "box-model-infobar-container",
+        class: "infobar-container",
+        id: "infobar-container",
         position: "top",
         hidden: "true",
       },
+      prefix: this.ID_CLASS_PREFIX,
     });
 
     const infobar = this.markup.createNode({
       parent: infobarContainer,
       attributes: {
-        class: "box-model-infobar",
+        class: "infobar",
       },
+      prefix: this.ID_CLASS_PREFIX,
     });
 
     const texthbox = this.markup.createNode({
       parent: infobar,
       attributes: {
-        class: "box-model-infobar-text",
+        class: "infobar-text",
       },
+      prefix: this.ID_CLASS_PREFIX,
     });
     this.markup.createNode({
       nodeType: "span",
       parent: texthbox,
       attributes: {
-        class: "box-model-infobar-tagname",
-        id: "box-model-infobar-tagname",
+        class: "infobar-tagname",
+        id: "infobar-tagname",
       },
+      prefix: this.ID_CLASS_PREFIX,
     });
     this.markup.createNode({
       nodeType: "span",
       parent: texthbox,
       attributes: {
-        class: "box-model-infobar-id",
-        id: "box-model-infobar-id",
+        class: "infobar-id",
+        id: "infobar-id",
       },
+      prefix: this.ID_CLASS_PREFIX,
     });
     this.markup.createNode({
       nodeType: "span",
       parent: texthbox,
       attributes: {
-        class: "box-model-infobar-classes",
-        id: "box-model-infobar-classes",
+        class: "infobar-classes",
+        id: "infobar-classes",
       },
+      prefix: this.ID_CLASS_PREFIX,
     });
     this.markup.createNode({
       nodeType: "span",
       parent: texthbox,
       attributes: {
-        class: "box-model-infobar-pseudo-classes",
-        id: "box-model-infobar-pseudo-classes",
+        class: "infobar-pseudo-classes",
+        id: "infobar-pseudo-classes",
       },
+      prefix: this.ID_CLASS_PREFIX,
     });
     this.markup.createNode({
       nodeType: "span",
       parent: texthbox,
       attributes: {
-        class: "box-model-infobar-dimensions",
-        id: "box-model-infobar-dimensions",
+        class: "infobar-dimensions",
+        id: "infobar-dimensions",
       },
-    });
-
-    this.markup.createNode({
-      nodeType: "span",
-      parent: texthbox,
-      attributes: {
-        class: "box-model-infobar-grid-type",
-        id: "box-model-infobar-grid-type",
-      },
+      prefix: this.ID_CLASS_PREFIX,
     });
 
     this.markup.createNode({
       nodeType: "span",
       parent: texthbox,
       attributes: {
-        class: "box-model-infobar-flex-type",
-        id: "box-model-infobar-flex-type",
+        class: "infobar-grid-type",
+        id: "infobar-grid-type",
       },
+      prefix: this.ID_CLASS_PREFIX,
+    });
+
+    this.markup.createNode({
+      nodeType: "span",
+      parent: texthbox,
+      attributes: {
+        class: "infobar-flex-type",
+        id: "infobar-flex-type",
+      },
+      prefix: this.ID_CLASS_PREFIX,
     });
 
     return highlighterContainer;
@@ -305,13 +318,12 @@ class BoxModelHighlighter extends AutoRefreshHighlighter {
     }
 
     this.markup.destroy();
-    this.rootEl = null;
 
     AutoRefreshHighlighter.prototype.destroy.call(this);
   }
 
   getElement(id) {
-    return this.markup.getElement(id);
+    return this.markup.getElement(this.ID_CLASS_PREFIX + id);
   }
 
   /**
@@ -421,17 +433,14 @@ class BoxModelHighlighter extends AutoRefreshHighlighter {
    * Hide the infobar
    */
   _hideInfobar() {
-    this.getElement("box-model-infobar-container").setAttribute(
-      "hidden",
-      "true"
-    );
+    this.getElement("infobar-container").setAttribute("hidden", "true");
   }
 
   /**
    * Show the infobar
    */
   _showInfobar() {
-    this.getElement("box-model-infobar-container").removeAttribute("hidden");
+    this.getElement("infobar-container").removeAttribute("hidden");
     this._updateInfobar();
   }
 
@@ -439,14 +448,14 @@ class BoxModelHighlighter extends AutoRefreshHighlighter {
    * Hide the box model
    */
   _hideBoxModel() {
-    this.getElement("box-model-elements").setAttribute("hidden", "true");
+    this.getElement("elements").setAttribute("hidden", "true");
   }
 
   /**
    * Show the box model
    */
   _showBoxModel() {
-    this.getElement("box-model-elements").removeAttribute("hidden");
+    this.getElement("elements").removeAttribute("hidden");
   }
 
   /**
@@ -523,7 +532,7 @@ class BoxModelHighlighter extends AutoRefreshHighlighter {
     for (let i = 0; i < BOX_MODEL_REGIONS.length; i++) {
       const boxType = BOX_MODEL_REGIONS[i];
       const nextBoxType = BOX_MODEL_REGIONS[i + 1];
-      const box = this.getElement("box-model-" + boxType);
+      const box = this.getElement(boxType);
 
       // Highlight all quads for this region by setting the "d" attribute of the
       // corresponding <path>.
@@ -557,7 +566,8 @@ class BoxModelHighlighter extends AutoRefreshHighlighter {
     }
 
     // Un-zoom the root wrapper if the page was zoomed.
-    this.markup.scaleRootElement(this.currentNode, "box-model-elements");
+    const rootId = this.ID_CLASS_PREFIX + "elements";
+    this.markup.scaleRootElement(this.currentNode, rootId);
 
     return true;
   }
@@ -737,7 +747,7 @@ class BoxModelHighlighter extends AutoRefreshHighlighter {
 
   _hideGuides() {
     for (const side of BOX_MODEL_SIDES) {
-      this.getElement("box-model-guide-" + side).setAttribute("hidden", "true");
+      this.getElement("guide-" + side).setAttribute("hidden", "true");
     }
   }
 
@@ -751,7 +761,7 @@ class BoxModelHighlighter extends AutoRefreshHighlighter {
    *         x or y co-ordinate. If this is undefined we hide the guide.
    */
   _updateGuide(side, point) {
-    const guide = this.getElement("box-model-guide-" + side);
+    const guide = this.getElement("guide-" + side);
 
     if (!point || point <= 0) {
       guide.setAttribute("hidden", "true");
@@ -821,17 +831,13 @@ class BoxModelHighlighter extends AutoRefreshHighlighter {
     const gridLayoutTextType = this._getLayoutTextType("gridtype", gridType);
     const flexLayoutTextType = this._getLayoutTextType("flextype", flexType);
 
-    this.getElement("box-model-infobar-tagname").setTextContent(displayName);
-    this.getElement("box-model-infobar-id").setTextContent(id);
-    this.getElement("box-model-infobar-classes").setTextContent(classList);
-    this.getElement("box-model-infobar-pseudo-classes").setTextContent(pseudos);
-    this.getElement("box-model-infobar-dimensions").setTextContent(dim);
-    this.getElement("box-model-infobar-grid-type").setTextContent(
-      gridLayoutTextType
-    );
-    this.getElement("box-model-infobar-flex-type").setTextContent(
-      flexLayoutTextType
-    );
+    this.getElement("infobar-tagname").setTextContent(displayName);
+    this.getElement("infobar-id").setTextContent(id);
+    this.getElement("infobar-classes").setTextContent(classList);
+    this.getElement("infobar-pseudo-classes").setTextContent(pseudos);
+    this.getElement("infobar-dimensions").setTextContent(dim);
+    this.getElement("infobar-grid-type").setTextContent(gridLayoutTextType);
+    this.getElement("infobar-flex-type").setTextContent(flexLayoutTextType);
 
     this._moveInfobar();
   }
@@ -863,7 +869,7 @@ class BoxModelHighlighter extends AutoRefreshHighlighter {
    */
   _moveInfobar() {
     const bounds = this._getOuterBounds();
-    const container = this.getElement("box-model-infobar-container");
+    const container = this.getElement("infobar-container");
 
     moveInfobar(container, bounds, this.win);
   }

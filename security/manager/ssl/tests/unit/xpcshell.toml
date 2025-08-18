@@ -42,6 +42,7 @@ support-files = [
   "test_self_signed_certs/**",
   "test_signed_apps/**",
   "test_trust_anchors/**",
+  "test_validity/**",
   "tlsserver/**",
 ]
 
@@ -128,7 +129,6 @@ run-sequentially = "hardcoded ports"
 ["test_content_signing.js"]
 
 ["test_crlite_filters.js"]
-run-sequentially = "hardcoded ports"
 tags = "remote-settings psm"
 
 ["test_crlite_preexisting.js"]
@@ -337,5 +337,8 @@ skip-if = [
 ["test_sts_preloadlist_selfdestruct.js"]
 
 ["test_trust_anchors.js"]
+
+["test_validity.js"]
+run-sequentially = "hardcoded ports"
 
 ["test_x509.js"]

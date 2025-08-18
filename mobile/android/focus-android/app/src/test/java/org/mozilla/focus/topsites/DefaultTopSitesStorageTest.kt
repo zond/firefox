@@ -16,7 +16,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.mockito.Mockito.verify
 
-@ExperimentalCoroutinesApi // UnconfinedTestDispatcher
+@ExperimentalCoroutinesApi
 class DefaultTopSitesStorageTest {
 
     private val pinnedSitesStorage: PinnedSiteStorage = mock()

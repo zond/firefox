@@ -5,6 +5,7 @@
 package mozilla.components.service.pocket.stories
 
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.runTest
 import mozilla.components.service.pocket.ext.toPartialTimeShownUpdate
 import mozilla.components.service.pocket.ext.toPocketLocalStory
@@ -21,6 +22,7 @@ import org.mockito.Mockito.spy
 import org.mockito.Mockito.verify
 import org.mockito.Mockito.`when`
 
+@ExperimentalCoroutinesApi // for runTest
 @RunWith(AndroidJUnit4::class)
 class PocketRecommendationsRepositoryTest {
 

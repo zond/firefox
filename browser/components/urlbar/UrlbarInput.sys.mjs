@@ -97,10 +97,35 @@ export class UrlbarInput {
    */
   constructor(options = {}) {
     this.textbox = options.textbox;
+
     this.window = this.textbox.ownerGlobal;
-    this.document = this.window.document;
     this.isPrivate = lazy.PrivateBrowsingUtils.isWindowPrivate(this.window);
+    this.document = this.window.document;
+
+    // Create the panel to contain results.
+    this.textbox.appendChild(
+      this.window.MozXULElement.parseXULToFragment(`
+        <vbox class="urlbarView"
+              context=""
+              role="group"
+              tooltip="aHTMLTooltip">
+          <html:div class="urlbarView-body-outer">
+            <html:div class="urlbarView-body-inner">
+              <html:div id="urlbar-results"
+                        class="urlbarView-results"
+                        role="listbox"/>
+            </html:div>
+          </html:div>
+          <menupopup class="urlbarView-result-menu"
+                     consumeoutsideclicks="false"/>
+          <hbox class="search-one-offs"
+                includecurrentengine="true"
+                disabletab="true"/>
+        </vbox>
+      `)
+    );
     this.panel = this.textbox.querySelector(".urlbarView");
+
     this.controller = new lazy.UrlbarController({
       input: this,
       eventTelemetryCategory: options.eventTelemetryCategory,
@@ -1099,7 +1124,6 @@ export class UrlbarInput {
     let openParams = {
       allowInheritPrincipal: false,
       globalHistoryOptions: {
-        triggeringSource: "urlbar",
         triggeringSearchEngine: result.payload?.engine,
         triggeringSponsoredURL: result.payload?.isSponsored
           ? result.payload.url

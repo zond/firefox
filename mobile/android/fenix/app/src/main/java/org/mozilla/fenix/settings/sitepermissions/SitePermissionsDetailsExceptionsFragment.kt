@@ -9,7 +9,6 @@ import android.content.DialogInterface
 import android.os.Bundle
 import androidx.annotation.VisibleForTesting
 import androidx.appcompat.app.AlertDialog
-import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
 import androidx.navigation.findNavController
 import androidx.preference.Preference
@@ -30,8 +29,6 @@ import org.mozilla.fenix.settings.PhoneFeature
 import org.mozilla.fenix.settings.PhoneFeature.AUTOPLAY
 import org.mozilla.fenix.settings.PhoneFeature.CAMERA
 import org.mozilla.fenix.settings.PhoneFeature.CROSS_ORIGIN_STORAGE_ACCESS
-import org.mozilla.fenix.settings.PhoneFeature.LOCAL_DEVICE_ACCESS
-import org.mozilla.fenix.settings.PhoneFeature.LOCAL_NETWORK_ACCESS
 import org.mozilla.fenix.settings.PhoneFeature.LOCATION
 import org.mozilla.fenix.settings.PhoneFeature.MEDIA_KEY_SYSTEM_ACCESS
 import org.mozilla.fenix.settings.PhoneFeature.MICROPHONE
@@ -75,8 +72,6 @@ class SitePermissionsDetailsExceptionsFragment : PreferenceFragmentCompat() {
 
     @VisibleForTesting
     internal fun bindCategoryPhoneFeatures() {
-        val settings = provideSettings()
-
         initPhoneFeature(CAMERA)
         initPhoneFeature(LOCATION)
         initPhoneFeature(MICROPHONE)
@@ -85,27 +80,19 @@ class SitePermissionsDetailsExceptionsFragment : PreferenceFragmentCompat() {
         initPhoneFeature(CROSS_ORIGIN_STORAGE_ACCESS)
         initPhoneFeature(MEDIA_KEY_SYSTEM_ACCESS)
         initAutoplayFeature()
-        initPhoneFeature(LOCAL_DEVICE_ACCESS, visible = settings.isLnaBlockingEnabled)
-        initPhoneFeature(LOCAL_NETWORK_ACCESS, visible = settings.isLnaBlockingEnabled)
         bindClearPermissionsButton()
     }
 
     @VisibleForTesting
-    internal fun initPhoneFeature(phoneFeature: PhoneFeature, visible: Boolean = true) {
+    internal fun initPhoneFeature(phoneFeature: PhoneFeature) {
         val summary = phoneFeature.getActionLabel(provideContext(), sitePermissions)
-        val preference = getPreference(phoneFeature)
-        preference.summary = summary
-        preference.isVisible = visible
-        preference.onPreferenceClickListener = Preference.OnPreferenceClickListener {
+        val cameraPhoneFeatures = getPreference(phoneFeature)
+        cameraPhoneFeatures.summary = summary
+
+        cameraPhoneFeatures.onPreferenceClickListener = Preference.OnPreferenceClickListener {
             navigateToPhoneFeature(phoneFeature)
             true
         }
-        preference.icon?.setTint(
-            ContextCompat.getColor(
-                provideContext(),
-                R.color.fx_mobile_icon_color_primary,
-            ),
-        )
     }
 
     @VisibleForTesting

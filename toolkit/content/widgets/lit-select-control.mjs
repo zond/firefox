@@ -74,10 +74,6 @@ export class SelectControlBaseElement extends MozLitElement {
     return this.#value;
   }
 
-  get hasValue() {
-    return this.value === 0 || !!this.value;
-  }
-
   set focusedIndex(newIndex) {
     if (this.#focusedIndex !== newIndex) {
       this.#focusedIndex = newIndex;
@@ -239,13 +235,11 @@ export class SelectControlBaseElement extends MozLitElement {
       if (nextItem && !nextItem.disabled) {
         if (isRadio) {
           this.value = nextItem.value;
-          this.dispatchEvent(
-            new Event("input", {
-              bubbles: true,
-              composed: true,
-            })
-          );
-          this.dispatchEvent(new Event("change", { bubbles: true }));
+          this.dispatchEvent(new Event("input"), {
+            bubbles: true,
+            composed: true,
+          });
+          this.dispatchEvent(new Event("change"), { bubbles: true });
         }
         nextItem.focus();
         return;
@@ -279,7 +273,7 @@ export class SelectControlBaseElement extends MozLitElement {
   // Re-dispatch change event so it's re-targeted to the custom element.
   handleChange(event) {
     event.stopPropagation();
-    this.dispatchEvent(new Event(event.type, event));
+    this.dispatchEvent(new Event(event.type));
   }
 
   handleSlotChange() {
@@ -366,7 +360,7 @@ export const SelectControlItemMixin = superClass =>
 
       this.#controller = hostElement;
       this.role = this.#controller.type == "radio" ? "radio" : "option";
-      if (this.#controller.hasValue) {
+      if (this.#controller.value) {
         this.checked = this.value === this.#controller.value;
       }
     }
@@ -377,7 +371,7 @@ export const SelectControlItemMixin = superClass =>
       if (
         changedProperties.has("checked") &&
         this.checked &&
-        this.#controller.hasValue &&
+        this.#controller.value &&
         this.value !== this.#controller.value
       ) {
         this.#controller.value = this.value;
@@ -387,7 +381,7 @@ export const SelectControlItemMixin = superClass =>
       if (
         changedProperties.has("checked") &&
         !this.checked &&
-        this.#controller.hasValue &&
+        this.#controller.value &&
         this.value === this.#controller.value
       ) {
         this.#controller.value = "";
@@ -401,7 +395,7 @@ export const SelectControlItemMixin = superClass =>
         }
 
         // Update items via focus manager parent for proper keyboard nav behavior.
-        if (this.checked || !this.#controller.hasValue) {
+        if (this.checked || !this.#controller.value) {
           if (this.controller.checkedIndex != this.position) {
             this.#controller.syncFocusState();
           } else {

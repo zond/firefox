@@ -8,46 +8,37 @@ const { HttpServer } = ChromeUtils.importESModule(
  * Test whether we fail bad URIs in HTTP redirect as CORRUPTED_CONTENT.
  */
 
-async function test_redirect(location) {
-  const PATH = "/BadRedirect";
+var httpServer = null;
 
-  function handler(metadata, response) {
-    response.setStatusLine(metadata.httpVersion, 301, "Moved");
-    response.setHeader("Location", location, false);
-  }
+var BadRedirectPath = "/BadRedirect";
+ChromeUtils.defineLazyGetter(this, "BadRedirectURI", function () {
+  return (
+    "http://localhost:" + httpServer.identity.primaryPort + BadRedirectPath
+  );
+});
 
-  let httpServer = new HttpServer();
-  httpServer.registerPathHandler(PATH, handler);
-  httpServer.start(-1);
-
-  const url = "http://localhost:" + httpServer.identity.primaryPort + PATH;
-  const chan = NetUtil.newChannel({ uri: url, loadUsingSystemPrincipal: true });
-  const request = await new Promise(resolve => {
-    chan.asyncOpen(new ChannelListener(resolve, null, CL_EXPECT_FAILURE));
-  });
-
-  Assert.equal(request.status, Cr.NS_ERROR_CORRUPTED_CONTENT);
-
-  await new Promise(resolve => httpServer.stop(resolve));
+function make_channel(url) {
+  return NetUtil.newChannel({ uri: url, loadUsingSystemPrincipal: true });
 }
 
-add_task(async function test_bad_http_uri() {
+function BadRedirectHandler(metadata, response) {
+  response.setStatusLine(metadata.httpVersion, 301, "Moved");
   // '>' in URI will fail to parse: we should not render response
-  await test_redirect("http://localhost:4444>BadRedirect");
-});
+  response.setHeader("Location", "http://localhost:4444>BadRedirect", false);
+}
 
-add_task(async function test_bad_resource_1() {
-  await test_redirect("resource://");
-});
+function checkFailed(request) {
+  Assert.equal(request.status, Cr.NS_ERROR_CORRUPTED_CONTENT);
 
-add_task(async function test_bad_resource_2() {
-  await test_redirect("resource://xxx/");
-});
+  httpServer.stop(do_test_finished);
+}
 
-add_task(async function test_bad_ws() {
-  await test_redirect("ws://localhost/");
-});
+function run_test() {
+  httpServer = new HttpServer();
+  httpServer.registerPathHandler(BadRedirectPath, BadRedirectHandler);
+  httpServer.start(-1);
 
-add_task(async function test_bad_wss() {
-  await test_redirect("wss://localhost/");
-});
+  var chan = make_channel(BadRedirectURI);
+  chan.asyncOpen(new ChannelListener(checkFailed, null, CL_EXPECT_FAILURE));
+  do_test_pending();
+}

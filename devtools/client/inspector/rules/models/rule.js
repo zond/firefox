@@ -281,13 +281,7 @@ class Rule {
    *        Optional, property next to which the new property will be added.
    */
   createProperty(name, value, priority, enabled, siblingProp) {
-    const prop = new TextProperty({
-      rule: this,
-      name,
-      value,
-      priority,
-      enabled,
-    });
+    const prop = new TextProperty(this, name, value, priority, enabled);
 
     let ind;
     if (siblingProp) {
@@ -596,15 +590,14 @@ class Rule {
         name,
         prop.value
       );
-
-      const textProp = new TextProperty({
-        rule: this,
+      const textProp = new TextProperty(
+        this,
         name,
         value,
-        priority: prop.priority,
-        enabled: !("commentOffsets" in prop),
-        invisible,
-      });
+        prop.priority,
+        !("commentOffsets" in prop),
+        invisible
+      );
       textProps.push(textProp);
     }
 
@@ -631,12 +624,7 @@ class Rule {
         prop.name,
         prop.value
       );
-      const textProp = new TextProperty({
-        rule: this,
-        name: prop.name,
-        value,
-        priority: prop.priority,
-      });
+      const textProp = new TextProperty(this, prop.name, value, prop.priority);
       textProp.enabled = false;
       textProps.push(textProp);
     }

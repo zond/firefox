@@ -12,15 +12,6 @@ interface CanonicalBrowsingContext extends LoadContextMixin {
   topWindowContext: WindowGlobalParent;
 }
 
-declare namespace ChromeUtils {
-  type Modules = import("./generated/lib.gecko.modules").Modules;
-
-  function importESModule<T extends keyof Modules>(
-    aResourceURI: T,
-    aOptions?: ImportESModuleOptionsDictionary
-  ): Modules[T];
-}
-
 interface ChromeWindow extends Window {
   isChromeWindow: true;
 }

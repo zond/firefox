@@ -135,7 +135,7 @@ class DCLayerTree {
   bool UseNativeCompositor() const;
   bool UseLayerCompositor() const;
   void DisableNativeCompositor();
-  bool EnableAsyncScreenshot();
+  void EnableAsyncScreenshot();
   bool GetAsyncScreenshotEnabled() const { return mEnableAsyncScreenshot; }
 
   // Interface for wr::Compositor
@@ -215,7 +215,6 @@ class DCLayerTree {
 
   bool mUseNativeCompositor = true;
   bool mEnableAsyncScreenshot = false;
-  bool mEnableAsyncScreenshotInNextFrame = false;
   int mAsyncScreenshotLastFrameUsed = 0;
 
   RefPtr<gl::GLContext> mGL;

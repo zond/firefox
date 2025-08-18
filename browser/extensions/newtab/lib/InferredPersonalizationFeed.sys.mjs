@@ -26,9 +26,7 @@ import { MODEL_TYPE } from "./InferredModel/InferredConstants.sys.mjs";
 
 const CACHE_KEY = "inferred_personalization_feed";
 const DISCOVERY_STREAM_CACHE_KEY = "discovery_stream";
-const INTEREST_VECTOR_UPDATE_HOURS = 8;
-const HOURS_TO_MS = 60 * 60 * 1000;
-
+const INTEREST_VECTOR_UPDATE_TIME = 4 * 60 * 60 * 1000; // 4 hours
 const PREF_USER_INFERRED_PERSONALIZATION =
   "discoverystream.sections.personalization.inferred.user.enabled";
 const PREF_SYSTEM_INFERRED_PERSONALIZATION =
@@ -180,17 +178,12 @@ export class InferredPersonalizationFeed {
     const cachedData = (await this.cache.get()) || {};
     let { interest_vector } = cachedData;
 
-    const { values } = this.store.getState().Prefs;
-    const interestVectorRefreshHours =
-      values?.inferredPersonalizationConfig?.iv_refresh_frequency_hours ||
-      INTEREST_VECTOR_UPDATE_HOURS;
-
     // If we have nothing in cache, or cache has expired, we can make a fresh fetch.
     if (
       !interest_vector?.lastUpdated ||
       !(
         this.Date().now() - interest_vector.lastUpdated <
-        interestVectorRefreshHours * HOURS_TO_MS
+        INTEREST_VECTOR_UPDATE_TIME
       )
     ) {
       interest_vector = {

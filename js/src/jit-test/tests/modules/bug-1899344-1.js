@@ -1,4 +1,4 @@
-// |jit-test| module;
+// |jit-test| module; --enable-import-attributes;
 
 load(libdir + 'match.js');
 const { Pattern } = Match;

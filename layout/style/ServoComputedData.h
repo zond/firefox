@@ -10,7 +10,6 @@
 class nsWindowSizes;
 
 #include "mozilla/ServoStyleConsts.h"
-#include "nsStyleStructList.h"
 
 /*
  * ServoComputedData and its related types.
@@ -35,9 +34,9 @@ class ComputedStyle;
 
 }  // namespace mozilla
 
-#define FORWARD_STYLE_STRUCT(name_) struct nsStyle##name_;
-FOR_EACH_STYLE_STRUCT(FORWARD_STYLE_STRUCT, FORWARD_STYLE_STRUCT)
-#undef FORWARD_STYLE_STRUCT
+#define STYLE_STRUCT(name_) struct nsStyle##name_;
+#include "nsStyleStructList.h"
+#undef STYLE_STRUCT
 
 class ServoComputedData;
 
@@ -61,14 +60,13 @@ class ServoComputedData {
   // Constructs via memcpy.  Will not move out of aValue.
   explicit ServoComputedData(const ServoComputedDataForgotten aValue);
 
-#define SERVO_STYLE_STRUCT_ACCESSOR(name_)                        \
+#define STYLE_STRUCT(name_)                                       \
   const nsStyle##name_* name_;                                    \
   const nsStyle##name_* Style##name_() const MOZ_NONNULL_RETURN { \
     return name_;                                                 \
   }
-  FOR_EACH_STYLE_STRUCT(SERVO_STYLE_STRUCT_ACCESSOR,
-                        SERVO_STYLE_STRUCT_ACCESSOR)
-#undef SERVO_STYLE_STRUCT_ACCESSOR
+#include "nsStyleStructList.h"
+#undef STYLE_STRUCT
 
   void AddSizeOfExcludingThis(nsWindowSizes& aSizes) const;
 

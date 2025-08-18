@@ -62,6 +62,13 @@ firefox-suggest-dismissal-acknowledgment-one-yelp = Thanks for your feedback. Yo
 # A message that replaces a result when the user dismisses all Yelp suggestions.
 firefox-suggest-dismissal-acknowledgment-all-yelp = Thanks for your feedback. You won’t see { -yelp-brand-name } suggestions anymore.
 
+# A message that replaces a result when the user dismisses a single Fakespot
+# suggestion.
+firefox-suggest-dismissal-acknowledgment-one-fakespot = Thanks for your feedback. You won’t see this { -fakespot-brand-name } suggestion again.
+
+# A message that replaces a result when the user dismisses all Fakespot suggestions.
+firefox-suggest-dismissal-acknowledgment-all-fakespot = Thanks for your feedback. You won’t see { -fakespot-brand-name } suggestions anymore.
+
 ## These strings are used for urlbar weather suggestions in the "simpler" and
 ## "full" weather UIs.
 
@@ -104,6 +111,8 @@ firefox-suggest-command-not-relevant =
   .label = Not relevant
 firefox-suggest-command-not-interested =
   .label = Not interested
+firefox-suggest-command-manage-fakespot =
+  .label = Manage { -fakespot-brand-name } suggestions
 firefox-suggest-command-dont-show-this-suggestion =
   .label = Don’t show this suggestion
 firefox-suggest-command-dont-show-any-suggestions =
@@ -131,6 +140,33 @@ firefox-suggest-yelp-service-title = Top results for { $service }
 # This string is shown in Yelp suggestions and indicates the suggestion is for
 # Yelp.
 firefox-suggest-yelp-bottom-text = Yelp · Sponsored
+
+## These strings are used for Fakespot suggestions in the urlbar.
+
+# This string displays inside of the badge in Fakespot suggestion.
+firefox-suggest-fakespot-badge = RELIABLE REVIEWS
+
+## This string displays rating and total reviews as a label.
+## Variables:
+##  $rating (number) - The number of rating for the suggestion.
+##  $totalReviews (number) - The number of total reviews for the suggestion.
+
+# Show the exact number of reviews.
+firefox-suggest-fakespot-rating-and-total-reviews =
+  { $totalReviews ->
+     [one] { $rating } · ({ $totalReviews } review)
+    *[other] { $rating } · ({ $totalReviews } reviews)
+  }
+# Show an approximate number of reviews (e.g. 100,000+ reviews).
+firefox-suggest-fakespot-rating-and-total-reviews-overflow =
+  { $totalReviews ->
+     [one] { $rating } · ({ $totalReviews }+ review)
+    *[other] { $rating } · ({ $totalReviews }+ reviews)
+  }
+
+# This string is shown in Fakespot suggestion and indicates the suggestion is
+# sponsored.
+firefox-suggest-fakespot-sponsored = { -fakespot-brand-name } · Sponsored
 
 # These strings are used for a toggle switch in the settings UI that opts the
 # user into "online" Firefox Suggest, allowing them to receive suggestions from
@@ -244,3 +280,44 @@ urlbar-search-mode-bookmarks-en = Bookmarks
 urlbar-search-mode-tabs-en = Tabs
 urlbar-search-mode-history-en = History
 urlbar-search-mode-actions-en = Actions
+
+## These strings are used for the important-dates features and will be
+## moved when they are finalized.
+
+# Shows the number of days until an event.
+# Variables:
+#   $daysUntilStart (integer) - The number of days until the event starts.
+urlbar-result-dates-countdown =
+    { $daysUntilStart ->
+        [one] In { $daysUntilStart } day
+        *[other] In { $daysUntilStart } days
+    }
+
+# Shows the number of days until a multiple day long event starts.
+# Variables:
+#   $daysUntilStart (integer) - The number of days until the event starts.
+urlbar-result-dates-countdown-range =
+    { $daysUntilStart ->
+        [one] Starts in { $daysUntilStart } day
+        *[other] Starts in { $daysUntilStart } days
+    }
+
+# Shows the number of days until a multiple day long event ends.
+# Variables:
+#   $daysUntilEnd (integer) - The number of days until the event ends.
+urlbar-result-dates-ongoing =
+    { $daysUntilEnd ->
+        [one] Now, { $daysUntilEnd } day left
+        *[other] Now, { $daysUntilEnd } days left
+    }
+
+# Shows that an event happens today.
+urlbar-result-dates-today = Today
+
+# Shows that a multiple day long event ends today.
+urlbar-result-dates-ends-today = Now, ends today
+
+# The title of a urlbar result of an event.
+#   $date (string) - The formatted date of the event.
+#   $name (string) - The name of the event.
+urlbar-result-dates-title = <b>{ $date }</b> · { $name }

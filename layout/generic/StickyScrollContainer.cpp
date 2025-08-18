@@ -20,14 +20,21 @@
 
 namespace mozilla {
 
+NS_DECLARE_FRAME_PROPERTY_DELETABLE(StickyScrollContainerProperty,
+                                    StickyScrollContainer)
+
 StickyScrollContainer::StickyScrollContainer(
     ScrollContainerFrame* aScrollContainerFrame)
-    : mScrollContainerFrame(aScrollContainerFrame) {}
+    : mScrollContainerFrame(aScrollContainerFrame) {
+  mScrollContainerFrame->AddScrollPositionListener(this);
+}
 
-StickyScrollContainer::~StickyScrollContainer() = default;
+StickyScrollContainer::~StickyScrollContainer() {
+  mScrollContainerFrame->RemoveScrollPositionListener(this);
+}
 
 // static
-StickyScrollContainer* StickyScrollContainer::GetOrCreateForFrame(
+StickyScrollContainer* StickyScrollContainer::GetStickyScrollContainerForFrame(
     nsIFrame* aFrame) {
   ScrollContainerFrame* scrollContainerFrame =
       nsLayoutUtils::GetNearestScrollContainerFrame(
@@ -39,7 +46,20 @@ StickyScrollContainer* StickyScrollContainer::GetOrCreateForFrame(
     // <html style="position: fixed">
     return nullptr;
   }
-  return &scrollContainerFrame->EnsureStickyContainer();
+  StickyScrollContainer* s =
+      scrollContainerFrame->GetProperty(StickyScrollContainerProperty());
+  if (!s) {
+    s = new StickyScrollContainer(scrollContainerFrame);
+    scrollContainerFrame->SetProperty(StickyScrollContainerProperty(), s);
+  }
+  return s;
+}
+
+// static
+StickyScrollContainer*
+StickyScrollContainer::GetStickyScrollContainerForScrollFrame(
+    nsIFrame* aFrame) {
+  return aFrame->GetProperty(StickyScrollContainerProperty());
 }
 
 static nscoord ComputeStickySideOffset(Side aSide,
@@ -364,6 +384,12 @@ void StickyScrollContainer::UpdatePositions(nsPoint aScrollPosition,
     }
   }
   oct.Flush();
+}
+
+void StickyScrollContainer::ScrollPositionWillChange(nscoord aX, nscoord aY) {}
+
+void StickyScrollContainer::ScrollPositionDidChange(nscoord aX, nscoord aY) {
+  UpdatePositions(nsPoint(aX, aY), nullptr);
 }
 
 void StickyScrollContainer::MarkFramesForReflow() {

@@ -110,9 +110,7 @@ def lint(paths, config, log, **lintargs):
             "rule": issue["code"],
             "level": "error",
         }
-        if issue["code"] is not None and any(
-            issue["code"].startswith(w) for w in warning_rules
-        ):
+        if any(issue["code"].startswith(w) for w in warning_rules):
             res["level"] = "warning"
 
         if issue["fix"]:

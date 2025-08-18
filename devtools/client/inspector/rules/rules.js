@@ -2064,28 +2064,25 @@ CssRuleView.prototype = {
    *
    * @param  {Element} element
    *         The element.
-   * @returns {Promise} Promise that resolves after the element was flashed-out
    */
   _flashElement(element) {
     flashElementOn(element, {
       backgroundClass: "theme-bg-contrast",
     });
 
-    if (this._flashMutationCallback) {
-      this._flashMutationCallback();
+    if (this._flashMutationTimer) {
+      clearTimeout(this._removeFlashOutTimer);
+      this._flashMutationTimer = null;
     }
 
-    return new Promise(resolve => {
-      this._flashMutationCallback = () => {
-        flashElementOff(element, {
-          backgroundClass: "theme-bg-contrast",
-        });
-        this._flashMutationCallback = null;
-        resolve();
-      };
+    this._flashMutationTimer = setTimeout(() => {
+      flashElementOff(element, {
+        backgroundClass: "theme-bg-contrast",
+      });
 
-      setTimeout(this._flashMutationCallback, PROPERTY_FLASHING_DURATION);
-    });
+      // Emit "scrolled-to-property" for use by tests.
+      this.emit("scrolled-to-element");
+    }, PROPERTY_FLASHING_DURATION);
   },
 
   /**
@@ -2150,6 +2147,9 @@ CssRuleView.prototype = {
           continue;
         }
 
+        const {
+          editor: { selectorText },
+        } = rule;
         let scrollBehavior = "smooth";
 
         // First, search for a matching authored property.
@@ -2168,11 +2168,15 @@ CssRuleView.prototype = {
             this._togglePseudoElementRuleContainer();
           }
 
-          this._highlightElementInRule(
-            rule,
+          // Scroll to the top of the property's rule so that both the property and its
+          // rule are visible.
+          this._scrollToElement(
+            selectorText,
             textProp.editor.element,
             scrollBehavior
           );
+          this._flashElement(textProp.editor.element);
+
           return true;
         }
 
@@ -2198,11 +2202,12 @@ CssRuleView.prototype = {
             // Expand the computed list.
             textProp.editor.expandForFilter();
 
-            this._highlightElementInRule(
-              rule,
+            this._scrollToElement(
+              selectorText,
               computed.element,
               scrollBehavior
             );
+            this._flashElement(computed.element);
 
             return true;
           }
@@ -2211,20 +2216,6 @@ CssRuleView.prototype = {
     }
 
     return false;
-  },
-
-  /**
-   * Highlight a given element in a rule editor
-   *
-   * @param {Rule} rule
-   * @param {Element} element
-   * @param {String} scrollBehavior
-   */
-  _highlightElementInRule(rule, element, scrollBehavior) {
-    this._scrollToElement(rule.editor.selectorText, element, scrollBehavior);
-    this._flashElement(element).then(() =>
-      this.emitForTests("element-highlighted")
-    );
   },
 
   /**

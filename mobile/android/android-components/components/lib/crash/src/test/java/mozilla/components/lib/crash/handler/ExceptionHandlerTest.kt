@@ -5,6 +5,7 @@
 package mozilla.components.lib.crash.handler
 
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import mozilla.components.concept.base.crash.Breadcrumb
 import mozilla.components.lib.crash.Crash
 import mozilla.components.lib.crash.CrashReporter
@@ -21,6 +22,7 @@ import org.mockito.Mockito.never
 import org.mockito.Mockito.spy
 import org.mockito.Mockito.verify
 
+@ExperimentalCoroutinesApi
 @RunWith(AndroidJUnit4::class)
 class ExceptionHandlerTest {
 

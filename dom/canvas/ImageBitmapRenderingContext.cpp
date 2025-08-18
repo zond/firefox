@@ -165,8 +165,7 @@ ImageBitmapRenderingContext::MatchWithIntrinsicSize() {
 }
 
 mozilla::UniquePtr<uint8_t[]> ImageBitmapRenderingContext::GetImageBuffer(
-    mozilla::CanvasUtils::ImageExtraction aExtractionBehavior, int32_t* aFormat,
-    gfx::IntSize* aImageSize) {
+    int32_t* aFormat, gfx::IntSize* aImageSize) {
   *aFormat = 0;
   *aImageSize = {};
 
@@ -206,10 +205,9 @@ mozilla::UniquePtr<uint8_t[]> ImageBitmapRenderingContext::GetImageBuffer(
 }
 
 NS_IMETHODIMP
-ImageBitmapRenderingContext::GetInputStream(
-    const char* aMimeType, const nsAString& aEncoderOptions,
-    mozilla::CanvasUtils::ImageExtraction aExtractionBehavior,
-    nsIInputStream** aStream) {
+ImageBitmapRenderingContext::GetInputStream(const char* aMimeType,
+                                            const nsAString& aEncoderOptions,
+                                            nsIInputStream** aStream) {
   nsCString enccid("@mozilla.org/image/encoder;2?type=");
   enccid += aMimeType;
   nsCOMPtr<imgIEncoder> encoder = do_CreateInstance(enccid.get());
@@ -219,8 +217,7 @@ ImageBitmapRenderingContext::GetInputStream(
 
   int32_t format = 0;
   gfx::IntSize imageSize = {};
-  UniquePtr<uint8_t[]> imageBuffer =
-      GetImageBuffer(aExtractionBehavior, &format, &imageSize);
+  UniquePtr<uint8_t[]> imageBuffer = GetImageBuffer(&format, &imageSize);
   if (!imageBuffer) {
     return NS_ERROR_FAILURE;
   }

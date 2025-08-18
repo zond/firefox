@@ -104,9 +104,8 @@
                         const action = "get";
                         const options = {
                             digital: {
-                                // Results in TypeError when allowed (since the requests list is empty),
-                                // NotAllowedError when disallowed
-                                requests: [],
+                                // Results in TypeError when allowed, NotAllowedError when disallowed
+                                requests: [{ data: {}, protocol: "openid4vp" }],
                             },
                             mediation: "required",
                         };
@@ -123,11 +122,11 @@
                         const { name, message } = data;
                         const fullMessage = `${iframe.outerHTML} - ${message}`;
                         if (expectIsAllowed) {
-                            // When the call is allowed, result in a TypeError since no valid requests
-                            // were passed to the call.
-                            assert_true(name == "TypeError", fullMessage);
+                            assert_true(
+                                name == "TypeError" || name == "NotAllowedError",
+                                fullMessage
+                            );
                         } else {
-                            // When the call is disallowed, it MUST result in a NotAllowedError.
                             assert_equals(name, "NotAllowedError", fullMessage);
                         }
                         iframe.remove();

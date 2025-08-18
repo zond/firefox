@@ -7,6 +7,7 @@ package mozilla.components.feature.containers
 import android.content.Context
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import mozilla.components.browser.state.state.ContainerState
@@ -18,6 +19,7 @@ import org.junit.Assert.assertNotNull
 import org.junit.Before
 import org.junit.Test
 
+@ExperimentalCoroutinesApi
 @Suppress("LargeClass")
 class ContainerStorageTest {
     private lateinit var context: Context

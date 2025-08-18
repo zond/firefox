@@ -28,7 +28,6 @@ import androidx.fragment.app.Fragment
 import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.LifecycleOwner
 import androidx.navigation.NavController
-import mozilla.components.browser.state.action.AwesomeBarAction
 import mozilla.components.browser.state.store.BrowserStore
 import mozilla.components.compose.base.theme.AcornTheme
 import mozilla.components.compose.browser.awesomebar.AwesomeBar
@@ -70,7 +69,6 @@ private const val MATERIAL_DESIGN_SCRIM = "#52000000"
  * @param toolbarStore [BrowserToolbarStore] for accessing the current toolbar state.
  * @param navController [NavController] for navigating to other destinations in the application.
  * @param lifecycleOwner [Fragment] for controlling the lifetime of long running operations.
- * @param tabId [String] Id of the current tab for which a new search was started.
  * @param showScrimWhenNoSuggestions Whether to show a scrim when no suggestions are available.
  * @param searchAccessPoint Where search was started from.
  */
@@ -84,7 +82,6 @@ class AwesomeBarComposable(
     private val toolbarStore: BrowserToolbarStore,
     private val navController: NavController,
     private val lifecycleOwner: Fragment,
-    private val tabId: String? = null,
     private val showScrimWhenNoSuggestions: Boolean = false,
     private val searchAccessPoint: MetricsUtils.Source = MetricsUtils.Source.NONE,
 ) {
@@ -223,9 +220,7 @@ class AwesomeBarComposable(
                     onAutoComplete = { suggestion ->
                         searchStore.dispatch(SuggestionSelected(suggestion))
                     },
-                    onVisibilityStateUpdated = {
-                        browserStore.dispatch(AwesomeBarAction.VisibilityStateUpdated(it))
-                    },
+                    onVisibilityStateUpdated = {},
                     onScroll = { view.hideKeyboard() },
                     profiler = components.core.engine.profiler,
                 )
@@ -253,7 +248,7 @@ class AwesomeBarComposable(
             initialState = createInitialSearchFragmentState(
                 activity = activity,
                 components = components,
-                tabId = tabId,
+                tabId = null,
                 pastedText = null,
                 searchAccessPoint = searchAccessPoint,
             ),

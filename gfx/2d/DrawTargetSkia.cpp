@@ -38,9 +38,9 @@
 #include <algorithm>
 #include <cmath>
 
-#ifdef XP_DARWIN
+#ifdef MOZ_WIDGET_COCOA
 #  include "BorrowedContext.h"
-#  include <CoreGraphics/CGBitmapContext.h>
+#  include <ApplicationServices/ApplicationServices.h>
 #endif
 
 #ifdef XP_WIN
@@ -1037,7 +1037,7 @@ void DrawTargetSkia::Fill(const Path* aPath, const Pattern& aPattern,
   mCanvas->drawPath(skiaPath->GetPath(), paint.mPaint);
 }
 
-#ifdef XP_DARWIN
+#ifdef MOZ_WIDGET_COCOA
 static inline CGAffineTransform GfxMatrixToCGAffineTransform(const Matrix& m) {
   CGAffineTransform t;
   t.a = m._11;

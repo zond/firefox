@@ -27,9 +27,7 @@ add_task(async function () {
         // Checks for updated content for an infobar.
         async function testShowHide(highlighter, node, index) {
           const shown = highlighter.show(node, { index });
-          const infoBarText = highlighter.getElement(
-            "tabbing-order-infobar-text"
-          );
+          const infoBarText = highlighter.getElement("infobar-text");
 
           ok(shown, "Highlighter is shown.");
           is(
@@ -83,7 +81,7 @@ add_task(async function () {
         );
         highlighter.show(node, { index: 1 });
         highlighter.updateFocus(true);
-        const { classList } = highlighter.getElement("tabbing-order-root");
+        const { classList } = highlighter.getElement("root");
         ok(classList.contains("focused"), "Focus styling is applied");
         highlighter.updateFocus(false);
         ok(!classList.contains("focused"), "Focus styling is removed");

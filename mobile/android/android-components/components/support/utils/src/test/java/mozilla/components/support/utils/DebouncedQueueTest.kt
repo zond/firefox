@@ -4,14 +4,16 @@
 
 package mozilla.components.support.utils
 
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.TestScope
+import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.runTest
 import mozilla.components.support.test.mock
 import org.junit.Test
 import org.mockito.Mockito.never
 import org.mockito.Mockito.verify
-import kotlin.time.Duration.Companion.milliseconds
 
+@ExperimentalCoroutinesApi
 class DebouncedQueueTest {
     private val coroutineScope = TestScope()
 
@@ -33,7 +35,7 @@ class DebouncedQueueTest {
         queue.enqueue(secondCall)
         queue.enqueue(thirdCall)
 
-        testScheduler.advanceTimeBy((delayMillis + delayOffset).milliseconds)
+        advanceTimeBy(delayMillis + delayOffset)
         verify(firstCall, never()).invoke()
         verify(secondCall, never()).invoke()
         verify(thirdCall).invoke()
@@ -57,12 +59,12 @@ class DebouncedQueueTest {
         queue.enqueue(secondCall)
         queue.enqueue(thirdCall)
 
-        testScheduler.advanceTimeBy((delayMillis - delayOffset).milliseconds)
+        advanceTimeBy(delayMillis - delayOffset)
         verify(firstCall, never()).invoke()
         verify(secondCall, never()).invoke()
         verify(thirdCall, never()).invoke()
 
-        testScheduler.advanceTimeBy((delayOffset * 2).milliseconds)
+        advanceTimeBy(delayOffset * 2)
         verify(firstCall, never()).invoke()
         verify(secondCall, never()).invoke()
         verify(thirdCall).invoke()

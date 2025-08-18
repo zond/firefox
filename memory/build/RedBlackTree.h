@@ -98,11 +98,8 @@ class RedBlackTreeNode {
   }
 
   NodeColor Color() {
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wuninitialized"
     return static_cast<NodeColor>(reinterpret_cast<uintptr_t>(mRightAndColor) &
                                   1);
-#pragma GCC diagnostic pop
   }
 
   bool IsBlack() { return Color() == NodeColor::Black; }

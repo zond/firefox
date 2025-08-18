@@ -5,6 +5,7 @@
 package mozilla.components.feature.pwa
 
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.runTest
 import mozilla.components.concept.engine.manifest.WebAppManifest
 import mozilla.components.feature.pwa.db.ManifestDao
@@ -26,6 +27,7 @@ import org.mockito.Mockito.spy
 import org.mockito.Mockito.verify
 import org.mockito.Mockito.`when`
 
+@ExperimentalCoroutinesApi
 @RunWith(AndroidJUnit4::class)
 class ManifestStorageTest {
 

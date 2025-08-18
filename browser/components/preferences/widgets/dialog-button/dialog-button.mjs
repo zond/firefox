@@ -5,17 +5,9 @@
 import MozButton from "chrome://global/content/elements/moz-button.mjs";
 
 class DialogButton extends MozButton {
-  /**
-   * @param {string} dialog - The chrome url of the dialog to open.
-   * @param {string} features - The window features for the dialog. They get
-   * directly passed into window.openDialog.
-   * @param {Array} dialogArgs - The arguments to pass into the dialog's content
-   * window. These arguments are dialog specific.
-   */
   static properties = {
     dialog: { type: String },
     features: { type: String },
-    dialogArgs: { type: Array },
   };
 
   constructor() {
@@ -31,13 +23,8 @@ class DialogButton extends MozButton {
   onClick() {
     let dialog = this.getAttribute("dialog");
     let features = this.getAttribute("features");
-    let dialogOptions = features ? { features } : undefined;
-    let targetDialogWindowArguments = this.dialogArgs ?? [];
-    window.gSubDialog.open(
-      dialog,
-      dialogOptions,
-      ...targetDialogWindowArguments
-    );
+    let args = features ? { features } : undefined;
+    window.gSubDialog.open(dialog, args);
   }
 }
 customElements.define("dialog-button", DialogButton);

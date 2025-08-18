@@ -15,6 +15,7 @@ import android.webkit.WebViewClient
 import android.webkit.WebViewDatabase
 import androidx.core.net.toUri
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.runTest
 import mozilla.components.browser.engine.system.matcher.UrlMatcher
 import mozilla.components.browser.errorpages.ErrorType
@@ -351,6 +352,7 @@ class SystemEngineSessionTest {
         verify(webView).restoreState(bundle)
     }
 
+    @ExperimentalCoroutinesApi
     @Test
     fun enableTrackingProtection() = runTest {
         SystemEngineView.urlMatcher = UrlMatcher(arrayOf(""))

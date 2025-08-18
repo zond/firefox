@@ -272,8 +272,6 @@ private data class TabListItemPreviewState(
     val isSelected: Boolean,
     val multiSelectionEnabled: Boolean,
     val multiSelectionSelected: Boolean,
-    val url: String = "www.mozilla.org",
-    val title: String = "Mozilla Domain",
 )
 
 private class TabListItemParameterProvider : PreviewParameterProvider<TabListItemPreviewState> {
@@ -309,13 +307,6 @@ private class TabListItemParameterProvider : PreviewParameterProvider<TabListIte
                 multiSelectionEnabled = true,
                 multiSelectionSelected = true,
             ),
-            TabListItemPreviewState(
-                isSelected = false,
-                multiSelectionEnabled = false,
-                multiSelectionSelected = false,
-                url = "www.google.com/superlongurl",
-                title = "Super super super super super super super super long title",
-            ),
         )
 }
 
@@ -326,10 +317,7 @@ private fun TabListItemPreview(
 ) {
     FirefoxTheme {
         TabListItem(
-            tab = createTab(
-                url = tabListItemState.url,
-                title = tabListItemState.title,
-            ),
+            tab = createTab(url = "www.mozilla.com", title = "Mozilla"),
             isSelected = tabListItemState.isSelected,
             onCloseClick = {},
             onClick = {},

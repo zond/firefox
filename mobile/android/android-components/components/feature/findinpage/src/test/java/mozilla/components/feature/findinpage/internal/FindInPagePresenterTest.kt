@@ -4,6 +4,7 @@
 
 package mozilla.components.feature.findinpage.internal
 
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import mozilla.components.browser.state.action.ContentAction
 import mozilla.components.browser.state.selector.selectedTab
 import mozilla.components.browser.state.state.BrowserState
@@ -36,6 +37,7 @@ class FindInPagePresenterTest {
     private lateinit var store: BrowserStore
 
     @Before
+    @ExperimentalCoroutinesApi
     fun setUp() {
         store = BrowserStore(
             BrowserState(

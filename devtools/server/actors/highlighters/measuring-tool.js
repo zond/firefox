@@ -56,10 +56,7 @@ class MeasuringToolHighlighter {
     this.env = highlighterEnv;
     this.markup = new CanvasFrameAnonymousContentHelper(
       highlighterEnv,
-      this._buildMarkup.bind(this),
-      {
-        contentRootHostClassName: "devtools-highlighter-measuring-tool",
-      }
+      this._buildMarkup.bind(this)
     );
     this.isReady = this.markup.initialize();
 
@@ -72,7 +69,11 @@ class MeasuringToolHighlighter {
     DOM_EVENTS.forEach(type => pageListenerTarget.addEventListener(type, this));
   }
 
+  ID_CLASS_PREFIX = "measuring-tool-";
+
   _buildMarkup() {
+    const prefix = this.ID_CLASS_PREFIX;
+
     const container = this.markup.createNode({
       attributes: { class: "highlighter-container" },
     });
@@ -80,21 +81,23 @@ class MeasuringToolHighlighter {
     const root = this.markup.createNode({
       parent: container,
       attributes: {
-        id: "measuring-tool-root",
-        class: "measuring-tool-root",
+        id: "root",
+        class: "root",
         hidden: "true",
       },
+      prefix,
     });
 
     const svg = this.markup.createSVGNode({
       nodeType: "svg",
       parent: root,
       attributes: {
-        id: "measuring-tool-elements",
-        class: "measuring-tool-elements",
+        id: "elements",
+        class: "elements",
         width: "100%",
         height: "100%",
       },
+      prefix,
     });
 
     for (const side of SIDES) {
@@ -102,31 +105,34 @@ class MeasuringToolHighlighter {
         nodeType: "line",
         parent: svg,
         attributes: {
-          class: `measuring-tool-guide-${side}`,
-          id: `measuring-tool-guide-${side}`,
+          class: `guide-${side}`,
+          id: `guide-${side}`,
           hidden: "true",
         },
+        prefix,
       });
     }
 
     this.markup.createNode({
       nodeType: "label",
       attributes: {
-        id: "measuring-tool-label-size",
-        class: "measuring-tool-label-size",
+        id: "label-size",
+        class: "label-size",
         hidden: "true",
       },
       parent: root,
+      prefix,
     });
 
     this.markup.createNode({
       nodeType: "label",
       attributes: {
-        id: "measuring-tool-label-position",
-        class: "measuring-tool-label-position",
+        id: "label-position",
+        class: "label-position",
         hidden: "true",
       },
       parent: root,
+      prefix,
     });
 
     // Creating a <g> element in order to group all the paths below, that
@@ -135,27 +141,30 @@ class MeasuringToolHighlighter {
     const g = this.markup.createSVGNode({
       nodeType: "g",
       attributes: {
-        id: "measuring-tool-tool",
+        id: "tool",
       },
       parent: svg,
+      prefix,
     });
 
     this.markup.createSVGNode({
       nodeType: "path",
       attributes: {
-        id: "measuring-tool-box-path",
-        class: "measuring-tool-box-path",
+        id: "box-path",
+        class: "box-path",
       },
       parent: g,
+      prefix,
     });
 
     this.markup.createSVGNode({
       nodeType: "path",
       attributes: {
-        id: "measuring-tool-diagonal-path",
-        class: "measuring-tool-diagonal-path",
+        id: "diagonal-path",
+        class: "diagonal-path",
       },
       parent: g,
+      prefix,
     });
 
     for (const handler of HANDLERS) {
@@ -163,11 +172,12 @@ class MeasuringToolHighlighter {
         nodeType: "circle",
         parent: g,
         attributes: {
-          class: `measuring-tool-handler-${handler}`,
-          id: `measuring-tool-handler-${handler}`,
+          class: `handler-${handler}`,
+          id: `handler-${handler}`,
           r: HANDLER_SIZE,
           hidden: "true",
         },
+        prefix,
       });
     }
 
@@ -239,7 +249,7 @@ class MeasuringToolHighlighter {
   show() {
     setIgnoreLayoutChanges(true);
 
-    this.getElement("measuring-tool-root").removeAttribute("hidden");
+    this.getElement("root").removeAttribute("hidden");
 
     this._update();
 
@@ -252,7 +262,7 @@ class MeasuringToolHighlighter {
     this.hideLabel(LABEL_TYPE_SIZE);
     this.hideLabel(LABEL_TYPE_POSITION);
 
-    this.getElement("measuring-tool-root").setAttribute("hidden", "true");
+    this.getElement("root").setAttribute("hidden", "true");
 
     this._cancelUpdate();
 
@@ -260,7 +270,7 @@ class MeasuringToolHighlighter {
   }
 
   getElement(id) {
-    return this.markup.getElement(id);
+    return this.markup.getElement(this.ID_CLASS_PREFIX + id);
   }
 
   setSize(w, h) {
@@ -311,12 +321,9 @@ class MeasuringToolHighlighter {
 
     const linedir = `M${x1} ${y1} L${w1} ${h1}`;
 
-    this.getElement("measuring-tool-box-path").setAttribute("d", dir);
-    this.getElement("measuring-tool-diagonal-path").setAttribute("d", linedir);
-    this.getElement("measuring-tool-tool").setAttribute(
-      "transform",
-      `translate(${x},${y})`
-    );
+    this.getElement("box-path").setAttribute("d", dir);
+    this.getElement("diagonal-path").setAttribute("d", linedir);
+    this.getElement("tool").setAttribute("transform", `translate(${x},${y})`);
   }
 
   updateLabel(type) {
@@ -324,7 +331,7 @@ class MeasuringToolHighlighter {
 
     const isSizeLabel = type === LABEL_TYPE_SIZE;
 
-    const label = this.getElement(`measuring-tool-label-${type}`);
+    const label = this.getElement(`label-${type}`);
 
     let origin = "top left";
 
@@ -401,7 +408,7 @@ class MeasuringToolHighlighter {
     );
 
     if (!isSizeLabel) {
-      const labelSize = this.getElement("measuring-tool-label-size");
+      const labelSize = this.getElement("label-size");
       const style = labelSize.getAttribute("style");
 
       if (style) {
@@ -427,7 +434,7 @@ class MeasuringToolHighlighter {
     const minWidth = 1 / pixelRatio;
     const strokeWidth = minWidth / zoom;
 
-    this.getElement("measuring-tool-root").setAttribute(
+    this.getElement("root").setAttribute(
       "style",
       `stroke-width:${strokeWidth};
        width:${documentWidth}px;
@@ -438,28 +445,28 @@ class MeasuringToolHighlighter {
   updateGuides() {
     const { x, y, w, h } = this.rect;
 
-    let guide = this.getElement("measuring-tool-guide-top");
+    let guide = this.getElement("guide-top");
 
     guide.setAttribute("x1", "0");
     guide.setAttribute("y1", y);
     guide.setAttribute("x2", "100%");
     guide.setAttribute("y2", y);
 
-    guide = this.getElement("measuring-tool-guide-right");
+    guide = this.getElement("guide-right");
 
     guide.setAttribute("x1", x + w);
     guide.setAttribute("y1", 0);
     guide.setAttribute("x2", x + w);
     guide.setAttribute("y2", "100%");
 
-    guide = this.getElement("measuring-tool-guide-bottom");
+    guide = this.getElement("guide-bottom");
 
     guide.setAttribute("x1", "0");
     guide.setAttribute("y1", y + h);
     guide.setAttribute("x2", "100%");
     guide.setAttribute("y2", y + h);
 
-    guide = this.getElement("measuring-tool-guide-left");
+    guide = this.getElement("guide-left");
 
     guide.setAttribute("x1", x);
     guide.setAttribute("y1", 0);
@@ -468,7 +475,7 @@ class MeasuringToolHighlighter {
   }
 
   setHandlerPosition(handler, x, y) {
-    const handlerElement = this.getElement(`measuring-tool-handler-${handler}`);
+    const handlerElement = this.getElement(`handler-${handler}`);
     handlerElement.setAttribute("cx", x);
     handlerElement.setAttribute("cy", y);
   }
@@ -489,7 +496,7 @@ class MeasuringToolHighlighter {
   showLabel(type) {
     setIgnoreLayoutChanges(true);
 
-    this.getElement(`measuring-tool-label-${type}`).removeAttribute("hidden");
+    this.getElement(`label-${type}`).removeAttribute("hidden");
 
     setIgnoreLayoutChanges(false, this.env.window.document.documentElement);
   }
@@ -497,16 +504,13 @@ class MeasuringToolHighlighter {
   hideLabel(type) {
     setIgnoreLayoutChanges(true);
 
-    this.getElement(`measuring-tool-label-${type}`).setAttribute(
-      "hidden",
-      "true"
-    );
+    this.getElement(`label-${type}`).setAttribute("hidden", "true");
 
     setIgnoreLayoutChanges(false, this.env.window.document.documentElement);
   }
 
   showGuides() {
-    const prefix = "measuring-tool-guide-";
+    const prefix = this.ID_CLASS_PREFIX + "guide-";
 
     for (const side of SIDES) {
       this.markup.removeAttributeForElement(`${prefix + side}`, "hidden");
@@ -514,7 +518,7 @@ class MeasuringToolHighlighter {
   }
 
   hideGuides() {
-    const prefix = "measuring-tool-guide-";
+    const prefix = this.ID_CLASS_PREFIX + "guide-";
 
     for (const side of SIDES) {
       this.markup.setAttributeForElement(`${prefix + side}`, "hidden", "true");
@@ -522,12 +526,12 @@ class MeasuringToolHighlighter {
   }
 
   showHandler(id) {
-    const prefix = "measuring-tool-handler-";
+    const prefix = this.ID_CLASS_PREFIX + "handler-";
     this.markup.removeAttributeForElement(prefix + id, "hidden");
   }
 
   showHandlers() {
-    const prefix = "measuring-tool-handler-";
+    const prefix = this.ID_CLASS_PREFIX + "handler-";
 
     for (const handler of HANDLERS) {
       this.markup.removeAttributeForElement(prefix + handler, "hidden");
@@ -552,7 +556,7 @@ class MeasuringToolHighlighter {
   }
 
   hideHandlers() {
-    const prefix = "measuring-tool-handler-";
+    const prefix = this.ID_CLASS_PREFIX + "handler-";
 
     for (const handler of HANDLERS) {
       this.markup.setAttributeForElement(prefix + handler, "hidden", "true");
@@ -615,7 +619,7 @@ class MeasuringToolHighlighter {
       }
       case "keyup": {
         if (MeasuringToolHighlighter.#isResizeModifierPressed(event)) {
-          this.getElement("measuring-tool-handler-topleft").classList?.remove(
+          this.getElement("handler-topleft")?.classList.remove(
             HIGHLIGHTED_HANDLER_CLASSNAME
           );
         }
@@ -627,7 +631,7 @@ class MeasuringToolHighlighter {
   handleMouseDownEvent(event) {
     const { pageX, pageY } = event;
     const { window } = this.env;
-    const elementId = `measuring-tool-tool`;
+    const elementId = `${this.ID_CLASS_PREFIX}tool`;
 
     setIgnoreLayoutChanges(true);
 
@@ -674,7 +678,7 @@ class MeasuringToolHighlighter {
   handleMouseUpEvent() {
     setIgnoreLayoutChanges(true);
 
-    this.getElement("measuring-tool-tool").classList?.remove("dragging");
+    this.getElement("tool")?.classList.remove("dragging");
 
     this.showGuidesAndHandlers();
 
@@ -685,7 +689,7 @@ class MeasuringToolHighlighter {
   handleResizingMouseDownEvent(event) {
     const { originalTarget, pageX, pageY } = event;
     const { window } = this.env;
-    const prefix = "measuring-tool-handler-";
+    const prefix = this.ID_CLASS_PREFIX + "handler-";
     const handler = originalTarget.id.replace(prefix, "");
 
     setIgnoreLayoutChanges(true);
@@ -696,7 +700,7 @@ class MeasuringToolHighlighter {
     this.showHandler(handler);
 
     // Set coordinates to the current measurement area's position
-    const [, x, y] = this.getElement("measuring-tool-tool")
+    const [, x, y] = this.getElement("tool")
       .getAttribute("transform")
       .match(/(\d+),(\d+)/);
     this.setRect(Number(x), Number(y));
@@ -760,10 +764,7 @@ class MeasuringToolHighlighter {
     // Changes the resizing cursors in case the measuring box is mirrored
     const isMirrored =
       (rect.w < 0 || rect.h < 0) && !(rect.w < 0 && rect.h < 0);
-    this.getElement("measuring-tool-tool").classList.toggle(
-      "mirrored",
-      isMirrored
-    );
+    this.getElement("tool").classList.toggle("mirrored", isMirrored);
 
     this.showLabel("size");
   }
@@ -773,9 +774,7 @@ class MeasuringToolHighlighter {
 
     setIgnoreLayoutChanges(true);
 
-    this.getElement(`measuring-tool-handler-${handler}`).classList?.remove(
-      "dragging"
-    );
+    this.getElement(`handler-${handler}`)?.classList.remove("dragging");
     this.showHandlers();
 
     this.showGuidesAndHandlers();
@@ -786,7 +785,7 @@ class MeasuringToolHighlighter {
 
   handleKeyDown(event) {
     if (MeasuringToolHighlighter.#isResizeModifierPressed(event)) {
-      this.getElement("measuring-tool-handler-topleft").classList?.add(
+      this.getElement("handler-topleft")?.classList.add(
         HIGHLIGHTED_HANDLER_CLASSNAME
       );
     }

@@ -68,6 +68,7 @@ import org.mozilla.fenix.settings.registerOnSharedPreferenceChangeListener
 import org.mozilla.fenix.settings.sitepermissions.AUTOPLAY_BLOCK_ALL
 import org.mozilla.fenix.settings.sitepermissions.AUTOPLAY_BLOCK_AUDIBLE
 import org.mozilla.fenix.tabstray.DefaultTabManagementFeatureHelper
+import org.mozilla.fenix.tabstray.TabManagementFeatureHelper
 import org.mozilla.fenix.wallpapers.Wallpaper
 import java.security.InvalidParameterException
 import java.util.UUID
@@ -90,14 +91,12 @@ class Settings(private val appContext: Context) : PreferencesHolder {
         private const val ALLOWED_INT = 2
         private const val INACTIVE_TAB_MINIMUM_TO_SHOW_AUTO_CLOSE_DIALOG = 20
 
-        const val THIRTY_SECONDS_MS = 30 * 1000L
         const val FOUR_HOURS_MS = 60 * 60 * 4 * 1000L
         const val ONE_MINUTE_MS = 60 * 1000L
         const val ONE_HOUR_MS = 60 * ONE_MINUTE_MS
         const val ONE_DAY_MS = 60 * 60 * 24 * 1000L
         const val TWO_DAYS_MS = 2 * ONE_DAY_MS
         const val THREE_DAYS_MS = 3 * ONE_DAY_MS
-        const val FIVE_DAYS_MS = 5 * ONE_DAY_MS
         const val ONE_WEEK_MS = 60 * 60 * 24 * 7 * 1000L
         const val ONE_MONTH_MS = (60 * 60 * 24 * 365 * 1000L) / 12
 
@@ -286,28 +285,10 @@ class Settings(private val appContext: Context) : PreferencesHolder {
         get() = FxNimbus.features.homescreen.value().sectionsEnabled
 
     /**
-     * Indicates if the top sites homepage section settings should be visible
+     * Indicates if the homepage section settings should be visible.
      */
-    val showHomepageTopSitesSectionToggle: Boolean
-        get() = !overrideUserSpecifiedHomepageSections || enableHomepageSearchBar
-
-    /**
-     * Indicates if the recent tabs homepage section settings should be visible
-     */
-    val showHomepageRecentTabsSectionToggle: Boolean
-        get() = !overrideUserSpecifiedHomepageSections && !enableHomepageSearchBar
-
-    /**
-     * Indicates if the bookmarks homepage section settings should be visible
-     */
-    val showHomepageBookmarksSectionToggle: Boolean
-        get() = !overrideUserSpecifiedHomepageSections && !enableHomepageSearchBar
-
-    /**
-     * Indicates if the recently visited homepage section settings should be visible
-     */
-    val showHomepageRecentlyVisitedSectionToggle: Boolean
-        get() = !overrideUserSpecifiedHomepageSections && !enableHomepageSearchBar
+    val showHomepageSectionToggleSettings: Boolean
+        get() = !overrideUserSpecifiedHomepageSections
 
     /**
      * Indicates if the user specified homepage section visibility should be ignored.
@@ -552,31 +533,15 @@ class Settings(private val appContext: Context) : PreferencesHolder {
     var hasAcceptedTermsOfService by booleanPreference(
         appContext.getPreferenceKey(R.string.pref_key_terms_accepted),
         default = false,
-        persistDefaultIfNotExists = true,
-    )
-
-    /**
-     * Timestamp in milliseconds when the terms of use prompt was last shown to the user.
-     * A value of 0L indicates that the prompt has never been shown.
-     */
-    var lastTermsOfUsePromptTimeInMillis: Long by longPreference(
-        appContext.getPreferenceKey(R.string.pref_key_terms_last_prompt_time),
-        default = 0L,
     )
 
     /**
      * Users who have not accepted ToS will see a popup asking them to accept.
      * They can select "Not now" to postpone accepting.
      */
-    var hasPostponedAcceptingTermsOfUse by booleanPreference(
+    var hasPostponedAcceptingTermsOfService by booleanPreference(
         appContext.getPreferenceKey(R.string.pref_key_terms_postponed),
         default = false,
-    )
-
-    var isDebugTermsOfServiceTriggerTimeEnabled by booleanPreference(
-        appContext.getPreferenceKey(R.string.pref_key_debug_terms_trigger_time),
-        default = false,
-        persistDefaultIfNotExists = true,
     )
 
     /**
@@ -783,17 +748,6 @@ class Settings(private val appContext: Context) : PreferencesHolder {
      */
     var alwaysOpenTheLastTabWhenOpeningTheApp by booleanPreference(
         appContext.getPreferenceKey(R.string.pref_key_start_on_home_never),
-        default = false,
-    )
-
-    /**
-     * Indicates if the LNA (Local Network Access / Local Device Access) blocking is enabled
-     *
-     * This refers to whether or not we are blocking or allowing requests that originate from
-     * remote origins targeting either localhost addresses or local network addresses.
-     */
-    var isLnaBlockingEnabled by booleanPreference(
-        appContext.getPreferenceKey(R.string.pref_key_enable_lna_blocking_enabled),
         default = false,
     )
 
@@ -1562,8 +1516,6 @@ class Settings(private val appContext: Context) : PreferencesHolder {
             persistentStorage = getSitePermissionsPhoneFeatureAction(PhoneFeature.PERSISTENT_STORAGE),
             crossOriginStorageAccess = getSitePermissionsPhoneFeatureAction(PhoneFeature.CROSS_ORIGIN_STORAGE_ACCESS),
             mediaKeySystemAccess = getSitePermissionsPhoneFeatureAction(PhoneFeature.MEDIA_KEY_SYSTEM_ACCESS),
-            localDeviceAccess = getSitePermissionsPhoneFeatureAction(PhoneFeature.LOCAL_DEVICE_ACCESS),
-            localNetworkAccess = getSitePermissionsPhoneFeatureAction(PhoneFeature.LOCAL_NETWORK_ACCESS),
         )
     }
 
@@ -1578,8 +1530,6 @@ class Settings(private val appContext: Context) : PreferencesHolder {
             PhoneFeature.PERSISTENT_STORAGE,
             PhoneFeature.CROSS_ORIGIN_STORAGE_ACCESS,
             PhoneFeature.MEDIA_KEY_SYSTEM_ACCESS,
-            PhoneFeature.LOCAL_DEVICE_ACCESS,
-            PhoneFeature.LOCAL_NETWORK_ACCESS,
         ).map { it.getPreferenceKey(appContext) }
 
         preferences.registerOnSharedPreferenceChangeListener(lifecycleOwner) { _, key ->

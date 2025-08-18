@@ -6,7 +6,7 @@ declare global {
   type DeclaredLazy<T> = {
     [P in keyof T]: T[P] extends () => infer U
       ? U
-      : T[P] extends keyof Modules
+      : T[P] extends keyof LazyModules
         ? Exports<T[P], P>
         : T[P] extends { pref: string; default?: infer U }
           ? Widen<U>
@@ -24,10 +24,12 @@ declare global {
   >;
 }
 
-type Exports<M, P> = M extends keyof Modules ? IfKey<Modules[M], P> : never;
+type Exports<M, P> = M extends keyof LazyModules
+  ? IfKey<LazyModules[M], P>
+  : never;
 type IfKey<T, K> = K extends keyof T ? T[K] : never;
 
-type Modules = import("./generated/lib.gecko.modules").Modules;
+type LazyModules = import("./generated/lib.gecko.modules").LazyModules;
 
 type Widen<T> = T extends boolean
   ? boolean

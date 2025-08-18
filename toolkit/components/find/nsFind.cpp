@@ -1015,7 +1015,9 @@ already_AddRefed<nsRange> nsFind::FindFromRangeBoundaries(
               "RevealHiddenUntilFound",
               [node = RefPtr(startParent)]()
                   MOZ_CAN_RUN_SCRIPT_BOUNDARY_LAMBDA {
-                    node->AncestorRevealingAlgorithm(IgnoreErrors());
+                    node->RevealAncestorClosedDetails();
+                    node->RevealAncestorHiddenUntilFoundAndFireBeforematchEvent(
+                        IgnoreErrors());
                   }));
           if (!rv.Failed()) {
             return range.forget();

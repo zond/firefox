@@ -4,6 +4,7 @@
 
 package mozilla.components.feature.tab.collections.ext
 
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import mozilla.components.browser.state.engine.EngineMiddleware
 import mozilla.components.browser.state.selector.findTab
 import mozilla.components.browser.state.state.BrowserState
@@ -39,6 +40,7 @@ class TabsUseCasesKtTest {
     private lateinit var tab: Tab
     private lateinit var filesDir: File
 
+    @OptIn(ExperimentalCoroutinesApi::class)
     @get:Rule
     val coroutinesTestRule = MainCoroutineRule()
 

@@ -43,7 +43,6 @@
 #include "nsString.h"
 #include "nsStyleConsts.h"
 #include "nsStyleStructInlines.h"
-#include "nsStyleStructList.h"
 #include "nsStyleUtil.h"
 
 using namespace mozilla;
@@ -65,12 +64,12 @@ struct AssertSizeIsLessThan {
   static constexpr bool instantiate = true;
 };
 
-#define ASSERT_SIZE(name_)                                                   \
+#define STYLE_STRUCT(name_)                                                  \
   static_assert(AssertSizeIsLessThan<nsStyle##name_, sizeof(nsStyle##name_), \
                                      kStyleStructSizeLimit>::instantiate,    \
                 "");
-FOR_EACH_STYLE_STRUCT(ASSERT_SIZE, ASSERT_SIZE)
-#undef ASSERT_SIZE
+#include "nsStyleStructList.h"
+#undef STYLE_STRUCT
 
 bool StyleCssUrlData::operator==(const StyleCssUrlData& aOther) const {
   // This very intentionally avoids comparing LoadData and such.

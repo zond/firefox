@@ -72,16 +72,8 @@ const PAGE2_CONTENT = `<!DOCTYPE html>
         //# sourceURL=turbopack:///src/turbopack-script.js
       </script>
       <script type="text/javascript">
-        console.log("turbopack script 2");
-        //# sourceURL=turbopack://src2/turbopack-script-2.js
-      </script>
-      <script type="text/javascript">
         console.log("angular script");
         //# sourceURL=ng:///src/angular-script.js
-      </script>
-      <script type="text/javascript">
-        console.log("angular script 2");
-        //# sourceURL=ng://src2/angular-script-2.js
       </script>
       <script type="text/javascript">
         console.log("resource script");
@@ -96,9 +88,7 @@ const ALL_PAGE2_SCRIPTS = [
   "webpack-with-domain-script.js",
   "webpack-short-url-script.js",
   "turbopack-script.js",
-  "turbopack-script-2.js",
   "angular-script.js",
-  "angular-script-2.js",
   "resource-script.js",
   "worker-script.js",
 ];
@@ -247,9 +237,9 @@ add_task(async function testProjectRoot() {
 
   await selectAndCheckProjectRoots(dbg, [
     {
-      label: "Turbopack",
+      label: "turbopack://",
       tooltip: `turbopack:// on Main Thread`,
-      sources: ["turbopack-script.js", "turbopack-script-2.js"],
+      sources: ["turbopack-script.js"],
     },
     {
       label: "src",
@@ -265,7 +255,7 @@ add_task(async function testProjectRoot() {
     {
       label: "Angular",
       tooltip: `ng:// on Main Thread`,
-      sources: ["angular-script.js", "angular-script-2.js"],
+      sources: ["angular-script.js"],
     },
     {
       label: "src",

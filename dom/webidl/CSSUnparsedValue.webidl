@@ -15,9 +15,7 @@ interface CSSUnparsedValue : CSSStyleValue {
   iterable<CSSUnparsedSegment>;
   readonly attribute unsigned long length;
   getter CSSUnparsedSegment (unsigned long index);
-  // TODO: The spec should be updated to use `undefined` as the return type too
-  // https://github.com/w3c/css-houdini-drafts/issues/1142
-  [Throws] setter undefined (unsigned long index, CSSUnparsedSegment val);
+  [Throws] setter CSSUnparsedSegment (unsigned long index, CSSUnparsedSegment val);
 };
 
 // https://drafts.css-houdini.org/css-typed-om-1/#typedefdef-cssunparsedsegment
