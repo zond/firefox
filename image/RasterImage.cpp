@@ -800,7 +800,6 @@ nsresult RasterImage::StartAnimation() {
   // We need to set the time that this initial frame was first displayed, as
   // this is used in AdvanceFrame().
   mAnimationState->InitAnimationFrameTimeIfNecessary();
-
   return NS_OK;
 }
 

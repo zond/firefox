@@ -17,11 +17,10 @@ extern "C" {
 }
 
 namespace mozilla::image {
-class RasterImage;
 
 class nsJXLRustDecoder final : public Decoder {
  public:
-  virtual ~nsJXLRustDecoder();
+  ~nsJXLRustDecoder() override;
 
   DecoderType GetType() const override { return DecoderType::JXL; }
 
@@ -37,8 +36,9 @@ class nsJXLRustDecoder final : public Decoder {
 
   enum class State { JXL_DATA, FINISHED_JXL_DATA };
 
+  nsresult ProcessFrame();
+
   LexerTransition<State> ReadJXLData(const char* aData, size_t aLength);
-  LexerTransition<State> ProcessFrame();
   LexerTransition<State> FinishedJXLData();
 
   StreamingLexer<State> mLexer;
@@ -49,6 +49,10 @@ class nsJXLRustDecoder final : public Decoder {
   };
   UniquePtr<::mozilla::JxlRustDecoder, JxlRustDecoderDeleter> mRustDecoder;
   UniquePtr<::mozilla::JxlRustImageInfo> mImageInfo;
+  UniquePtr<::mozilla::JxlRustAnimationInfo> mAnimInfo;
+
+  // Animation state
+  uint32_t mFrameIndex = 0;
 };
 
 }  // namespace mozilla::image

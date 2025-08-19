@@ -3,6 +3,7 @@
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 use jxl_rust_decoder::JxlRustDecoder;
+use log::error;
 
 #[repr(C)]
 pub enum JxlRustStatus {
@@ -21,6 +22,7 @@ pub struct JxlRustImageInfo {
 
 #[repr(C)]
 pub struct JxlRustAnimationInfo {
+    pub is_animated: bool,
     pub num_loops: u32,
     pub have_timecodes: bool,
 }
@@ -53,6 +55,8 @@ pub unsafe extern "C" fn jxl_rust_decoder_free(decoder: *mut JxlRustDecoder) {
 }
 
 /// Process JXL data through the decoder.
+/// 
+/// Updates data and len to reflect the amount of consumed data.
 ///
 /// # Safety
 /// - The decoder pointer must be valid and created by `jxl_rust_decoder_new`.
@@ -61,23 +65,23 @@ pub unsafe extern "C" fn jxl_rust_decoder_free(decoder: *mut JxlRustDecoder) {
 #[no_mangle]
 pub unsafe extern "C" fn jxl_rust_decoder_process_data(
     decoder: *mut JxlRustDecoder,
-    data: *const u8,
-    len: usize,
-    size_hint_out: *mut usize,
+    data: *mut *const u8,
+    len: *mut usize,
 ) -> JxlRustStatus {
     if decoder.is_null() || data.is_null() {
         return JxlRustStatus::Error;
     }
 
     let decoder = &mut *decoder;
-    let data_slice = std::slice::from_raw_parts(data, len);
+    let mut data_slice = std::slice::from_raw_parts(*data, *len);
 
-    match decoder.process_data(data_slice) {
-        Ok((true, _)) => JxlRustStatus::Ok,
-        Ok((false, size_hint)) => {
-            if !size_hint_out.is_null() {
-                *size_hint_out = size_hint;
-            }
+    let result = decoder.process_data(&mut data_slice);
+    *data = data_slice.as_ptr();
+    *len = data_slice.len();
+
+    match result {
+        Ok(true) => JxlRustStatus::Ok,
+        Ok(false) => {
             JxlRustStatus::NeedMoreData
         }
         Err(err_msg) => {
@@ -86,7 +90,7 @@ pub unsafe extern "C" fn jxl_rust_decoder_process_data(
             } else {
                 err_msg.into()
             };
-            eprintln!("{full_msg}");
+            error!("JXL Rust decoder error: {full_msg}");
             JxlRustStatus::InvalidData
         },
     }
@@ -138,10 +142,12 @@ pub unsafe extern "C" fn jxl_rust_decoder_get_animation_info(
     if let Some(anim_info) = &decoder.animation_info {
         (*info).num_loops = anim_info.num_loops;
         (*info).have_timecodes = anim_info.have_timecodes;
+        (*info).is_animated = true;
     } else {
         // Not an animated image, provide default values
         (*info).num_loops = 0;
         (*info).have_timecodes = false;
+        (*info).is_animated = false;
     }
 
     JxlRustStatus::Ok
@@ -178,7 +184,21 @@ pub unsafe extern "C" fn jxl_rust_decoder_is_frame_ready(decoder: *const JxlRust
     }
 
     let decoder = &*decoder;
-    decoder.is_frame_ready()
+    decoder.frame_ready
+}
+
+/// Check if a there are more frames to decode.
+///
+/// # Safety
+/// The decoder pointer must be valid and created by `jxl_rust_decoder_new`.
+#[no_mangle]
+pub unsafe extern "C" fn jxl_rust_decoder_has_more_frames(decoder: *const JxlRustDecoder) -> bool {
+    if decoder.is_null() {
+        return false;
+    }
+
+    let decoder = &*decoder;
+    decoder.has_more_frames
 }
 
 /// Decode a frame from the JXL data.
@@ -212,7 +232,7 @@ pub unsafe extern "C" fn jxl_rust_decoder_decode_frame(
             } else {
                 err_msg.into()
             };
-            eprintln!("{full_msg}");
+            error!("JXL Rust decoder error: {full_msg}");
             JxlRustStatus::Error
         },
     }

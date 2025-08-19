@@ -19,7 +19,7 @@ dependencies = [
  "cstr",
  "hex",
  "lazy_static",
- "log",
+ "log 0.4.26 (registry+https://github.com/rust-lang/crates.io-index)",
  "nserror",
  "nsstring",
  "thin-vec",
@@ -90,7 +90,7 @@ checksum = "037f3e1da32ddba7770530e69258b742c15ad67bdf90e5f6b35f4b6db9a60eb7"
 dependencies = [
  "android_log-sys",
  "env_logger",
- "log",
+ "log 0.4.26 (registry+https://github.com/rust-lang/crates.io-index)",
  "once_cell",
 ]
 
@@ -287,7 +287,7 @@ dependencies = [
  "cfg-if",
  "dbus",
  "libc",
- "log",
+ "log 0.4.26 (registry+https://github.com/rust-lang/crates.io-index)",
  "mach",
  "windows-sys",
 ]
@@ -309,7 +309,7 @@ dependencies = [
  "error-chain",
  "iovec",
  "libc",
- "log",
+ "log 0.4.26 (registry+https://github.com/rust-lang/crates.io-index)",
  "memmap2",
  "mio",
  "scopeguard",
@@ -328,7 +328,7 @@ dependencies = [
  "audio_thread_priority",
  "audioipc2",
  "cubeb-backend",
- "log",
+ "log 0.4.26 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -340,7 +340,7 @@ dependencies = [
  "audioipc2",
  "cubeb-core",
  "error-chain",
- "log",
+ "log 0.4.26 (registry+https://github.com/rust-lang/crates.io-index)",
  "once_cell",
  "slab",
 ]
@@ -358,7 +358,7 @@ dependencies = [
  "devd-rs",
  "libc",
  "libudev",
- "log",
+ "log 0.4.26 (registry+https://github.com/rust-lang/crates.io-index)",
  "memoffset 0.8.999",
  "nss-gk-api",
  "pkcs11-bindings",
@@ -379,7 +379,7 @@ dependencies = [
  "authenticator",
  "base64 0.22.1",
  "cstr",
- "log",
+ "log 0.4.26 (registry+https://github.com/rust-lang/crates.io-index)",
  "moz_task",
  "nserror",
  "nsstring",
@@ -551,7 +551,7 @@ dependencies = [
  "comedy",
  "crossbeam-utils",
  "libc",
- "log",
+ "log 0.4.26 (registry+https://github.com/rust-lang/crates.io-index)",
  "moz_task",
  "nserror",
  "nsstring",
@@ -581,7 +581,7 @@ dependencies = [
  "cstr",
  "dogear",
  "libc",
- "log",
+ "log 0.4.26 (registry+https://github.com/rust-lang/crates.io-index)",
  "moz_task",
  "nserror",
  "nsstring",
@@ -626,7 +626,7 @@ version = "0.1.0"
 dependencies = [
  "goblin 0.8.999",
  "libc",
- "log",
+ "log 0.4.26 (registry+https://github.com/rust-lang/crates.io-index)",
  "scroll",
  "thiserror 2.0.12",
 ]
@@ -636,7 +636,7 @@ name = "buildid_reader_ffi"
 version = "0.1.0"
 dependencies = [
  "buildid_reader",
- "log",
+ "log 0.4.26 (registry+https://github.com/rust-lang/crates.io-index)",
  "nserror",
  "nsstring",
 ]
@@ -766,7 +766,7 @@ dependencies = [
  "crossbeam-utils",
  "cstr",
  "firefox-on-glean",
- "log",
+ "log 0.4.26 (registry+https://github.com/rust-lang/crates.io-index)",
  "moz_task",
  "nserror",
  "nsstring",
@@ -885,7 +885,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "54381ae56ad222eea3f529c692879e9c65e07945ae48d3dc4d1cb18dbec8cf44"
 dependencies = [
  "clap",
- "log",
+ "log 0.4.26 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -1189,7 +1189,7 @@ dependencies = [
  "dirs",
  "env_logger",
  "linked-hash-map",
- "log",
+ "log 0.4.26 (registry+https://github.com/rust-lang/crates.io-index)",
  "minidump-writer",
  "mozannotation_server",
  "mozbuild",
@@ -1224,7 +1224,7 @@ dependencies = [
  "gtkbind",
  "intl-memoizer",
  "libloading",
- "log",
+ "log 0.4.26 (registry+https://github.com/rust-lang/crates.io-index)",
  "memtest",
  "minidump-analyzer",
  "mozbuild",
@@ -1440,7 +1440,7 @@ dependencies = [
 name = "dap_ffi"
 version = "0.1.0"
 dependencies = [
- "log",
+ "log 0.4.26 (registry+https://github.com/rust-lang/crates.io-index)",
  "prio",
  "rand",
  "thin-vec",
@@ -1514,7 +1514,7 @@ dependencies = [
  "byteorder",
  "cstr",
  "firefox-on-glean",
- "log",
+ "log 0.4.26 (registry+https://github.com/rust-lang/crates.io-index)",
  "malloc_size_of_derive",
  "moz_task",
  "nserror",
@@ -1597,7 +1597,7 @@ dependencies = [
 name = "detect_win32k_conflicts"
 version = "0.1.0"
 dependencies = [
- "log",
+ "log 0.4.26 (registry+https://github.com/rust-lang/crates.io-index)",
  "thiserror 1.999.999",
  "winapi",
 ]
@@ -1717,7 +1717,7 @@ version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3f430ca247b6a905681a3cce3eb4f1a72062f3e8dc178e7660c1acd06c64ecce"
 dependencies = [
- "log",
+ "log 0.4.26 (registry+https://github.com/rust-lang/crates.io-index)",
  "smallbitvec",
 ]
 
@@ -1885,7 +1885,7 @@ version = "0.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "85cdab6a89accf66733ad5a1693a4dcced6aeff64602b634530dd73c1f3ee9f0"
 dependencies = [
- "log",
+ "log 0.4.26 (registry+https://github.com/rust-lang/crates.io-index)",
  "regex",
  "termcolor",
 ]
@@ -1932,7 +1932,7 @@ dependencies = [
  "env_logger",
  "error-support-macros",
  "lazy_static",
- "log",
+ "log 0.4.26 (registry+https://github.com/rust-lang/crates.io-index)",
  "parking_lot",
  "tracing",
  "tracing-support",
@@ -2021,7 +2021,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "27838c6815cfe9de2d3aeb145ffd19e565f577414b33f3bdbf42fe040e9e0ff6"
 dependencies = [
  "lazy_static",
- "log",
+ "log 0.4.26 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -2056,7 +2056,7 @@ dependencies = [
  "gecko-profiler",
  "glean",
  "inherent",
- "log",
+ "log 0.4.26 (registry+https://github.com/rust-lang/crates.io-index)",
  "mozbuild",
  "nserror",
  "nsstring",
@@ -2225,7 +2225,7 @@ dependencies = [
  "cstr",
  "firefox-on-glean",
  "glean",
- "log",
+ "log 0.4.26 (registry+https://github.com/rust-lang/crates.io-index)",
  "mozbuild",
  "nserror",
  "nsstring",
@@ -2438,7 +2438,7 @@ version = "0.1.0"
 dependencies = [
  "env_logger",
  "lazy_static",
- "log",
+ "log 0.4.26 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -2463,7 +2463,7 @@ dependencies = [
  "hyper",
  "icu_segmenter",
  "lazy_static",
- "log",
+ "log 0.4.26 (registry+https://github.com/rust-lang/crates.io-index)",
  "marionette",
  "mozdevice",
  "mozilla-central-workspace-hack",
@@ -2495,7 +2495,7 @@ dependencies = [
  "ipdl_utils",
  "lazy_static",
  "libc",
- "log",
+ "log 0.4.26 (registry+https://github.com/rust-lang/crates.io-index)",
  "malloc_size_of",
  "nsstring",
  "num-traits",
@@ -2635,7 +2635,7 @@ dependencies = [
  "l10nregistry-ffi",
  "libz-rs-sys",
  "localization-ffi",
- "log",
+ "log 0.4.26 (registry+https://github.com/rust-lang/crates.io-index)",
  "mapped_hyph",
  "mdns_service",
  "midir_impl",
@@ -2716,7 +2716,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1a95dfc23a2b4a9a2f5ab41d194f8bfda3cabec42af4e39f08c339eb2a0c124d"
 dependencies = [
  "khronos_api",
- "log",
+ "log 0.4.26 (registry+https://github.com/rust-lang/crates.io-index)",
  "xml-rs",
 ]
 
@@ -2738,7 +2738,7 @@ dependencies = [
  "crossbeam-channel",
  "glean-core",
  "inherent",
- "log",
+ "log 0.4.26 (registry+https://github.com/rust-lang/crates.io-index)",
  "once_cell",
  "whatsys",
  "wr_malloc_size_of",
@@ -2755,7 +2755,7 @@ dependencies = [
  "chrono",
  "crossbeam-channel",
  "flate2",
- "log",
+ "log 0.4.26 (registry+https://github.com/rust-lang/crates.io-index)",
  "malloc_size_of_derive",
  "once_cell",
  "oslog",
@@ -2823,7 +2823,7 @@ version = "0.9.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "53ab3f32d1d77146981dea5d6b1e8fe31eedcb7013e5e00d6ccd1259a4b4d923"
 dependencies = [
- "log",
+ "log 0.4.26 (registry+https://github.com/rust-lang/crates.io-index)",
  "plain",
  "scroll",
 ]
@@ -2853,7 +2853,7 @@ version = "0.27.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c151a2a5ef800297b4e79efa4f4bec035c5f51d5ae587287c9b952bdf734cacd"
 dependencies = [
- "log",
+ "log 0.4.26 (registry+https://github.com/rust-lang/crates.io-index)",
  "presser",
  "thiserror 1.999.999",
  "windows",
@@ -3050,7 +3050,7 @@ dependencies = [
  "cfg-if",
  "http",
  "hyper",
- "log",
+ "log 0.4.26 (registry+https://github.com/rust-lang/crates.io-index)",
  "mozilla-central-workspace-hack",
  "neqo-bin",
  "neqo-common",
@@ -3118,7 +3118,7 @@ dependencies = [
  "core-foundation-sys",
  "iana-time-zone-haiku",
  "js-sys",
- "log",
+ "log 0.4.26 (registry+https://github.com/rust-lang/crates.io-index)",
  "wasm-bindgen",
  "windows-core",
 ]
@@ -3546,7 +3546,7 @@ name = "jog"
 version = "0.1.0"
 dependencies = [
  "firefox-on-glean",
- "log",
+ "log 0.4.26 (registry+https://github.com/rust-lang/crates.io-index)",
  "mozbuild",
  "nserror",
  "nsstring",
@@ -3622,6 +3622,7 @@ name = "jxl_rust_decoder_capi"
 version = "0.1.0"
 dependencies = [
  "jxl_rust_decoder",
+ "log 0.4.26",
 ]
 
 [[package]]
@@ -3651,7 +3652,7 @@ dependencies = [
  "hashbrown 0.13.999",
  "lazy_static",
  "libc",
- "log",
+ "log 0.4.26 (registry+https://github.com/rust-lang/crates.io-index)",
  "moz_task",
  "nserror",
  "nsstring",
@@ -3703,7 +3704,7 @@ dependencies = [
  "futures-channel",
  "l10nregistry",
  "libc",
- "log",
+ "log 0.4.26 (registry+https://github.com/rust-lang/crates.io-index)",
  "moz_task",
  "nserror",
  "nsstring",
@@ -3889,6 +3890,10 @@ dependencies = [
 [[package]]
 name = "log"
 version = "0.4.26"
+
+[[package]]
+name = "log"
+version = "0.4.26"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "30bde2b3dc3671ae49d8e2e9f044c7c005836e7a023ee57cffa25ab82764bb9e"
 
@@ -3960,7 +3965,7 @@ version = "0.4.3"
 source = "git+https://github.com/jfkthame/mapped_hyph.git?rev=eff105f6ad7ec9b79816cfc1985a28e5340ad14b#eff105f6ad7ec9b79816cfc1985a28e5340ad14b"
 dependencies = [
  "arrayref",
- "log",
+ "log 0.4.26 (registry+https://github.com/rust-lang/crates.io-index)",
  "memmap2",
 ]
 
@@ -4012,7 +4017,7 @@ dependencies = [
  "byteorder",
  "dns-parser",
  "gecko-profiler",
- "log",
+ "log 0.4.26 (registry+https://github.com/rust-lang/crates.io-index)",
  "socket2",
  "uuid",
 ]
@@ -4074,7 +4079,7 @@ dependencies = [
  "block",
  "core-graphics-types 0.2.0",
  "foreign-types",
- "log",
+ "log 0.4.26 (registry+https://github.com/rust-lang/crates.io-index)",
  "objc",
  "paste",
 ]
@@ -4159,7 +4164,7 @@ dependencies = [
  "futures-executor",
  "futures-util",
  "lazy_static",
- "log",
+ "log 0.4.26 (registry+https://github.com/rust-lang/crates.io-index)",
  "minidump",
  "minidump-unwind",
  "serde_json",
@@ -4221,7 +4226,7 @@ dependencies = [
  "failspot",
  "goblin 0.9.2",
  "libc",
- "log",
+ "log 0.4.26 (registry+https://github.com/rust-lang/crates.io-index)",
  "mach2",
  "memmap2",
  "memoffset 0.9.0",
@@ -4258,7 +4263,7 @@ checksum = "4569e456d394deccd22ce1c1913e6ea0e54519f577285001215d33557431afe4"
 dependencies = [
  "hermit-abi",
  "libc",
- "log",
+ "log 0.4.26 (registry+https://github.com/rust-lang/crates.io-index)",
  "wasi 0.11.999",
  "windows-sys",
 ]
@@ -4415,7 +4420,7 @@ name = "mls_gk"
 version = "0.1.0"
 dependencies = [
  "hex",
- "log",
+ "log 0.4.26 (registry+https://github.com/rust-lang/crates.io-index)",
  "mls-platform-api",
  "nserror",
  "nss-gk-api",
@@ -4446,7 +4451,7 @@ dependencies = [
  "async-task",
  "cstr",
  "libc",
- "log",
+ "log 0.4.26 (registry+https://github.com/rust-lang/crates.io-index)",
  "nserror",
  "nsstring",
  "xpcom",
@@ -4481,7 +4486,7 @@ version = "0.1.0"
 name = "mozdevice"
 version = "0.5.4"
 dependencies = [
- "log",
+ "log 0.4.26 (registry+https://github.com/rust-lang/crates.io-index)",
  "once_cell",
  "regex",
  "tempfile",
@@ -4539,7 +4544,7 @@ dependencies = [
  "indexmap",
  "itertools 0.14.0",
  "libc",
- "log",
+ "log 0.4.26 (registry+https://github.com/rust-lang/crates.io-index)",
  "memchr",
  "mio",
  "nom",
@@ -4599,7 +4604,7 @@ name = "mozrunner"
 version = "0.15.4"
 dependencies = [
  "dirs",
- "log",
+ "log 0.4.26 (registry+https://github.com/rust-lang/crates.io-index)",
  "mozprofile",
  "plist",
  "thiserror 1.999.999",
@@ -4649,7 +4654,7 @@ dependencies = [
  "bitreader",
  "byteorder",
  "fallible_collections",
- "log",
+ "log 0.4.26 (registry+https://github.com/rust-lang/crates.io-index)",
  "num-traits",
  "static_assertions",
 ]
@@ -4665,7 +4670,7 @@ source = "git+https://github.com/mozilla/mp4parse-rust?rev=f955be5d2a04a631c0f17
 dependencies = [
  "byteorder",
  "fallible_collections",
- "log",
+ "log 0.4.26 (registry+https://github.com/rust-lang/crates.io-index)",
  "mp4parse",
  "num-traits",
 ]
@@ -4706,7 +4711,7 @@ dependencies = [
  "hexf-parse",
  "indexmap",
  "libm",
- "log",
+ "log 0.4.26 (registry+https://github.com/rust-lang/crates.io-index)",
  "num-traits",
  "once_cell",
  "rustc-hash 1.999.999",
@@ -4725,7 +4730,7 @@ dependencies = [
  "clap-verbosity-flag",
  "futures",
  "hex",
- "log",
+ "log 0.4.26 (registry+https://github.com/rust-lang/crates.io-index)",
  "neqo-common",
  "neqo-crypto",
  "neqo-http3",
@@ -4746,7 +4751,7 @@ source = "git+https://github.com/mozilla/neqo?tag=v0.14.1#531cb0b6c21d27ff1ccec5
 dependencies = [
  "enum-map",
  "env_logger",
- "log",
+ "log 0.4.26 (registry+https://github.com/rust-lang/crates.io-index)",
  "qlog",
  "strum",
  "windows",
@@ -4759,7 +4764,7 @@ source = "git+https://github.com/mozilla/neqo?tag=v0.14.1#531cb0b6c21d27ff1ccec5
 dependencies = [
  "bindgen",
  "enum-map",
- "log",
+ "log 0.4.26 (registry+https://github.com/rust-lang/crates.io-index)",
  "mozbuild",
  "neqo-common",
  "semver",
@@ -4775,7 +4780,7 @@ version = "0.14.1"
 source = "git+https://github.com/mozilla/neqo?tag=v0.14.1#531cb0b6c21d27ff1ccec5502ecc346a6a922d71"
 dependencies = [
  "enumset",
- "log",
+ "log 0.4.26 (registry+https://github.com/rust-lang/crates.io-index)",
  "neqo-common",
  "neqo-crypto",
  "neqo-qpack",
@@ -4792,7 +4797,7 @@ name = "neqo-qpack"
 version = "0.14.1"
 source = "git+https://github.com/mozilla/neqo?tag=v0.14.1#531cb0b6c21d27ff1ccec5502ecc346a6a922d71"
 dependencies = [
- "log",
+ "log 0.4.26 (registry+https://github.com/rust-lang/crates.io-index)",
  "neqo-common",
  "neqo-transport",
  "qlog",
@@ -4808,7 +4813,7 @@ dependencies = [
  "enum-map",
  "enumset",
  "indexmap",
- "log",
+ "log 0.4.26 (registry+https://github.com/rust-lang/crates.io-index)",
  "mtu",
  "neqo-common",
  "neqo-crypto",
@@ -4826,7 +4831,7 @@ source = "git+https://github.com/mozilla/neqo?tag=v0.14.1#531cb0b6c21d27ff1ccec5
 dependencies = [
  "cfg_aliases",
  "libc",
- "log",
+ "log 0.4.26 (registry+https://github.com/rust-lang/crates.io-index)",
  "neqo-common",
  "quinn-udp",
  "windows",
@@ -4838,7 +4843,7 @@ version = "0.1.0"
 dependencies = [
  "firefox-on-glean",
  "libc",
- "log",
+ "log 0.4.26 (registry+https://github.com/rust-lang/crates.io-index)",
  "neqo-common",
  "neqo-crypto",
  "neqo-http3",
@@ -4922,7 +4927,7 @@ version = "0.3.0"
 source = "git+https://github.com/beurdouche/nss-gk-api?rev=e48a946811ffd64abc78de3ee284957d8d1c0d63#e48a946811ffd64abc78de3ee284957d8d1c0d63"
 dependencies = [
  "bindgen",
- "log",
+ "log 0.4.26 (registry+https://github.com/rust-lang/crates.io-index)",
  "mozbuild",
  "once_cell",
  "pkcs11-bindings",
@@ -5030,7 +5035,7 @@ dependencies = [
  "bindgen",
  "byteorder",
  "hex",
- "log",
+ "log 0.4.26 (registry+https://github.com/rust-lang/crates.io-index)",
  "mozbuild",
  "serde",
  "serde_derive",
@@ -5082,7 +5087,7 @@ dependencies = [
  "futures-executor",
  "lazy_static",
  "libloading",
- "log",
+ "log 0.4.26 (registry+https://github.com/rust-lang/crates.io-index)",
  "moz_task",
  "nserror",
  "pkcs11-bindings",
@@ -5095,7 +5100,7 @@ dependencies = [
 name = "oslog"
 version = "0.1.999"
 dependencies = [
- "log",
+ "log 0.4.26 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -5314,7 +5319,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8c1f7d82649829ecdef8e258790b0587acf0a8403f0ce963473d8e918acc1643"
 dependencies = [
  "euclid",
- "log",
+ "log 0.4.26 (registry+https://github.com/rust-lang/crates.io-index)",
  "smallvec",
 ]
 
@@ -5437,7 +5442,7 @@ name = "processtools"
 version = "0.1.0"
 dependencies = [
  "libc",
- "log",
+ "log 0.4.26 (registry+https://github.com/rust-lang/crates.io-index)",
  "nserror",
  "winapi",
  "xpcom",
@@ -5562,7 +5567,7 @@ checksum = "fcebb1209ee276352ef14ff8732e24cc2b02bbac986cd74a4c81bcb2f9881970"
 dependencies = [
  "cfg_aliases",
  "libc",
- "log",
+ "log 0.4.26 (registry+https://github.com/rust-lang/crates.io-index)",
  "once_cell",
  "socket2",
  "windows-sys",
@@ -5782,7 +5787,7 @@ dependencies = [
  "byteorder",
  "id-arena",
  "lazy_static",
- "log",
+ "log 0.4.26 (registry+https://github.com/rust-lang/crates.io-index)",
  "ordered-float",
  "paste",
  "serde",
@@ -5844,7 +5849,7 @@ name = "rsdparsa_capi"
 version = "0.1.0"
 dependencies = [
  "libc",
- "log",
+ "log 0.4.26 (registry+https://github.com/rust-lang/crates.io-index)",
  "nserror",
  "webrtc-sdp",
 ]
@@ -6040,7 +6045,7 @@ dependencies = [
  "cssparser",
  "derive_more",
  "fxhash",
- "log",
+ "log 0.4.26 (registry+https://github.com/rust-lang/crates.io-index)",
  "new_debug_unreachable",
  "phf",
  "phf_codegen",
@@ -6424,7 +6429,7 @@ dependencies = [
  "itertools 0.14.0",
  "itoa",
  "lazy_static",
- "log",
+ "log 0.4.26 (registry+https://github.com/rust-lang/crates.io-index)",
  "malloc_size_of",
  "malloc_size_of_derive",
  "matches",
@@ -6894,7 +6899,7 @@ version = "0.1.41"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "784e0ac535deb450455cbfa28a6f0df145ea1bb7ae51b821cf5e7927fdcfbdd0"
 dependencies = [
- "log",
+ "log 0.4.26 (registry+https://github.com/rust-lang/crates.io-index)",
  "pin-project-lite",
  "tracing-attributes",
  "tracing-core",
@@ -7382,7 +7387,7 @@ dependencies = [
 name = "urlpattern_glue"
 version = "0.0.1"
 dependencies = [
- "log",
+ "log 0.4.26 (registry+https://github.com/rust-lang/crates.io-index)",
  "mozurl",
  "nsstring",
  "regex",
@@ -7456,7 +7461,7 @@ version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1ce8a968cb1cd110d136ff8b819a556d6fb6d919363c61534f6860c7eb172ba0"
 dependencies = [
- "log",
+ "log 0.4.26 (registry+https://github.com/rust-lang/crates.io-index)",
  "try-lock",
 ]
 
@@ -7472,7 +7477,7 @@ dependencies = [
  "headers",
  "http",
  "hyper",
- "log",
+ "log 0.4.26 (registry+https://github.com/rust-lang/crates.io-index)",
  "mime",
  "mime_guess",
  "percent-encoding",
@@ -7567,7 +7572,7 @@ dependencies = [
  "cookie",
  "http",
  "icu_segmenter",
- "log",
+ "log 0.4.26 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde",
  "serde_derive",
  "serde_json",
@@ -7620,7 +7625,7 @@ dependencies = [
  "glean",
  "glslopt",
  "lazy_static",
- "log",
+ "log 0.4.26 (registry+https://github.com/rust-lang/crates.io-index)",
  "malloc_size_of_derive",
  "num-traits",
  "peek-poke",
@@ -7673,7 +7678,7 @@ dependencies = [
  "fxhash",
  "gecko-profiler",
  "gleam",
- "log",
+ "log 0.4.26 (registry+https://github.com/rust-lang/crates.io-index)",
  "nsstring",
  "num_cpus",
  "objc",
@@ -7704,7 +7709,7 @@ version = "0.3.13"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a87d58624aae43577604ea137de9dcaf92793eccc4d816efad482001c2e055ca"
 dependencies = [
- "log",
+ "log 0.4.26 (registry+https://github.com/rust-lang/crates.io-index)",
  "url",
 ]
 
@@ -7731,7 +7736,7 @@ dependencies = [
  "document-features",
  "hashbrown 0.15.2",
  "indexmap",
- "log",
+ "log 0.4.26 (registry+https://github.com/rust-lang/crates.io-index)",
  "naga",
  "once_cell",
  "parking_lot",
@@ -7784,7 +7789,7 @@ dependencies = [
  "hashbrown 0.15.2",
  "libc",
  "libloading",
- "log",
+ "log 0.4.26 (registry+https://github.com/rust-lang/crates.io-index)",
  "metal",
  "naga",
  "objc",
@@ -7808,7 +7813,7 @@ dependencies = [
  "bitflags 2.9.0",
  "bytemuck",
  "js-sys",
- "log",
+ "log 0.4.26 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde",
  "thiserror 2.0.12",
  "web-sys",
@@ -7822,7 +7827,7 @@ dependencies = [
  "ash",
  "bincode",
  "io-surface",
- "log",
+ "log 0.4.26 (registry+https://github.com/rust-lang/crates.io-index)",
  "metal",
  "nsstring",
  "objc",
@@ -8034,7 +8039,7 @@ dependencies = [
  "glean",
  "lazy_static",
  "libc",
- "log",
+ "log 0.4.26 (registry+https://github.com/rust-lang/crates.io-index)",
  "malloc_size_of_derive",
  "objc",
  "rayon",

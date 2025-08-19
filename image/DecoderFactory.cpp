@@ -5,6 +5,8 @@
 
 #include "DecoderFactory.h"
 
+#include <iostream>
+
 #include "ImageUtils.h"
 #include "nsMimeTypes.h"
 #include "mozilla/RefPtr.h"
@@ -260,6 +262,9 @@ nsresult DecoderFactory::CreateAnimationDecoder(
   if (aType == DecoderType::UNKNOWN) {
     return NS_ERROR_INVALID_ARG;
   }
+  if (aType == DecoderType::JXL) {
+    std::cerr << "CreateAnimationDecoder called for JXL\n";
+  }
 
   // Only can use COUNT_FRAMES with metadata decoders.
   if (NS_WARN_IF(bool(aDecoderFlags & DecoderFlags::COUNT_FRAMES))) {
@@ -267,7 +272,8 @@ nsresult DecoderFactory::CreateAnimationDecoder(
   }
 
   MOZ_ASSERT(aType == DecoderType::GIF || aType == DecoderType::PNG ||
-                 aType == DecoderType::WEBP || aType == DecoderType::AVIF,
+                 aType == DecoderType::WEBP || aType == DecoderType::AVIF ||
+                 aType == DecoderType::JXL,
              "Calling CreateAnimationDecoder for non-animating DecoderType");
 
   // Create an anonymous decoder. Interaction with the SurfaceCache and the
@@ -308,6 +314,9 @@ nsresult DecoderFactory::CreateAnimationDecoder(
   // Return the surface provider in its IDecodingTask guise.
   RefPtr<IDecodingTask> task = provider.get();
   task.forget(aOutTask);
+  if (aType == DecoderType::JXL) {
+    std::cerr << "CreateAnimationDecoder successful for JXL\n";
+  }
   return NS_OK;
 }
 
@@ -322,7 +331,8 @@ already_AddRefed<Decoder> DecoderFactory::CloneAnimationDecoder(
   // rediscover it is animated).
   DecoderType type = aDecoder->GetType();
   MOZ_ASSERT(type == DecoderType::GIF || type == DecoderType::PNG ||
-                 type == DecoderType::WEBP || type == DecoderType::AVIF,
+                 type == DecoderType::WEBP || type == DecoderType::AVIF ||
+                 type == DecoderType::JXL,
              "Calling CloneAnimationDecoder for non-animating DecoderType");
 
   RefPtr<Decoder> decoder = GetDecoder(type, nullptr, /* aIsRedecode = */ true);

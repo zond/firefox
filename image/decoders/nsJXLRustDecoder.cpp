@@ -10,13 +10,14 @@
 #include "SurfaceFilters.h"
 #include "SurfacePipeFactory.h"
 #include "mozilla/Vector.h"
+#include "imgIContainer.h"
+#include <iostream>
 
 using namespace mozilla::gfx;
 
 namespace mozilla {
 namespace image {
 
-// Implement the deleter
 void nsJXLRustDecoder::JxlRustDecoderDeleter::operator()(
     ::mozilla::JxlRustDecoder* aDecoder) {
   if (aDecoder) {
@@ -26,18 +27,16 @@ void nsJXLRustDecoder::JxlRustDecoderDeleter::operator()(
 
 nsJXLRustDecoder::nsJXLRustDecoder(RasterImage* aImage)
     : Decoder(aImage),
-      mLexer(Transition::ToUnbuffered(State::FINISHED_JXL_DATA,
-                                       State::JXL_DATA, SIZE_MAX),
+      mLexer(Transition::ToUnbuffered(State::FINISHED_JXL_DATA, State::JXL_DATA,
+                                      SIZE_MAX),
              Transition::TerminateSuccess()) {}
 
-nsJXLRustDecoder::~nsJXLRustDecoder() {
-}
+nsJXLRustDecoder::~nsJXLRustDecoder() = default;
 
 LexerResult nsJXLRustDecoder::DoDecode(SourceBufferIterator& aIterator,
                                        IResumable* aOnResume) {
   MOZ_ASSERT(!HasError(), "Shouldn't call DoDecode after error!");
 
-  // Create Rust decoder on first use
   if (!mRustDecoder) {
     bool isMetadataDecode = IsMetadataDecode();
     ::mozilla::JxlRustDecoder* decoder = jxl_rust_decoder_new(isMetadataDecode);
@@ -48,7 +47,7 @@ LexerResult nsJXLRustDecoder::DoDecode(SourceBufferIterator& aIterator,
   }
 
   return mLexer.Lex(aIterator, aOnResume,
-                    [=](State aState, const char* aData, size_t aLength) {
+                    [this](State aState, const char* aData, size_t aLength) {
                       switch (aState) {
                         case State::JXL_DATA:
                           return ReadJXLData(aData, aLength);
@@ -62,58 +61,100 @@ LexerResult nsJXLRustDecoder::DoDecode(SourceBufferIterator& aIterator,
 LexerTransition<nsJXLRustDecoder::State> nsJXLRustDecoder::ReadJXLData(
     const char* aData, size_t aLength) {
   MOZ_ASSERT(mRustDecoder);
-  
-  // Process data with Rust decoder
-  size_t sizeHint = 0;
-  ::mozilla::JxlRustStatus status = jxl_rust_decoder_process_data(
-      mRustDecoder.get(), 
-      reinterpret_cast<const uint8_t*>(aData), 
-      aLength,
-      &sizeHint);
-
-  switch (status) {
-    case ::mozilla::JXL_RUST_STATUS_OK: {
-      if (!HasSize()) {
-        mImageInfo.reset(new ::mozilla::JxlRustImageInfo());
-        ::mozilla::JxlRustStatus infoStatus = jxl_rust_decoder_get_info(
-            mRustDecoder.get(), mImageInfo.get());
-        
-        if (infoStatus == ::mozilla::JXL_RUST_STATUS_OK) {
+  const size_t originalLength = aLength;
+  while (true) {
+    ::mozilla::JxlRustStatus status = jxl_rust_decoder_process_data(
+        mRustDecoder.get(), reinterpret_cast<const uint8_t**>(&aData),
+        &aLength);
+    switch (status) {
+      case ::mozilla::JXL_RUST_STATUS_OK:
+        if (!HasSize()) {
+          mImageInfo.reset(new ::mozilla::JxlRustImageInfo());
+          ::mozilla::JxlRustStatus infoStatus =
+              jxl_rust_decoder_get_info(mRustDecoder.get(), mImageInfo.get());
+          if (infoStatus != ::mozilla::JXL_RUST_STATUS_OK) {
+            return Transition::TerminateFailure();
+          }
           PostSize(mImageInfo->width, mImageInfo->height);
+
+          mAnimInfo.reset(new ::mozilla::JxlRustAnimationInfo());
+          if (jxl_rust_decoder_get_animation_info(mRustDecoder.get(),
+                                                  mAnimInfo.get()) !=
+              ::mozilla::JXL_RUST_STATUS_OK) {
+            return Transition::TerminateFailure();
+          }
 
           if (IsMetadataDecode()) {
             return Transition::TerminateSuccess();
           }
         }
-      }
-      
-      if (HasSize() && jxl_rust_decoder_is_frame_ready(mRustDecoder.get())) {
-          return ProcessFrame();
-      }  
-      
-      // Continue reading more data
-      return Transition::ContinueUnbuffered(State::JXL_DATA);
+
+        if (HasSize() && jxl_rust_decoder_is_frame_ready(mRustDecoder.get())) {
+          if (NS_FAILED(ProcessFrame())) {
+            return Transition::TerminateFailure();
+          }
+          // If static, we're done. If animated, yield and signal how much of
+          // the buffer we used.
+          if (IsFirstFrameDecode() || !mAnimInfo->is_animated ||
+              !jxl_rust_decoder_has_more_frames(mRustDecoder.get())) {
+            PostDecodeDone();
+            PostFrameCount(mFrameIndex);
+            return Transition::TerminateSuccess();
+          } else {
+            return Transition::ContinueUnbufferedAfterYield(
+                State::JXL_DATA, originalLength - aLength);
+          }
+        } else {
+          if (aLength == 0) {
+            return Transition::ContinueUnbuffered(State::JXL_DATA);
+          }
+        }
+        break;
+
+      case ::mozilla::JXL_RUST_STATUS_NEED_MORE_DATA:
+        if (aLength == 0) {
+          return Transition::ContinueUnbuffered(State::JXL_DATA);
+        }
+        break;
+
+      case ::mozilla::JXL_RUST_STATUS_INVALID_DATA:
+        return Transition::TerminateFailure();
+
+      case ::mozilla::JXL_RUST_STATUS_ERROR:
+        return Transition::TerminateFailure();
+
+      default:
+        return Transition::TerminateFailure();
     }
-
-    case ::mozilla::JXL_RUST_STATUS_NEED_MORE_DATA:
-      return Transition::ContinueUnbuffered(State::JXL_DATA);
-
-    case ::mozilla::JXL_RUST_STATUS_INVALID_DATA:
-      return Transition::TerminateFailure();
-
-    case ::mozilla::JXL_RUST_STATUS_ERROR:
-      return Transition::TerminateFailure();
-
-    default:
-      // Unknown status - treat as error
-      return Transition::TerminateFailure();
   }
 }
 
-LexerTransition<nsJXLRustDecoder::State> nsJXLRustDecoder::ProcessFrame() {
-  // Get image dimensions
+LexerTransition<nsJXLRustDecoder::State> nsJXLRustDecoder::FinishedJXLData() {
+  MOZ_ASSERT_UNREACHABLE("Should complete decode before reaching end");
+  return Transition::TerminateFailure();
+}
+
+nsresult nsJXLRustDecoder::ProcessFrame() {
   OrientedIntSize fullSize(mImageInfo->width, mImageInfo->height);
   OrientedIntSize outputSize = OutputSize();
+  OrientedIntRect frameRect(OrientedIntPoint(0, 0), fullSize);
+
+  Maybe<AnimationParams> animParams;
+  if (mAnimInfo->is_animated) {
+    ::mozilla::JxlRustFrameInfo frameInfo;
+    ::mozilla::JxlRustStatus status =
+        jxl_rust_decoder_get_frame_info(mRustDecoder.get(), &frameInfo);
+    if (status != ::mozilla::JXL_RUST_STATUS_OK) {
+      return NS_ERROR_FAILURE;
+    }
+    const FrameTimeout timeout = FrameTimeout::FromRawMilliseconds(50);
+    if (mFrameIndex == 0) {
+      PostIsAnimated(timeout);
+      PostLoopCount(mAnimInfo->num_loops == 0 ? -1 : mAnimInfo->num_loops);
+    }
+    animParams.emplace(frameRect.ToUnknownRect(), timeout, mFrameIndex,
+                       BlendMethod::SOURCE, DisposalMethod::KEEP);
+  }
 
   SurfaceFormat format = SurfaceFormat::OS_RGBA;
   PostHasTransparency();
@@ -123,42 +164,34 @@ LexerTransition<nsJXLRustDecoder::State> nsJXLRustDecoder::ProcessFrame() {
     pipeFlags |= SurfacePipeFlags::PREMULTIPLY_ALPHA;
   }
 
-  // Create surface pipe with full size input, scaled output
-  OrientedIntRect frameRect(OrientedIntPoint(0, 0), fullSize);
   Maybe<SurfacePipe> pipe = SurfacePipeFactory::CreateSurfacePipe(
-      this, fullSize, outputSize, frameRect,
-      format, format, /* aAnimParams */ Nothing(),
+      this, fullSize, outputSize, frameRect, format, format, animParams,
       /* aTransform */ nullptr, pipeFlags);
-
   if (!pipe) {
-    return Transition::TerminateFailure();
+    return NS_ERROR_FAILURE;
   }
 
-  // Allocate buffer for full-resolution decoded pixels  
   Vector<uint32_t> pixelBuffer;
   size_t fullPixelCount = fullSize.width * fullSize.height;
   if (!pixelBuffer.resize(fullPixelCount)) {
-    return Transition::TerminateFailure();
+    return NS_ERROR_OUT_OF_MEMORY;
   }
 
-  // Decode the frame at full resolution
   size_t pixelsWritten = 0;
-  ::mozilla::JxlRustStatus status = jxl_rust_decoder_decode_frame(
-      mRustDecoder.get(),
-      pixelBuffer.begin(),
-      pixelBuffer.length(),
-      &pixelsWritten);
+  ::mozilla::JxlRustStatus status =
+      jxl_rust_decoder_decode_frame(mRustDecoder.get(), pixelBuffer.begin(),
+                                    pixelBuffer.length(), &pixelsWritten);
 
-  if (status != ::mozilla::JXL_RUST_STATUS_OK || pixelsWritten != fullPixelCount) {
-    return Transition::TerminateFailure();
+  if (status != ::mozilla::JXL_RUST_STATUS_OK ||
+      pixelsWritten != fullPixelCount) {
+    return NS_ERROR_FAILURE;
   }
 
-  // Write full-resolution decoded pixels to the surface pipe (scaling handled automatically)
   uint32_t* currentRow = pixelBuffer.begin();
   for (int32_t y = 0; y < fullSize.height; ++y) {
     WriteState result = pipe->WriteBuffer(currentRow);
     if (result == WriteState::FAILURE) {
-      return Transition::TerminateFailure();
+      return NS_ERROR_FAILURE;
     }
     currentRow += fullSize.width;
   }
@@ -169,13 +202,9 @@ LexerTransition<nsJXLRustDecoder::State> nsJXLRustDecoder::ProcessFrame() {
   }
 
   PostFrameStop();
-  PostDecodeDone();
-  return Transition::TerminateSuccess();
-}
 
-LexerTransition<nsJXLRustDecoder::State> nsJXLRustDecoder::FinishedJXLData() {
-  MOZ_ASSERT_UNREACHABLE("Should complete decode before reaching end");
-  return Transition::TerminateFailure();
+  mFrameIndex++;
+  return NS_OK;
 }
 
 }  // namespace image

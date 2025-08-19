@@ -3,16 +3,13 @@
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 use jxl::api::{
-    states::*, JxlAnimation, JxlColorType, JxlDecoder, JxlExtraChannel, JxlDecoderOptions, JxlOutputBuffer,
-    ProcessingResult,
+    states::*, JxlAnimation, JxlBitstreamInput, JxlColorType, JxlDecoder, JxlDecoderOptions, JxlExtraChannel, JxlOutputBuffer, ProcessingResult
 };
 use jxl::headers::extra_channels::ExtraChannel;
 use qcms::c_bindings::{icSigCmykData, icSigGrayData, icSigRgbData, qcms_profile_get_color_space};
 use qcms::{DataType, Intent, Profile, Transform};
 
-/// Enum to hold the decoder in any of its typestates
 enum DecoderState {
-    Uninitialized,
     Initialized(JxlDecoder<Initialized>),
     WithImageInfo(JxlDecoder<WithImageInfo>),
     WithFrameInfo(JxlDecoder<WithFrameInfo>),
@@ -22,7 +19,6 @@ enum DecoderState {
 impl std::fmt::Debug for DecoderState {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            DecoderState::Uninitialized => write!(f, "Uninitialized"),
             DecoderState::Initialized(_) => write!(f, "Initialized"),
             DecoderState::WithImageInfo(_) => write!(f, "WithImageInfo"),
             DecoderState::WithFrameInfo(_) => write!(f, "WithFrameInfo"),
@@ -40,7 +36,7 @@ pub struct CachedImageInfo {
 }
 
 pub struct JxlRustDecoder {
-    state: DecoderState,
+    state: Option<DecoderState>,
     // True if Firefox only wanted CachedImageInfo
     metadata_only: bool,
 
@@ -69,12 +65,14 @@ pub struct JxlRustDecoder {
     // Populated after WithFrameInfo => WithImageInfo
     // Signal for frame ready to render
     pub frame_ready: bool,
+    // True if there are more frames to decode.
+    pub has_more_frames: bool,
 }
 
 impl JxlRustDecoder {
     pub fn new(metadata_only: bool) -> Self {
         Self {
-            state: DecoderState::Uninitialized,
+            state: None,
             metadata_only,
 
             cached_info: None,
@@ -89,11 +87,12 @@ impl JxlRustDecoder {
             black_channel: None,
 
             frame_ready: false,
+            has_more_frames: false,
         }
     }
     
     pub fn state_error(&self) -> Option<String> {
-        if let DecoderState::Error(msg) = &self.state {
+        if let Some(DecoderState::Error(msg)) = &self.state {
             Some(msg.clone())
         } else {
             None
@@ -101,73 +100,55 @@ impl JxlRustDecoder {
     }
 
     /// Process JXL data and advance the decoder state.
-    /// Returns (done, size_hint) where done indicates completion and
-    /// size_hint suggests optimal buffer size for more data.
-    pub fn process_data(&mut self, mut data: &[u8]) -> Result<(bool, usize), &'static str> {
+    /// Consumes as necessary from data.
+    /// Returns true if new data available.
+    pub fn process_data(&mut self, data: &mut impl JxlBitstreamInput) -> Result<bool, &'static str> {
         loop {
-            match &mut self.state {
-                DecoderState::Uninitialized => {
-                    // Create decoder with default options
+            match self.state.take() {
+                None => {
                     let mut options = JxlDecoderOptions::default();
                     options.xyb_output_linear = false;
-                    self.state = DecoderState::Initialized(JxlDecoder::<Initialized>::new(options));
+                    self.state = Some(DecoderState::Initialized(JxlDecoder::<Initialized>::new(options)));
                 }
 
-                DecoderState::Initialized(_) => {
-                    // Process to get image info
-                    let decoder =
-                        match std::mem::replace(&mut self.state, DecoderState::Uninitialized) {
-                            DecoderState::Initialized(decoder) => decoder,
-                            _ => unreachable!(),
-                        };
-                    match decoder.process(&mut data) {
+                Some(DecoderState::Initialized(decoder)) => {
+                    match decoder.process(data) {
                         Ok(ProcessingResult::Complete { result }) => {
-                            let decoder_with_info = result;
+                            self.cache_image_info(&result);
+                            self.state = Some(DecoderState::WithImageInfo(result));
 
-                            // Cache image info
-                            self.cache_image_info(&decoder_with_info);
-                            self.state = DecoderState::WithImageInfo(decoder_with_info);
-
-                            // If this is metadata-only decode, return early
                             if self.metadata_only {
-                                return Ok((true, 0));
+                                return Ok(true);
                             }
-
-                            // Continue processing for full decode
                         }
                         Ok(ProcessingResult::NeedsMoreInput {
                             fallback,
-                            size_hint: hint,
+                            size_hint: _hint,
                         }) => {
-                            if data.is_empty() {
-                                return Ok((false, hint));
+                            if data.available_bytes().unwrap() == 0 {
+                                return Ok(false);
                             }
-                            self.state = DecoderState::Initialized(fallback);
+                            self.state = Some(DecoderState::Initialized(fallback));
                         }
                         Err(e) => {
-                            self.state = DecoderState::Error(format!("Image info error: {e:?}"));
+                            self.state = Some(DecoderState::Error(format!("Image info error: {e:?}")));
                             return Err("Failed to process image info");
                         }
                     }
                 }
 
-                DecoderState::WithImageInfo(_) => {
-                    // Take ownership of the decoder
-                    let decoder =
-                        match std::mem::replace(&mut self.state, DecoderState::Uninitialized) {
-                            DecoderState::WithImageInfo(decoder) => decoder,
-                            _ => unreachable!(),
-                        };
-                    match decoder.process(&mut data) {
+                Some(DecoderState::WithImageInfo(decoder)) => {
+                    match decoder.process(data) {
                         Ok(ProcessingResult::Complete { result }) => {
-                            // Frame info successfully parsed, prepare output buffers
                             let info = self.cached_info.as_mut().unwrap();
                             self.frame_duration = result.frame_header().duration.unwrap_or(0.0);
+
                             // Allocate buffers based on original channel count (before any conversion)
                             // Each channel is 4 bytes (f32)
                             let bytes_per_pixel = self.original_color_channels * 4;
                             let num_pixels = info.width * info.height;
                             self.output_vecs = vec![vec![0; num_pixels * bytes_per_pixel]];
+
                             for ec in self.extra_channels.iter() {
                                 match ec.ec_type {
                                     ExtraChannel::Alpha => {
@@ -180,34 +161,33 @@ impl JxlRustDecoder {
                                         self.output_vecs.push(vec![0; num_pixels * 4]);
                                     }
                                     _ => {
-                                        self.state = DecoderState::Error(format!(
+                                        self.state = Some(DecoderState::Error(format!(
                                             "Unrecognized channel type {:?}",
                                             ec.ec_type
-                                        ));
+                                        )));
                                         return Err("Unrecognized channel type");
                                     }
                                 }
                             }
-                            self.state = DecoderState::WithFrameInfo(result);
-                            // Continue in the loop to process frame decode immediately
+                            self.state = Some(DecoderState::WithFrameInfo(result));
                         }
                         Ok(ProcessingResult::NeedsMoreInput {
                             fallback,
-                            size_hint: hint,
+                            size_hint: _hint,
                         }) => {
-                            if data.is_empty() {
-                                return Ok((false, hint));
+                            if data.available_bytes().unwrap() == 0 {
+                                return Ok(false);
                             }
-                            self.state = DecoderState::WithImageInfo(fallback);
+                            self.state = Some(DecoderState::WithImageInfo(fallback));
                         }
                         Err(e) => {
-                            self.state = DecoderState::Error(format!("Frame info error: {e:?}"));
+                            self.state = Some(DecoderState::Error(format!("Frame info error: {e:?}")));
                             return Err("Failed to process frame info");
                         }
                     }
                 }
 
-                DecoderState::WithFrameInfo(_) => {
+                Some(DecoderState::WithFrameInfo(decoder)) => {
                     let info = self.cached_info.as_ref().unwrap();
 
                     let mut buffers: Vec<JxlOutputBuffer<'_>> = self
@@ -219,42 +199,34 @@ impl JxlRustDecoder {
                         })
                         .collect();
 
-                    // Take ownership of the decoder
-                    let decoder =
-                        match std::mem::replace(&mut self.state, DecoderState::Uninitialized) {
-                            DecoderState::WithFrameInfo(decoder) => decoder,
-                            _ => unreachable!(),
-                        };
-
-                    match decoder.process(&mut data, &mut buffers) {
+                    match decoder.process(data, &mut buffers) {
                         Ok(ProcessingResult::Complete { result }) => {
-                            let done = !result.has_more_frames();
-                            self.state = DecoderState::WithImageInfo(result);
+                            self.has_more_frames = result.has_more_frames();
                             self.frame_ready = true;
-                            // Frame decode is complete, but there may be more frames for an animation.
-                            return Ok((done, 0));
+                            self.state = Some(DecoderState::WithImageInfo(result));
+                            return Ok(true);
                         }
                         Ok(ProcessingResult::NeedsMoreInput {
                             fallback,
-                            size_hint: hint,
+                            size_hint: _hint,
                         }) => {
-                            if data.is_empty() {
-                                return Ok((false, hint));
+                            if data.available_bytes().unwrap() == 0 {
+                                return Ok(false);
                             }
-                            self.state = DecoderState::WithFrameInfo(fallback);
+                            self.state = Some(DecoderState::WithFrameInfo(fallback));
                         }
                         Err(e) => {
-                            self.state = DecoderState::Error(format!("Frame decode error: {e:?}"));
+                            self.state = Some(DecoderState::Error(format!("Frame decode error: {e:?}")));
                             return Err("Failed to decode frame");
                         }
                     }
                 }
 
-                DecoderState::Error(_) => {
+                Some(DecoderState::Error(_)) => {
                     return Err("Decoder in error state");
                 }
-            } // End of match
-        } // End of loop
+            }
+        }
     }
 
     fn cache_image_info(&mut self, decoder: &JxlDecoder<WithImageInfo>) {
@@ -290,10 +262,6 @@ impl JxlRustDecoder {
         self.cached_info = Some(info);
     }
 
-    pub fn is_frame_ready(&self) -> bool {
-        self.frame_ready
-    }
-
     /// Extract decoded pixels into the provided output buffer.
     ///
     /// The frame must be ready (check with is_frame_ready()) before calling this function.
@@ -318,7 +286,7 @@ impl JxlRustDecoder {
             self.icc_profile.as_ref().unwrap(),
             self.original_color_channels,
         ) {
-            self.state = DecoderState::Error(e.to_string());
+            self.state = Some(DecoderState::Error(e.to_string()));
             return Err(e);
         }
         self.output_vecs = vec![];
