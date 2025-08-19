@@ -10,4 +10,4 @@ crate-type = ["rlib", "staticlib"]
 
 [dependencies]
 jxl_rust_decoder = { path = "../jxl_rust_decoder" }
-log = { path = "../../../third_party/rust/log" }
+log = "0.4.17"

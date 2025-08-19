@@ -262,9 +262,6 @@ nsresult DecoderFactory::CreateAnimationDecoder(
   if (aType == DecoderType::UNKNOWN) {
     return NS_ERROR_INVALID_ARG;
   }
-  if (aType == DecoderType::JXL) {
-    std::cerr << "CreateAnimationDecoder called for JXL\n";
-  }
 
   // Only can use COUNT_FRAMES with metadata decoders.
   if (NS_WARN_IF(bool(aDecoderFlags & DecoderFlags::COUNT_FRAMES))) {
@@ -314,9 +311,6 @@ nsresult DecoderFactory::CreateAnimationDecoder(
   // Return the surface provider in its IDecodingTask guise.
   RefPtr<IDecodingTask> task = provider.get();
   task.forget(aOutTask);
-  if (aType == DecoderType::JXL) {
-    std::cerr << "CreateAnimationDecoder successful for JXL\n";
-  }
   return NS_OK;
 }
 

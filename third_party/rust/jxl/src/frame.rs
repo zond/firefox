@@ -4,6 +4,7 @@
 // license that can be found in the LICENSE file.
 
 use crate::{
+    GROUP_DIM,
     bit_reader::BitReader,
     entropy_coding::decode::Histograms,
     error::Result,
@@ -57,7 +58,6 @@ pub enum Section {
     Hf { group: usize, pass: usize },
 }
 
-#[allow(dead_code)]
 pub struct LfGlobalState {
     patches: Option<PatchesDictionary>,
     splines: Option<Splines>,
@@ -70,7 +70,6 @@ pub struct LfGlobalState {
     modular_global: FullModularImage,
 }
 
-#[allow(dead_code)]
 pub struct PassState {
     coeff_orders: Vec<Permutation>,
     histograms: Histograms,
@@ -79,7 +78,6 @@ pub struct PassState {
 pub struct HfGlobalState {
     num_histograms: u32,
     passes: Vec<PassState>,
-    #[allow(dead_code)]
     dequant_matrices: DequantMatrices,
     hf_coefficients: Option<(Image<i32>, Image<i32>, Image<i32>)>,
 }
@@ -485,7 +483,7 @@ impl Frame {
         let hf_coefficients = if passes.len() <= 1 {
             None
         } else {
-            let xs = FrameHeader::GROUP_DIM * FrameHeader::GROUP_DIM;
+            let xs = GROUP_DIM * GROUP_DIM;
             let ys = self.header.num_groups();
             Some((
                 Image::new((xs, ys))?,
@@ -1135,6 +1133,36 @@ mod test {
             &mut verify_frame,
         )?;
         assert_eq!(num_frames, 2);
+        Ok(())
+    }
+
+    #[test]
+    fn multiple_lf_420() -> Result<(), Error> {
+        let mut verify_frame = |frame: &Frame| {
+            assert!(frame.header().is420());
+            let Some(lf_image) = &frame.lf_image else {
+                panic!("no lf_image");
+            };
+            for y in 0..146 {
+                let sample_cb_row = lf_image[0].as_rect().row(y);
+                let sample_cr_row = lf_image[2].as_rect().row(y);
+                for x in 0..146 {
+                    let sample_cb = sample_cb_row[x];
+                    let sample_cr = sample_cr_row[x];
+                    let no_chroma = sample_cb == 0.0 && sample_cr == 0.0;
+                    if y < 128 || x < 128 {
+                        assert!(!no_chroma);
+                    } else {
+                        assert!(no_chroma);
+                    }
+                }
+            }
+            Ok(())
+        };
+        read_frames(
+            include_bytes!("../resources/test/multiple_lf_420.jxl"),
+            &mut verify_frame,
+        )?;
         Ok(())
     }
 }
