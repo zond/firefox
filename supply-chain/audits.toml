@@ -7132,7 +7132,7 @@ end = "2024-04-25"
 
 [[trusted.equivalent]]
 criteria = "safe-to-deploy"
-user-id = 539 # Josh Stone (cuviper)
+user-id = 539
 start = "2023-02-05"
 end = "2024-07-17"
 
@@ -7180,7 +7180,7 @@ end = "2026-07-04"
 
 [[trusted.indexmap]]
 criteria = "safe-to-deploy"
-user-id = 539 # Josh Stone (cuviper)
+user-id = 539
 start = "2020-01-15"
 end = "2024-05-05"
 
@@ -7258,19 +7258,19 @@ end = "2024-05-06"
 
 [[trusted.num]]
 criteria = "safe-to-deploy"
-user-id = 539 # Josh Stone (cuviper)
+user-id = 539
 start = "2020-01-10"
 end = "2026-07-30"
 
 [[trusted.num-bigint]]
 criteria = "safe-to-deploy"
-user-id = 539 # Josh Stone (cuviper)
+user-id = 539
 start = "2019-09-04"
 end = "2026-07-30"
 
 [[trusted.num-complex]]
 criteria = "safe-to-deploy"
-user-id = 539 # Josh Stone (cuviper)
+user-id = 539
 start = "2019-06-10"
 end = "2026-07-30"
 

@@ -34,8 +34,8 @@ user-login = "Amanieu"
 user-name = "Amanieu d'Antras"
 
 [[publisher.audio_thread_priority]]
-version = "0.34.0"
-when = "2025-08-13"
+version = "0.32.0"
+when = "2024-03-14"
 user-id = 1258
 user-login = "padenot"
 user-name = "Paul Adenot"
@@ -432,27 +432,6 @@ user-id = 175410
 user-login = "jschanck"
 user-name = "John Schanck"
 
-[[publisher.num]]
-version = "0.4.3"
-when = "2024-05-08"
-user-id = 539
-user-login = "cuviper"
-user-name = "Josh Stone"
-
-[[publisher.num-bigint]]
-version = "0.4.6"
-when = "2024-06-27"
-user-id = 539
-user-login = "cuviper"
-user-name = "Josh Stone"
-
-[[publisher.num-complex]]
-version = "0.4.6"
-when = "2024-05-07"
-user-id = 539
-user-login = "cuviper"
-user-name = "Josh Stone"
-
 [[publisher.num_cpus]]
 version = "1.16.0"
 when = "2023-06-29"
@@ -662,8 +641,8 @@ user-login = "mbrubeck"
 user-name = "Matt Brubeck"
 
 [[publisher.syn]]
-version = "2.0.87"
-when = "2024-11-02"
+version = "1.0.109"
+when = "2023-02-24"
 user-id = 3618
 user-login = "dtolnay"
 user-name = "David Tolnay"
@@ -1506,6 +1485,12 @@ who = "Johan Andersson <opensource@embark-studios.com>"
 criteria = "safe-to-deploy"
 version = "1.0.58"
 
+[[audits.embark-studios.audits.array-init]]
+who = "Johan Andersson <opensource@embark-studios.com>"
+criteria = "safe-to-deploy"
+version = "2.1.0"
+notes = "Some unsafe usage but with safety comments and tests, and appear sound but didn't do detailed evaluation. No ambient capabilities"
+
 [[audits.embark-studios.audits.cargo_metadata]]
 who = "Johan Andersson <opensource@embark-studios.com>"
 criteria = "safe-to-deploy"
@@ -2236,6 +2221,12 @@ criteria = "safe-to-deploy"
 delta = "0.1.0 -> 0.1.2"
 notes = "Addition of safe comparison APIs since last audit"
 aggregated-from = "https://chromium.googlesource.com/chromium/src/+/main/third_party/rust/chromium_crates_io/supply-chain/audits.toml?format=TEXT"
+
+[[audits.google.audits.proc-macro-error-attr]]
+who = "George Burgess IV <gbiv@google.com>"
+criteria = "safe-to-deploy"
+version = "1.0.4"
+aggregated-from = "https://chromium.googlesource.com/chromiumos/third_party/rust_crates/+/refs/heads/main/cargo-vet/audits.toml?format=TEXT"
 
 [[audits.google.audits.proc-macro2]]
 who = "danakj@chromium.org"
