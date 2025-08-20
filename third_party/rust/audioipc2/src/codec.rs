@@ -41,7 +41,10 @@ pub trait Codec {
     fn decode_eof(&mut self, buf: &mut BytesMut) -> io::Result<Self::Out> {
         match self.decode(buf)? {
             Some(frame) => Ok(frame),
-            None => Err(io::Error::other("bytes remaining on stream")),
+            None => Err(io::Error::new(
+                io::ErrorKind::Other,
+                "bytes remaining on stream",
+            )),
         }
     }
 
@@ -117,7 +120,7 @@ impl<In, Out> LengthDelimitedCodec<In, Out> {
             .deserialize::<Out>(&buf[..n])
             .map_err(|e| match *e {
                 bincode::ErrorKind::Io(e) => e,
-                _ => io::Error::other(*e),
+                _ => io::Error::new(io::ErrorKind::Other, *e),
             })?;
         buf.advance(n);
 
@@ -184,7 +187,7 @@ where
             trace!("message encode failed: {:?}", *e);
             match *e {
                 bincode::ErrorKind::Io(e) => return Err(e),
-                _ => return Err(io::Error::other(*e)),
+                _ => return Err(io::Error::new(io::ErrorKind::Other, *e)),
             }
         }
 

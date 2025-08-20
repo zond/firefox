@@ -28,7 +28,7 @@ impl SharedMemView {
         if size <= self.size {
             Ok(&map[..size])
         } else {
-            Err(Error::Other("mmap size".into()))
+            bail!("mmap size");
         }
     }
 
@@ -37,7 +37,7 @@ impl SharedMemView {
         if size <= self.size {
             Ok(&mut map[..size])
         } else {
-            Err(Error::Other("mmap size".into()))
+            bail!("mmap size")
         }
     }
 }
@@ -130,7 +130,7 @@ mod unix {
         let err = std::io::Error::last_os_error();
         let errno = err.raw_os_error().unwrap_or(0);
         assert_ne!(errno, 0);
-        debug!("allocate_file: {s} failed errno={errno}");
+        debug!("allocate_file: {} failed errno={}", s, errno);
         if errno == libc::ENOSPC {
             return Err(err.into());
         }

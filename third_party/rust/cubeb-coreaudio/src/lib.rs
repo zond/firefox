@@ -10,9 +10,7 @@ extern crate bitflags;
 extern crate cubeb_backend;
 #[macro_use]
 extern crate float_cmp;
-extern crate mach2;
-
-extern crate num;
+extern crate mach;
 
 mod backend;
 mod capi;

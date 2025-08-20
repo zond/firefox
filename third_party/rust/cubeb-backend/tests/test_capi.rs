@@ -3,20 +3,18 @@
 // This program is made available under an ISC-style license.  See the
 // accompanying file LICENSE for details
 
-#![allow(clippy::float_cmp)]
+#![cfg_attr(feature = "cargo-clippy", allow(clippy::float_cmp))]
 
 #[macro_use]
 extern crate cubeb_backend;
 
 use cubeb_backend::{
-    ffi, ContextOps, DeviceId, DeviceInfo, DeviceRef, DeviceType, InputProcessingParams, Ops,
-    Result, Stream, StreamOps, StreamParams, StreamParamsRef,
+    ffi, Context, ContextOps, DeviceCollectionRef, DeviceId, DeviceRef, DeviceType,
+    InputProcessingParams, Ops, Result, Stream, StreamOps, StreamParams, StreamParamsRef,
 };
 use std::ffi::CStr;
-use std::mem::ManuallyDrop;
 use std::os::raw::c_void;
 use std::ptr;
-use std::sync::OnceLock;
 
 pub const OPS: Ops = capi_new!(TestContext, TestStream);
 
@@ -26,10 +24,11 @@ struct TestContext {
 }
 
 impl ContextOps for TestContext {
-    fn init(_context_name: Option<&CStr>) -> Result<Box<Self>> {
-        Ok(Box::new(TestContext {
+    fn init(_context_name: Option<&CStr>) -> Result<Context> {
+        let ctx = Box::new(TestContext {
             ops: &OPS as *const _,
-        }))
+        });
+        Ok(unsafe { Context::from_ptr(Box::into_raw(ctx) as *mut _) })
     }
 
     fn backend_id(&mut self) -> &'static CStr {
@@ -47,12 +46,22 @@ impl ContextOps for TestContext {
     fn supported_input_processing_params(&mut self) -> Result<InputProcessingParams> {
         Ok(InputProcessingParams::NONE)
     }
-    fn enumerate_devices(&mut self, _devtype: DeviceType) -> Result<Box<[DeviceInfo]>> {
-        Ok(vec![DeviceInfo::default()].into_boxed_slice())
+    fn enumerate_devices(
+        &mut self,
+        _devtype: DeviceType,
+        collection: &DeviceCollectionRef,
+    ) -> Result<()> {
+        let coll = unsafe { &mut *collection.as_ptr() };
+        coll.device = 0xDEAD_BEEF as *mut _;
+        coll.count = usize::max_value();
+        Ok(())
     }
-    fn device_collection_destroy(&mut self, collection: Box<[DeviceInfo]>) -> Result<()> {
-        assert_eq!(collection.len(), 1);
-        assert_ne!(collection[0].as_ptr(), std::ptr::null_mut());
+    fn device_collection_destroy(&mut self, collection: &mut DeviceCollectionRef) -> Result<()> {
+        let coll = unsafe { &mut *collection.as_ptr() };
+        assert_eq!(coll.device, 0xDEAD_BEEF as *mut _);
+        assert_eq!(coll.count, usize::max_value());
+        coll.device = ptr::null_mut();
+        coll.count = 0;
         Ok(())
     }
     fn stream_init(
@@ -135,13 +144,12 @@ fn test_ops_context_init() {
         unsafe { OPS.init.unwrap()(&mut c, ptr::null()) },
         ffi::CUBEB_OK
     );
-    assert!(!c.is_null());
     unsafe { OPS.destroy.unwrap()(c) }
 }
 
 #[test]
 fn test_ops_context_max_channel_count() {
-    let c: *mut ffi::cubeb = get_ctx();
+    let c: *mut ffi::cubeb = ptr::null_mut();
     let mut max_channel_count = u32::max_value();
     assert_eq!(
         unsafe { OPS.get_max_channel_count.unwrap()(c, &mut max_channel_count) },
@@ -152,7 +160,7 @@ fn test_ops_context_max_channel_count() {
 
 #[test]
 fn test_ops_context_min_latency() {
-    let c: *mut ffi::cubeb = get_ctx();
+    let c: *mut ffi::cubeb = ptr::null_mut();
     let params: ffi::cubeb_stream_params = unsafe { ::std::mem::zeroed() };
     let mut latency = u32::max_value();
     assert_eq!(
@@ -164,7 +172,7 @@ fn test_ops_context_min_latency() {
 
 #[test]
 fn test_ops_context_preferred_sample_rate() {
-    let c: *mut ffi::cubeb = get_ctx();
+    let c: *mut ffi::cubeb = ptr::null_mut();
     let mut rate = u32::max_value();
     assert_eq!(
         unsafe { OPS.get_preferred_sample_rate.unwrap()(c, &mut rate) },
@@ -175,7 +183,7 @@ fn test_ops_context_preferred_sample_rate() {
 
 #[test]
 fn test_ops_context_supported_input_processing_params() {
-    let c: *mut ffi::cubeb = get_ctx();
+    let c: *mut ffi::cubeb = ptr::null_mut();
     let mut params: ffi::cubeb_input_processing_params = InputProcessingParams::all().bits();
     assert_eq!(
         unsafe { OPS.get_supported_input_processing_params.unwrap()(c, &mut params) },
@@ -186,7 +194,7 @@ fn test_ops_context_supported_input_processing_params() {
 
 #[test]
 fn test_ops_context_enumerate_devices() {
-    let c: *mut ffi::cubeb = get_ctx();
+    let c: *mut ffi::cubeb = ptr::null_mut();
     let mut coll = ffi::cubeb_device_collection {
         device: ptr::null_mut(),
         count: 0,
@@ -195,18 +203,16 @@ fn test_ops_context_enumerate_devices() {
         unsafe { OPS.enumerate_devices.unwrap()(c, 0, &mut coll) },
         ffi::CUBEB_OK
     );
-    assert_ne!(coll.device, std::ptr::null_mut());
-    assert_eq!(coll.count, 1)
+    assert_eq!(coll.device, 0xDEAD_BEEF as *mut _);
+    assert_eq!(coll.count, usize::max_value())
 }
 
 #[test]
 fn test_ops_context_device_collection_destroy() {
-    let c: *mut ffi::cubeb = get_ctx();
-    let mut device_infos = ManuallyDrop::new(Box::new([DeviceInfo::default().into()]));
-
+    let c: *mut ffi::cubeb = ptr::null_mut();
     let mut coll = ffi::cubeb_device_collection {
-        device: device_infos.as_mut_ptr(),
-        count: device_infos.len(),
+        device: 0xDEAD_BEEF as *mut _,
+        count: usize::max_value(),
     };
     assert_eq!(
         unsafe { OPS.device_collection_destroy.unwrap()(c, &mut coll) },
@@ -224,7 +230,7 @@ fn test_ops_context_device_collection_destroy() {
 
 #[test]
 fn test_ops_stream_latency() {
-    let s: *mut ffi::cubeb_stream = get_stream();
+    let s: *mut ffi::cubeb_stream = ptr::null_mut();
     let mut latency = u32::max_value();
     assert_eq!(
         unsafe { OPS.stream_get_latency.unwrap()(s, &mut latency) },
@@ -235,7 +241,7 @@ fn test_ops_stream_latency() {
 
 #[test]
 fn test_ops_stream_set_volume() {
-    let s: *mut ffi::cubeb_stream = get_stream();
+    let s: *mut ffi::cubeb_stream = ptr::null_mut();
     unsafe {
         OPS.stream_set_volume.unwrap()(s, 0.5);
     }
@@ -243,7 +249,7 @@ fn test_ops_stream_set_volume() {
 
 #[test]
 fn test_ops_stream_set_name() {
-    let s: *mut ffi::cubeb_stream = get_stream();
+    let s: *mut ffi::cubeb_stream = ptr::null_mut();
     unsafe {
         OPS.stream_set_name.unwrap()(s, CStr::from_bytes_with_nul(b"test\0").unwrap().as_ptr());
     }
@@ -251,7 +257,7 @@ fn test_ops_stream_set_name() {
 
 #[test]
 fn test_ops_stream_current_device() {
-    let s: *mut ffi::cubeb_stream = get_stream();
+    let s: *mut ffi::cubeb_stream = ptr::null_mut();
     let mut device: *mut ffi::cubeb_device = ptr::null_mut();
     assert_eq!(
         unsafe { OPS.stream_get_current_device.unwrap()(s, &mut device) },
@@ -262,7 +268,7 @@ fn test_ops_stream_current_device() {
 
 #[test]
 fn test_ops_stream_set_input_mute() {
-    let s: *mut ffi::cubeb_stream = get_stream();
+    let s: *mut ffi::cubeb_stream = ptr::null_mut();
     assert_eq!(
         unsafe { OPS.stream_set_input_mute.unwrap()(s, 1) },
         ffi::CUBEB_OK
@@ -271,7 +277,7 @@ fn test_ops_stream_set_input_mute() {
 
 #[test]
 fn test_ops_stream_set_input_processing_params() {
-    let s: *mut ffi::cubeb_stream = get_stream();
+    let s: *mut ffi::cubeb_stream = ptr::null_mut();
     assert_eq!(
         unsafe {
             OPS.stream_set_input_processing_params.unwrap()(
@@ -283,81 +289,10 @@ fn test_ops_stream_set_input_processing_params() {
     );
 }
 
-fn get_ctx() -> *mut ffi::cubeb {
-    CONTEXT.get_or_init(TestContextPtr::new).ptr
-}
-
-static CONTEXT: OnceLock<TestContextPtr> = OnceLock::new();
-
-struct TestContextPtr {
-    ptr: *mut ffi::cubeb,
-}
-
-// Safety: ffi::cubeb implementations are expected to be thread-safe.
-unsafe impl Send for TestContextPtr {}
-unsafe impl Sync for TestContextPtr {}
-
-impl TestContextPtr {
-    fn new() -> Self {
-        let mut c: *mut ffi::cubeb = ptr::null_mut();
-        assert_eq!(
-            unsafe { OPS.init.unwrap()(&mut c, ptr::null()) },
-            ffi::CUBEB_OK
-        );
-        assert!(!c.is_null());
-        TestContextPtr { ptr: c }
-    }
-}
-
-impl Drop for TestContextPtr {
-    fn drop(&mut self) {
-        unsafe { OPS.destroy.unwrap()(self.ptr) }
-    }
-}
-
-fn get_stream() -> *mut ffi::cubeb_stream {
-    STREAM.get_or_init(TestStreamPtr::new).ptr
-}
-
-static STREAM: OnceLock<TestStreamPtr> = OnceLock::new();
-
-struct TestStreamPtr {
-    ptr: *mut ffi::cubeb_stream,
-}
-
-// Safety: ffi::cubeb_stream implementations are expected to be thread-safe.
-unsafe impl Send for TestStreamPtr {}
-unsafe impl Sync for TestStreamPtr {}
-
-impl TestStreamPtr {
-    fn new() -> Self {
-        let c: *mut ffi::cubeb = get_ctx();
-        let mut s: *mut ffi::cubeb_stream = ptr::null_mut();
-        assert_eq!(
-            unsafe {
-                OPS.stream_init.unwrap()(
-                    c,
-                    &mut s,
-                    ptr::null(),
-                    ptr::null(),
-                    ptr::null_mut(),
-                    ptr::null(),
-                    ptr::null_mut(),
-                    0,
-                    None,
-                    None,
-                    ptr::null_mut(),
-                )
-            },
-            ffi::CUBEB_OK
-        );
-        assert!(!s.is_null());
-        TestStreamPtr { ptr: s }
-    }
-}
-
-impl Drop for TestStreamPtr {
-    fn drop(&mut self) {
-        unsafe { OPS.stream_destroy.unwrap()(self.ptr) }
+#[test]
+fn test_ops_stream_device_destroy() {
+    let s: *mut ffi::cubeb_stream = ptr::null_mut();
+    unsafe {
+        OPS.stream_device_destroy.unwrap()(s, 0xDEAD_BEEF as *mut _);
     }
 }

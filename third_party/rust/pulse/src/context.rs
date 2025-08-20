@@ -3,12 +3,13 @@
 // This program is made available under an ISC-style license.  See the
 // accompanying file LICENSE for details.
 
-use crate::util::UnwrapCStr;
-use crate::*;
+use ffi;
 use std::ffi::CStr;
 use std::mem::{forget, MaybeUninit};
 use std::os::raw::{c_int, c_void};
 use std::ptr;
+use util::UnwrapCStr;
+use *;
 
 // A note about `wrapped` functions
 //
@@ -47,9 +48,6 @@ use std::ptr;
 //		mem::forget(object);
 //		result
 
-// For all clippy-ignored warnings in this file, see
-// https://github.com/mozilla/cubeb-pulse-rs/issues/95 for the effort to fix.
-
 // Aid in returning Operation from callbacks
 macro_rules! op_or_err {
     ($self_:ident, $e:expr) => {{
@@ -80,7 +78,6 @@ impl Context {
     }
 
     #[doc(hidden)]
-    #[allow(clippy::mut_from_ref)]
     pub fn raw_mut(&self) -> &mut ffi::pa_context {
         unsafe { &mut *self.0 }
     }
@@ -97,7 +94,6 @@ impl Context {
         }
     }
 
-    #[allow(clippy::not_unsafe_ptr_arg_deref)]
     pub fn set_state_callback<CB>(&self, _: CB, userdata: *mut c_void)
     where
         CB: Fn(&Context, *mut c_void),
@@ -111,9 +107,10 @@ impl Context {
         {
             let ctx = context::from_raw_ptr(c);
             let cb = MaybeUninit::<F>::uninit();
-            (*cb.as_ptr())(&ctx, userdata);
-            #[allow(clippy::forget_non_drop)]
+            let result = (*cb.as_ptr())(&ctx, userdata);
             forget(ctx);
+
+            result
         }
 
         unsafe {
@@ -130,7 +127,6 @@ impl Context {
             .expect("pa_context_get_state returned invalid ContextState")
     }
 
-    #[allow(clippy::not_unsafe_ptr_arg_deref)]
     pub fn connect<'a, OPT>(
         &self,
         server: OPT,
@@ -157,7 +153,6 @@ impl Context {
         }
     }
 
-    #[allow(clippy::not_unsafe_ptr_arg_deref)]
     pub fn drain<CB>(&self, _: CB, userdata: *mut c_void) -> Result<Operation>
     where
         CB: Fn(&Context, *mut c_void),
@@ -171,9 +166,10 @@ impl Context {
         {
             let ctx = context::from_raw_ptr(c);
             let cb = MaybeUninit::<F>::uninit();
-            (*cb.as_ptr())(&ctx, userdata);
-            #[allow(clippy::forget_non_drop)]
+            let result = (*cb.as_ptr())(&ctx, userdata);
             forget(ctx);
+
+            result
         }
 
         op_or_err!(
@@ -182,7 +178,6 @@ impl Context {
         )
     }
 
-    #[allow(clippy::not_unsafe_ptr_arg_deref)]
     pub fn rttime_new<CB>(
         &self,
         usec: USec,
@@ -206,15 +201,15 @@ impl Context {
             let api = mainloop_api::from_raw_ptr(a);
             let timeval = &*tv;
             let cb = MaybeUninit::<F>::uninit();
-            (*cb.as_ptr())(&api, e, timeval, userdata);
-            #[allow(clippy::forget_non_drop)]
+            let result = (*cb.as_ptr())(&api, e, timeval, userdata);
             forget(api);
+
+            result
         }
 
         unsafe { ffi::pa_context_rttime_new(self.raw_mut(), usec, Some(wrapped::<CB>), userdata) }
     }
 
-    #[allow(clippy::not_unsafe_ptr_arg_deref)]
     pub fn get_server_info<CB>(&self, _: CB, userdata: *mut c_void) -> Result<Operation>
     where
         CB: Fn(&Context, Option<&ServerInfo>, *mut c_void),
@@ -232,9 +227,10 @@ impl Context {
             let info = if i.is_null() { None } else { Some(&*i) };
             let ctx = context::from_raw_ptr(c);
             let cb = MaybeUninit::<F>::uninit();
-            (*cb.as_ptr())(&ctx, info, userdata);
-            #[allow(clippy::forget_non_drop)]
+            let result = (*cb.as_ptr())(&ctx, info, userdata);
             forget(ctx);
+
+            result
         }
 
         op_or_err!(
@@ -243,7 +239,6 @@ impl Context {
         )
     }
 
-    #[allow(clippy::not_unsafe_ptr_arg_deref)]
     pub fn get_sink_info_by_name<'str, CS, CB>(
         &self,
         name: CS,
@@ -267,9 +262,10 @@ impl Context {
         {
             let ctx = context::from_raw_ptr(c);
             let cb = MaybeUninit::<F>::uninit();
-            (*cb.as_ptr())(&ctx, info, eol, userdata);
-            #[allow(clippy::forget_non_drop)]
+            let result = (*cb.as_ptr())(&ctx, info, eol, userdata);
             forget(ctx);
+
+            result
         }
 
         op_or_err!(
@@ -283,7 +279,6 @@ impl Context {
         )
     }
 
-    #[allow(clippy::not_unsafe_ptr_arg_deref)]
     pub fn get_sink_info_list<CB>(&self, _: CB, userdata: *mut c_void) -> Result<Operation>
     where
         CB: Fn(&Context, *const SinkInfo, i32, *mut c_void),
@@ -301,9 +296,10 @@ impl Context {
         {
             let ctx = context::from_raw_ptr(c);
             let cb = MaybeUninit::<F>::uninit();
-            (*cb.as_ptr())(&ctx, info, eol, userdata);
-            #[allow(clippy::forget_non_drop)]
+            let result = (*cb.as_ptr())(&ctx, info, eol, userdata);
             forget(ctx);
+
+            result
         }
 
         op_or_err!(
@@ -312,7 +308,6 @@ impl Context {
         )
     }
 
-    #[allow(clippy::not_unsafe_ptr_arg_deref)]
     pub fn get_sink_input_info<CB>(
         &self,
         idx: u32,
@@ -335,9 +330,10 @@ impl Context {
         {
             let ctx = context::from_raw_ptr(c);
             let cb = MaybeUninit::<F>::uninit();
-            (*cb.as_ptr())(&ctx, info, eol, userdata);
-            #[allow(clippy::forget_non_drop)]
+            let result = (*cb.as_ptr())(&ctx, info, eol, userdata);
             forget(ctx);
+
+            result
         }
 
         op_or_err!(
@@ -346,7 +342,6 @@ impl Context {
         )
     }
 
-    #[allow(clippy::not_unsafe_ptr_arg_deref)]
     pub fn get_source_info_list<CB>(&self, _: CB, userdata: *mut c_void) -> Result<Operation>
     where
         CB: Fn(&Context, *const SourceInfo, i32, *mut c_void),
@@ -364,9 +359,10 @@ impl Context {
         {
             let ctx = context::from_raw_ptr(c);
             let cb = MaybeUninit::<F>::uninit();
-            (*cb.as_ptr())(&ctx, info, eol, userdata);
-            #[allow(clippy::forget_non_drop)]
+            let result = (*cb.as_ptr())(&ctx, info, eol, userdata);
             forget(ctx);
+
+            result
         }
 
         op_or_err!(
@@ -375,7 +371,6 @@ impl Context {
         )
     }
 
-    #[allow(clippy::not_unsafe_ptr_arg_deref)]
     pub fn set_sink_input_volume<CB>(
         &self,
         idx: u32,
@@ -398,9 +393,10 @@ impl Context {
         {
             let ctx = context::from_raw_ptr(c);
             let cb = MaybeUninit::<F>::uninit();
-            (*cb.as_ptr())(&ctx, success, userdata);
-            #[allow(clippy::forget_non_drop)]
+            let result = (*cb.as_ptr())(&ctx, success, userdata);
             forget(ctx);
+
+            result
         }
 
         op_or_err!(
@@ -415,7 +411,6 @@ impl Context {
         )
     }
 
-    #[allow(clippy::not_unsafe_ptr_arg_deref)]
     pub fn subscribe<CB>(
         &self,
         m: SubscriptionMask,
@@ -437,9 +432,10 @@ impl Context {
         {
             let ctx = context::from_raw_ptr(c);
             let cb = MaybeUninit::<F>::uninit();
-            (*cb.as_ptr())(&ctx, success, userdata);
-            #[allow(clippy::forget_non_drop)]
+            let result = (*cb.as_ptr())(&ctx, success, userdata);
             forget(ctx);
+
+            result
         }
 
         op_or_err!(
@@ -454,7 +450,6 @@ impl Context {
         }
     }
 
-    #[allow(clippy::not_unsafe_ptr_arg_deref)]
     pub fn set_subscribe_callback<CB>(&self, _: CB, userdata: *mut c_void)
     where
         CB: Fn(&Context, SubscriptionEvent, u32, *mut c_void),
@@ -474,9 +469,10 @@ impl Context {
             let event = SubscriptionEvent::try_from(t)
                 .expect("pa_context_subscribe_cb_t passed invalid pa_subscription_event_type_t");
             let cb = MaybeUninit::<F>::uninit();
-            (*cb.as_ptr())(&ctx, event, idx, userdata);
-            #[allow(clippy::forget_non_drop)]
+            let result = (*cb.as_ptr())(&ctx, event, idx, userdata);
             forget(ctx);
+
+            result
         }
 
         unsafe {

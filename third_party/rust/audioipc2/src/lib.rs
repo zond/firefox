@@ -4,6 +4,9 @@
 // accompanying file LICENSE for details
 
 #![warn(unused_extern_crates)]
+#![recursion_limit = "1024"]
+#[macro_use]
+extern crate error_chain;
 #[macro_use]
 extern crate log;
 
@@ -128,7 +131,10 @@ pub(crate) unsafe fn duplicate_platform_handle(
     let target_process = if let Some(pid) = target_pid {
         let target = OpenProcess(PROCESS_DUP_HANDLE, FALSE, pid);
         if !valid_handle(target as _) {
-            return Err(std::io::Error::other("invalid target process"));
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::Other,
+                "invalid target process",
+            ));
         }
         Some(target)
     } else {
@@ -149,7 +155,10 @@ pub(crate) unsafe fn duplicate_platform_handle(
         CloseHandle(target);
     };
     if ok == FALSE {
-        return Err(std::io::Error::other("DuplicateHandle failed"));
+        return Err(std::io::Error::new(
+            std::io::ErrorKind::Other,
+            "DuplicateHandle failed",
+        ));
     }
     Ok(target_handle as _)
 }
@@ -164,7 +173,10 @@ pub(crate) unsafe fn close_target_handle(
 ) -> Result<()> {
     let target_process = OpenProcess(PROCESS_DUP_HANDLE, FALSE, target_pid);
     if !valid_handle(target_process as _) {
-        return Err(std::io::Error::other("invalid target process"));
+        return Err(std::io::Error::new(
+            std::io::ErrorKind::Other,
+            "invalid target process",
+        ));
     }
 
     let ok = DuplicateHandle(
@@ -178,7 +190,10 @@ pub(crate) unsafe fn close_target_handle(
     );
     CloseHandle(target_process);
     if ok == FALSE {
-        return Err(std::io::Error::other("DuplicateHandle failed"));
+        return Err(std::io::Error::new(
+            std::io::ErrorKind::Other,
+            "DuplicateHandle failed",
+        ));
     }
     Ok(())
 }

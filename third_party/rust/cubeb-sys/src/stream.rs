@@ -48,7 +48,6 @@ pub struct cubeb_stream_params {
     pub channels: c_uint,
     pub layout: cubeb_channel_layout,
     pub prefs: cubeb_stream_prefs,
-    pub input_params: cubeb_input_processing_params,
 }
 
 impl Default for cubeb_stream_params {
@@ -66,7 +65,6 @@ impl fmt::Debug for cubeb_stream_params {
             .field("channels", &self.channels)
             .field("layout", &self.layout)
             .field("prefs", &self.prefs)
-            .field("input_params", &self.input_params)
             .finish()
     }
 }
