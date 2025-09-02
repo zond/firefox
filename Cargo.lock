@@ -2608,6 +2608,7 @@ dependencies = [
  "ipdl_utils",
  "jog",
  "jsrust_shared",
+ "jxl_decoder",
  "kvstore",
  "l10nregistry",
  "l10nregistry-ffi",
@@ -3573,6 +3574,19 @@ dependencies = [
  "num-derive",
  "num-traits",
  "thiserror 2.0.12",
+]
+
+[[package]]
+name = "jxl_decoder"
+version = "0.1.0"
+dependencies = [
+ "jxl",
+ "libc",
+ "log",
+ "nserror",
+ "nsstring",
+ "qcms",
+ "xpcom",
 ]
 
 [[package]]

@@ -4,76 +4,52 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-#include "ImageLogging.h"  // Must appear first
-#include "gfxPlatform.h"
-#include "jxl/codestream_header.h"
-#include "jxl/decode_cxx.h"
-#include "jxl/types.h"
-#include "mozilla/TelemetryHistogramEnums.h"
-#include "mozilla/gfx/Point.h"
 #include "nsJXLDecoder.h"
 
 #include "RasterImage.h"
+#include "SurfaceFilters.h"
 #include "SurfacePipeFactory.h"
+#include "mozilla/Vector.h"
+#include "imgIContainer.h"
+#include "nsIJXLDecoder.h"
+#include "nsComponentManagerUtils.h"
+#include <iostream>
 
 using namespace mozilla::gfx;
 
-namespace mozilla::image {
-
-#define JXL_TRY(expr)                        \
-  do {                                       \
-    JxlDecoderStatus _status = (expr);       \
-    if (_status != JXL_DEC_SUCCESS) {        \
-      return Transition::TerminateFailure(); \
-    }                                        \
-  } while (0);
-
-#define JXL_TRY_BOOL(expr)                   \
-  do {                                       \
-    bool succeeded = (expr);                 \
-    if (!succeeded) {                        \
-      return Transition::TerminateFailure(); \
-    }                                        \
-  } while (0);
-
-static LazyLogModule sJXLLog("JXLDecoder");
+namespace mozilla {
+namespace image {
 
 nsJXLDecoder::nsJXLDecoder(RasterImage* aImage)
     : Decoder(aImage),
       mLexer(Transition::ToUnbuffered(State::FINISHED_JXL_DATA, State::JXL_DATA,
                                       SIZE_MAX),
-             Transition::TerminateSuccess()),
-      mDecoder(JxlDecoderMake(nullptr)),
-      mParallelRunner(
-          JxlThreadParallelRunnerMake(nullptr, PreferredThreadCount())) {
-  JxlDecoderSubscribeEvents(mDecoder.get(),
-                            JXL_DEC_BASIC_INFO | JXL_DEC_FULL_IMAGE);
-  JxlDecoderSetParallelRunner(mDecoder.get(), JxlThreadParallelRunner,
-                              mParallelRunner.get());
+             Transition::TerminateSuccess()) {}
 
-  MOZ_LOG(sJXLLog, LogLevel::Debug,
-          ("[this=%p] nsJXLDecoder::nsJXLDecoder", this));
-}
-
-nsJXLDecoder::~nsJXLDecoder() {
-  MOZ_LOG(sJXLLog, LogLevel::Debug,
-          ("[this=%p] nsJXLDecoder::~nsJXLDecoder", this));
-}
-
-size_t nsJXLDecoder::PreferredThreadCount() {
-  if (IsMetadataDecode()) {
-    return 0;  // no additional worker thread
-  }
-  return JxlThreadParallelRunnerDefaultNumWorkerThreads();
-}
+nsJXLDecoder::~nsJXLDecoder() = default;
 
 LexerResult nsJXLDecoder::DoDecode(SourceBufferIterator& aIterator,
                                    IResumable* aOnResume) {
-  // return LexerResult(TerminalState::FAILURE);
   MOZ_ASSERT(!HasError(), "Shouldn't call DoDecode after error!");
 
+  if (!mDecoder) {
+    nsresult rv;
+    nsCOMPtr<nsIJXLDecoder> decoder =
+        do_CreateInstance("@mozilla.org/image/jxl-decoder;1", &rv);
+    if (NS_FAILED(rv)) {
+      return LexerResult(TerminalState::FAILURE);
+    }
+
+    rv = decoder->Init(IsMetadataDecode());
+    if (NS_FAILED(rv)) {
+      return LexerResult(TerminalState::FAILURE);
+    }
+
+    mDecoder = decoder;
+  }
+
   return mLexer.Lex(aIterator, aOnResume,
-                    [=](State aState, const char* aData, size_t aLength) {
+                    [this](State aState, const char* aData, size_t aLength) {
                       switch (aState) {
                         case State::JXL_DATA:
                           return ReadJXLData(aData, aLength);
@@ -82,85 +58,199 @@ LexerResult nsJXLDecoder::DoDecode(SourceBufferIterator& aIterator,
                       }
                       MOZ_CRASH("Unknown State");
                     });
-};
+}
 
 LexerTransition<nsJXLDecoder::State> nsJXLDecoder::ReadJXLData(
     const char* aData, size_t aLength) {
-  const uint8_t* input = (const uint8_t*)aData;
-  size_t length = aLength;
-  if (mBuffer.length() != 0) {
-    JXL_TRY_BOOL(mBuffer.append(aData, aLength));
-    input = mBuffer.begin();
-    length = mBuffer.length();
-  }
-  JXL_TRY(JxlDecoderSetInput(mDecoder.get(), input, length));
+  MOZ_ASSERT(mDecoder);
+  const size_t originalLength = aLength;
 
   while (true) {
-    JxlDecoderStatus status = JxlDecoderProcessInput(mDecoder.get());
-    switch (status) {
-      case JXL_DEC_ERROR:
-      default:
+    uint16_t decoder_status = 0;
+    nsresult rv = mDecoder->ProcessData(
+        reinterpret_cast<const uint8_t**>(&aData),
+        reinterpret_cast<uint32_t*>(&aLength), &decoder_status);
+    if (NS_FAILED(rv)) {
+      return Transition::TerminateFailure();
+    }
+
+    switch (decoder_status) {
+      case nsIJXLDecoderStatus::STATUS_OK: {
+        if (!HasSize()) {
+          nsCOMPtr<nsIJXLImageInfo> imageInfo;
+          rv = mDecoder->GetImageInfo(getter_AddRefs(imageInfo));
+          if (NS_FAILED(rv)) {
+            if (aLength == 0) {
+              return Transition::ContinueUnbuffered(State::JXL_DATA);
+            } else {
+              break;
+            }
+          }
+
+          imageInfo->GetWidth(&mCachedImageInfo.width);
+          imageInfo->GetHeight(&mCachedImageInfo.height);
+          imageInfo->GetHasAlpha(&mCachedImageInfo.hasAlpha);
+          imageInfo->GetAlphaPremultiplied(
+              &mCachedImageInfo.alphaPremultiplied);
+
+          PostSize(mCachedImageInfo.width, mCachedImageInfo.height);
+          if (mCachedImageInfo.hasAlpha) {
+            PostHasTransparency();
+          }
+
+          // Get animation info
+          nsCOMPtr<nsIJXLAnimationInfo> animInfo;
+          rv = mDecoder->GetAnimationInfo(getter_AddRefs(animInfo));
+          if (NS_FAILED(rv)) {
+            return Transition::TerminateFailure();
+          }
+
+          animInfo->GetIsAnimated(&mCachedAnimInfo.isAnimated);
+          animInfo->GetNumLoops(&mCachedAnimInfo.numLoops);
+
+          if (IsMetadataDecode()) {
+            return Transition::TerminateSuccess();
+          }
+        }
+
+        bool frameReady = false;
+        mDecoder->IsFrameReady(&frameReady);
+
+        if (HasSize() && frameReady) {
+          if (NS_FAILED(ProcessFrame())) {
+            return Transition::TerminateFailure();
+          }
+
+          bool hasMoreFrames = false;
+          mDecoder->HasMoreFrames(&hasMoreFrames);
+
+          // If static, we're done. If animated, yield and signal how much of
+          // the buffer we used.
+          if (IsFirstFrameDecode() || !mCachedAnimInfo.isAnimated ||
+              !hasMoreFrames) {
+            PostDecodeDone();
+            return Transition::TerminateSuccess();
+          } else {
+            return Transition::ContinueUnbufferedAfterYield(
+                State::JXL_DATA, originalLength - aLength);
+          }
+        } else {
+          if (aLength == 0) {
+            return Transition::ContinueUnbuffered(State::JXL_DATA);
+          }
+        }
+        break;
+      }
+
+      case nsIJXLDecoderStatus::STATUS_NEED_MORE_DATA: {
+        if (aLength == 0) {
+          return Transition::ContinueUnbuffered(State::JXL_DATA);
+        }
+        break;
+      }
+
+      case nsIJXLDecoderStatus::STATUS_INVALID_DATA:
         return Transition::TerminateFailure();
 
-      case JXL_DEC_NEED_MORE_INPUT: {
-        size_t remaining = JxlDecoderReleaseInput(mDecoder.get());
-        mBuffer.clear();
-        JXL_TRY_BOOL(mBuffer.append(aData + aLength - remaining, remaining));
-        return Transition::ContinueUnbuffered(State::JXL_DATA);
-      }
+      case nsIJXLDecoderStatus::STATUS_ERROR:
+        return Transition::TerminateFailure();
 
-      case JXL_DEC_BASIC_INFO: {
-        JXL_TRY(JxlDecoderGetBasicInfo(mDecoder.get(), &mInfo));
-        PostSize(mInfo.xsize, mInfo.ysize);
-        if (WantsFrameCount()) {
-          PostFrameCount(/* aFrameCount */ 1);
-        }
-        if (mInfo.alpha_bits > 0) {
-          PostHasTransparency();
-        }
-        if (IsMetadataDecode()) {
-          return Transition::TerminateSuccess();
-        }
-        break;
-      }
-
-      case JXL_DEC_NEED_IMAGE_OUT_BUFFER: {
-        size_t size = 0;
-        JxlPixelFormat format{4, JXL_TYPE_UINT8, JXL_LITTLE_ENDIAN, 0};
-        JXL_TRY(JxlDecoderImageOutBufferSize(mDecoder.get(), &format, &size));
-
-        mOutBuffer.clear();
-        JXL_TRY_BOOL(mOutBuffer.growBy(size));
-        JXL_TRY(JxlDecoderSetImageOutBuffer(mDecoder.get(), &format,
-                                            mOutBuffer.begin(), size));
-        break;
-      }
-
-      case JXL_DEC_FULL_IMAGE: {
-        OrientedIntSize size(mInfo.xsize, mInfo.ysize);
-        Maybe<SurfacePipe> pipe = SurfacePipeFactory::CreateSurfacePipe(
-            this, size, OutputSize(), FullFrame(), SurfaceFormat::R8G8B8A8,
-            SurfaceFormat::OS_RGBA, Nothing(), nullptr, SurfacePipeFlags());
-        for (uint8_t* rowPtr = mOutBuffer.begin(); rowPtr < mOutBuffer.end();
-             rowPtr += mInfo.xsize * 4) {
-          pipe->WriteBuffer(reinterpret_cast<uint32_t*>(rowPtr));
-        }
-
-        if (Maybe<SurfaceInvalidRect> invalidRect = pipe->TakeInvalidRect()) {
-          PostInvalidation(invalidRect->mInputSpaceRect,
-                           Some(invalidRect->mOutputSpaceRect));
-        }
-        PostFrameStop();
-        PostDecodeDone();
-        return Transition::TerminateSuccess();
-      }
+      default:
+        return Transition::TerminateFailure();
     }
   }
 }
 
 LexerTransition<nsJXLDecoder::State> nsJXLDecoder::FinishedJXLData() {
-  MOZ_ASSERT_UNREACHABLE("Read the entire address space?");
+  MOZ_ASSERT_UNREACHABLE("Should complete decode before reaching end");
   return Transition::TerminateFailure();
 }
 
-}  // namespace mozilla::image
+nsresult nsJXLDecoder::ProcessFrame() {
+  OrientedIntSize fullSize(mCachedImageInfo.width, mCachedImageInfo.height);
+  OrientedIntSize outputSize = OutputSize();
+  OrientedIntRect frameRect(OrientedIntPoint(0, 0), fullSize);
+
+  Maybe<AnimationParams> animParams;
+  if (mCachedAnimInfo.isAnimated) {
+    nsCOMPtr<nsIJXLFrameInfo> frameInfo;
+    nsresult rv = mDecoder->GetFrameInfo(getter_AddRefs(frameInfo));
+    if (NS_FAILED(rv)) {
+      return NS_ERROR_FAILURE;
+    }
+
+    double durationMs;
+    frameInfo->GetDurationMs(&durationMs);
+
+    const FrameTimeout timeout = FrameTimeout::FromRawMilliseconds(durationMs);
+    if (mFrameIndex == 0) {
+      PostIsAnimated(timeout);
+      PostLoopCount(mCachedAnimInfo.numLoops == 0 ? -1
+                                                  : mCachedAnimInfo.numLoops);
+    }
+    animParams.emplace(frameRect.ToUnknownRect(), timeout, mFrameIndex,
+                       BlendMethod::SOURCE, DisposalMethod::KEEP);
+  }
+
+  SurfaceFormat format;
+  SurfacePipeFlags pipeFlags = SurfacePipeFlags();
+  if (mCachedImageInfo.hasAlpha) {
+    format = SurfaceFormat::OS_RGBA;
+    // Tell Firefox to premultiply if necessary.
+    if (!mCachedImageInfo.alphaPremultiplied) {
+      pipeFlags |= SurfacePipeFlags::PREMULTIPLY_ALPHA;
+    }
+  } else {
+    format = SurfaceFormat::OS_RGBX;
+  }
+
+  Maybe<SurfacePipe> pipe = SurfacePipeFactory::CreateSurfacePipe(
+      this, fullSize, outputSize, frameRect, format, format, animParams,
+      /* aTransform */ nullptr, pipeFlags);
+  if (!pipe) {
+    return NS_ERROR_FAILURE;
+  }
+
+  Vector<uint32_t> pixelBuffer;
+  size_t fullPixelCount = fullSize.width * fullSize.height;
+  if (!pixelBuffer.resize(fullPixelCount)) {
+    return NS_ERROR_OUT_OF_MEMORY;
+  }
+
+  size_t pixelsWritten = 0;
+  uint16_t retval = 0;
+  nsresult rv = mDecoder->DecodeFrame(
+      pixelBuffer.begin(), pixelBuffer.length(),
+      reinterpret_cast<uint32_t*>(&pixelsWritten), &retval);
+  if (NS_FAILED(rv)) {
+    return NS_ERROR_FAILURE;
+  }
+  if (retval != nsIJXLDecoderStatus::STATUS_OK) {
+    return NS_ERROR_FAILURE;
+  }
+  if (pixelsWritten != fullPixelCount) {
+    return NS_ERROR_FAILURE;
+  }
+
+  uint32_t* currentRow = pixelBuffer.begin();
+  for (int32_t y = 0; y < fullSize.height; ++y) {
+    WriteState result = pipe->WriteBuffer(currentRow);
+    if (result == WriteState::FAILURE) {
+      return NS_ERROR_FAILURE;
+    }
+    currentRow += fullSize.width;
+  }
+
+  if (Maybe<SurfaceInvalidRect> invalidRect = pipe->TakeInvalidRect()) {
+    PostInvalidation(invalidRect->mInputSpaceRect,
+                     Some(invalidRect->mOutputSpaceRect));
+  }
+
+  PostFrameStop();
+
+  mFrameIndex++;
+  return NS_OK;
+}
+
+}  // namespace image
+}  // namespace mozilla

@@ -1,0 +1,105 @@
+/* -*- Mode: IDL; tab-width: 2; indent-tabs-mode: nil; c-basic-offset: 2 -*- */
+/* This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+
+#include "nsISupports.idl"
+
+/**
+ * Status codes for JXL decoder operations
+ */
+[scriptable, uuid(8e5f1c42-9d3a-4b8e-9f5a-1234567890ab), builtinclass]
+interface nsIJXLDecoderStatus : nsISupports {
+  const unsigned short STATUS_OK = 0;
+  const unsigned short STATUS_NEED_MORE_DATA = 1;
+  const unsigned short STATUS_INVALID_DATA = 2;
+  const unsigned short STATUS_ERROR = 3;
+};
+
+/**
+ * Image information from JXL decoder
+ */
+[scriptable, uuid(7f8e9a2c-3b4d-5e6f-8a9b-cdef01234567), builtinclass]
+interface nsIJXLImageInfo : nsISupports {
+  readonly attribute unsigned long width;
+  readonly attribute unsigned long height;
+  readonly attribute boolean hasAlpha;
+  readonly attribute boolean alphaPremultiplied;
+};
+
+/**
+ * Animation information from JXL decoder
+ */
+[scriptable, uuid(9a8b7c6d-5e4f-3a2b-1c0d-ef9876543210), builtinclass]
+interface nsIJXLAnimationInfo : nsISupports {
+  readonly attribute boolean isAnimated;
+  readonly attribute unsigned long numLoops;
+};
+
+/**
+ * Frame information from JXL decoder
+ */
+[scriptable, uuid(4d3e2f1a-6b5c-7d8e-9f0a-bcde12345678), builtinclass]
+interface nsIJXLFrameInfo : nsISupports {
+  readonly attribute double durationMs;
+};
+
+/**
+ * Main JXL decoder interface
+ */
+[scriptable, uuid(1a2b3c4d-5e6f-7a8b-9c0d-ef1234567890), builtinclass]
+interface nsIJXLDecoder : nsISupports {
+  /**
+   * Initialize the decoder
+   * @param metadataOnly If true, only decode metadata, not pixel data
+   */
+  void init(in boolean metadataOnly);
+
+  /**
+   * Process JXL data
+   * @param data The input data buffer, updated to reflect consumed bytes
+   * @return Status code indicating the result
+   */
+  unsigned short processData([const, array, size_is(dataLen)] inout octet data,
+                              inout unsigned long dataLen);
+
+  /**
+   * Get image information
+   * @return The image information interface
+   */
+  nsIJXLImageInfo getImageInfo();
+
+  /**
+   * Get animation information
+   * @return The animation information interface
+   */
+  nsIJXLAnimationInfo getAnimationInfo();
+
+  /**
+   * Get current frame information
+   * @return The frame information interface
+   */
+  nsIJXLFrameInfo getFrameInfo();
+
+  /**
+   * Check if a frame is ready for decoding
+   * @return True if frame is ready
+   */
+  boolean isFrameReady();
+
+  /**
+   * Check if there are more frames to decode
+   * @return True if more frames exist
+   */
+  boolean hasMoreFrames();
+
+  /**
+   * Decode the current frame
+   * @param outputData The output buffer for pixel data
+   * @param pixelsWritten Returns the number of pixels written
+   * @return Status code indicating the result
+   */
+  unsigned short decodeFrame([array, size_is(outputLen)] in unsigned long outputData,
+                             in unsigned long outputLen,
+                             out unsigned long pixelsWritten);
+};
