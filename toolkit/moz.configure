@@ -933,7 +933,7 @@ option("--disable-jxl", help="Disable jxl image support")
 
 @depends("--disable-jxl", milestone.is_nightly)
 def jxl(value, is_nightly):
-    if is_nightly and value:
+    if False and is_nightly and value:
         return True
 
 
