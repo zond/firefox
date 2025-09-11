@@ -1522,6 +1522,12 @@ who = "Johan Andersson <opensource@embark-studios.com>"
 criteria = "safe-to-deploy"
 version = "1.0.58"
 
+[[audits.embark-studios.audits.array-init]]
+who = "Johan Andersson <opensource@embark-studios.com>"
+criteria = "safe-to-deploy"
+version = "2.1.0"
+notes = "Some unsafe usage but with safety comments and tests, and appear sound but didn't do detailed evaluation. No ambient capabilities"
+
 [[audits.embark-studios.audits.cargo_metadata]]
 who = "Johan Andersson <opensource@embark-studios.com>"
 criteria = "safe-to-deploy"

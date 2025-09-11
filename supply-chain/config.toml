@@ -21,7 +21,7 @@ url = "https://raw.githubusercontent.com/mozilla/supply-chain/main/audits.toml"
 
 [policy.allocator-api2]
 audit-as-crates-io = true
-notes = "This is the upstream code with a fix for rust 1.89."
+notes = "This is the upstream code without the Box implementation which may have a soundness issue."
 
 [policy.any_all_workaround]
 audit-as-crates-io = true
@@ -504,6 +504,14 @@ criteria = "safe-to-deploy"
 version = "0.10.3"
 criteria = "safe-to-deploy"
 
+[[exemptions.jxl]]
+version = "0.1.1"
+criteria = "safe-to-deploy"
+
+[[exemptions.jxl_macros]]
+version = "0.1.1"
+criteria = "safe-to-deploy"
+
 [[exemptions.khronos_api]]
 version = "3.1.0"
 criteria = "safe-to-deploy"
@@ -584,6 +592,14 @@ criteria = "safe-to-run"
 
 [[exemptions.ppv-lite86]]
 version = "0.2.16"
+criteria = "safe-to-deploy"
+
+[[exemptions.proc-macro-error-attr2]]
+version = "2.0.0"
+criteria = "safe-to-deploy"
+
+[[exemptions.proc-macro-error2]]
+version = "2.0.1"
 criteria = "safe-to-deploy"
 
 [[exemptions.profiling]]

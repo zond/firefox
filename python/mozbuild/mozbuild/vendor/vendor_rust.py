@@ -340,6 +340,8 @@ Please commit or stash these changes before vendoring, or re-run with `--ignore-
         "BSD-3-Clause": [
             "subtle",
             "uritemplate-next",
+            "jxl",
+            "jxl_macros",
         ],
     }
 
