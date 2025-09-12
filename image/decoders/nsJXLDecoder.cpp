@@ -14,6 +14,7 @@
 #include "nsIJXLDecoder.h"
 #include "nsComponentManagerUtils.h"
 #include <iostream>
+#include <gfxPlatform.h>
 
 using namespace mozilla::gfx;
 
@@ -89,7 +90,9 @@ LexerTransition<nsJXLDecoder::State> nsJXLDecoder::ReadJXLData(
 
           imageInfo->GetWidth(&mCachedImageInfo.width);
           imageInfo->GetHeight(&mCachedImageInfo.height);
+          imageInfo->GetChannels(&mCachedImageInfo.channels);
           imageInfo->GetHasAlpha(&mCachedImageInfo.hasAlpha);
+          imageInfo->GetHasBlack(&mCachedImageInfo.hasBlack);
           imageInfo->GetAlphaPremultiplied(
               &mCachedImageInfo.alphaPremultiplied);
 
@@ -111,6 +114,56 @@ LexerTransition<nsJXLDecoder::State> nsJXLDecoder::ReadJXLData(
           if (IsMetadataDecode()) {
             return Transition::TerminateSuccess();
           }
+
+          uint32_t icc_buffer_size = 0;
+          if (NS_FAILED(mDecoder->GetICCSize(&icc_buffer_size))) {
+            return Transition::TerminateFailure();
+          }
+          std::unique_ptr<uint8_t[]> icc_buffer(new uint8_t[icc_buffer_size]);
+
+          rv = mDecoder->GetICC(icc_buffer.get(), icc_buffer_size);
+          if (NS_FAILED(rv)) {
+            return Transition::TerminateFailure();
+          }
+
+          mInProfile.reset(
+              qcms_profile_from_memory(icc_buffer.get(), icc_buffer_size));
+
+          int32_t intent = gfxPlatform::GetRenderingIntent();
+          if (intent == -1) {
+            intent = qcms_profile_get_rendering_intent(mInProfile.get());
+          }
+
+          qcms_data_type outType;
+          qcms_data_type inType;
+
+          if (mCachedImageInfo.channels == 1) {
+            outType = gfxPlatform::GetCMSOSRGBAType();
+            if (mCachedImageInfo.hasAlpha) {
+              inType = QCMS_DATA_GRAYA_8;
+            } else {
+              inType = QCMS_DATA_GRAY_8;
+            }
+          } else if (mCachedImageInfo.channels == 3) {
+            if (mCachedImageInfo.hasBlack && mCachedImageInfo.hasAlpha) {
+              return Transition::TerminateFailure();
+            } else if (mCachedImageInfo.hasBlack) {
+              outType = gfxPlatform::GetCMSOSRGBAType();
+              inType = QCMS_DATA_CMYK;
+            } else if (mCachedImageInfo.hasAlpha) {
+              inType = QCMS_DATA_RGBA_8;
+              outType = inType;
+            } else {
+              inType = QCMS_DATA_RGB_8;
+              outType = gfxPlatform::GetCMSOSRGBAType();
+            }
+          } else {
+            return Transition::TerminateFailure();
+          }
+
+          mTransform.reset(qcms_transform_create(mInProfile.get(), inType,
+                                                 GetCMSOutputProfile(), outType,
+                                                 (qcms_intent)intent));
         }
 
         bool frameReady = false;
@@ -206,13 +259,16 @@ nsresult nsJXLDecoder::ProcessFrame() {
 
   Maybe<SurfacePipe> pipe = SurfacePipeFactory::CreateSurfacePipe(
       this, fullSize, outputSize, frameRect, format, format, animParams,
-      /* aTransform */ nullptr, pipeFlags);
+      mTransform.get(), pipeFlags);
   if (!pipe) {
     return NS_ERROR_FAILURE;
   }
 
-  Vector<uint32_t> pixelBuffer;
-  size_t fullPixelCount = fullSize.width * fullSize.height;
+  Vector<uint8_t> pixelBuffer;
+  size_t byte_width = fullSize.width * (mCachedImageInfo.channels +
+                                        (mCachedImageInfo.hasAlpha ? 1 : 0) +
+                                        (mCachedImageInfo.hasBlack ? 1 : 0));
+  size_t fullPixelCount = byte_width * fullSize.height;
   if (!pixelBuffer.resize(fullPixelCount)) {
     return NS_ERROR_OUT_OF_MEMORY;
   }
@@ -232,13 +288,14 @@ nsresult nsJXLDecoder::ProcessFrame() {
     return NS_ERROR_FAILURE;
   }
 
-  uint32_t* currentRow = pixelBuffer.begin();
+  uint8_t* currentRow = pixelBuffer.begin();
   for (int32_t y = 0; y < fullSize.height; ++y) {
-    WriteState result = pipe->WriteBuffer(currentRow);
+    WriteState result =
+        pipe->WriteBuffer(reinterpret_cast<uint32_t*>(currentRow));
     if (result == WriteState::FAILURE) {
       return NS_ERROR_FAILURE;
     }
-    currentRow += fullSize.width;
+    currentRow += byte_width;
   }
 
   if (Maybe<SurfaceInvalidRect> invalidRect = pipe->TakeInvalidRect()) {

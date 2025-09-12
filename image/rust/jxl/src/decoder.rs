@@ -33,7 +33,9 @@ impl std::fmt::Debug for DecoderState {
 pub struct CachedImageInfo {
     pub width: usize,
     pub height: usize,
+    pub channels: usize,
     pub has_alpha: bool,
+    pub has_black: bool,
     pub alpha_premultiplied: bool,
 }
 
@@ -48,11 +50,9 @@ pub struct JxlApiDecoder {
     // Global animation properties
     pub animation_info: Option<JxlAnimation>,
     // ICC profile of JXL image
-    icc_profile: Option<Vec<u8>>,
+    pub icc_profile: Option<Vec<u8>>,
     // Info for JXL extra channels (alpha, black, ...)
     extra_channels: Vec<JxlExtraChannel>,
-    // Original number of color channels (before any conversion)
-    original_color_channels: usize,
 
     // Populated after WithImageInfo => WithFrameInfo
     // Destination for API rendering of pixels
@@ -71,6 +71,10 @@ pub struct JxlApiDecoder {
     pub has_more_frames: bool,
 }
 
+fn u8_from_f32_u8s(v: &[u8]) -> u8 {
+    f32::from_ne_bytes(v.try_into().unwrap()).clamp(0.0, 255.0) as u8
+}
+
 impl JxlApiDecoder {
     pub fn new(metadata_only: bool) -> Self {
         Self {
@@ -81,7 +85,6 @@ impl JxlApiDecoder {
             animation_info: None,
             icc_profile: None,
             extra_channels: vec![],
-            original_color_channels: 3,
 
             output_vecs: vec![],
             frame_duration: 0.0,
@@ -151,7 +154,7 @@ impl JxlApiDecoder {
 
                             // Allocate buffers based on original channel count (before any conversion)
                             // Each channel is 4 bytes (f32)
-                            let bytes_per_pixel = self.original_color_channels * 4;
+                            let bytes_per_pixel = info.channels * 4;
                             let num_pixels = info.width * info.height;
                             self.output_vecs = vec![vec![0; num_pixels * bytes_per_pixel]];
 
@@ -240,14 +243,6 @@ impl JxlApiDecoder {
 
         self.animation_info = basic_info.animation.clone();
 
-        // TODO(zond): This is what the jxl-rs API actually does today - might have to change
-        // it if the API becomes cleverer.
-        self.original_color_channels =
-            if decoder.current_pixel_format().color_type == JxlColorType::Grayscale {
-                1
-            } else {
-                3
-            };
         self.extra_channels = basic_info.extra_channels.clone();
         self.icc_profile = Some(decoder.output_color_profile().as_icc().to_vec());
 
@@ -266,7 +261,15 @@ impl JxlApiDecoder {
             } else {
                 basic_info.size.1
             },
+            // TODO(zond): This is what the jxl-rs API actually does today - might have to change
+            // it if the API becomes cleverer.
+            channels: if decoder.current_pixel_format().color_type == JxlColorType::Grayscale {
+                1
+            } else {
+                3
+            },
             has_alpha: alpha_channel.is_some(),
+            has_black: self.black_channel.is_some(),
             alpha_premultiplied: alpha_channel.map_or(false, |ec| ec.alpha_associated),
         };
 
@@ -277,141 +280,125 @@ impl JxlApiDecoder {
     ///
     /// The frame must be ready (check with is_frame_ready()) before calling this function.
     /// After successful extraction, the decoder is reset for the next frame.
-    pub fn decode_frame(&mut self, output: &mut [u32]) -> Result<usize, &'static str> {
+    pub fn decode_frame(&mut self, output: &mut [u8]) -> Result<usize, &'static str> {
         if !self.frame_ready {
             return Err("Frame not ready for decoding");
         }
 
-        match self.apply_icc_color_transform(output) {
+        let result = self.prepare_color_channels(output);
+
+        match result {
             Err(e) => {
                 self.state = Some(DecoderState::Error(e.to_string()));
-                Err(e)
             }
             Ok(pixel_count) => {
                 self.output_vecs = vec![];
                 self.alpha_channel = None;
                 self.black_channel = None;
                 self.frame_ready = false;
-                Ok(pixel_count)
             }
         }
+
+        result
     }
 
-    /// Apply ICC color transform to convert input color space to RGBA.
-    /// If we don't actually use alpha, then the A channel will just be opaque,
-    /// and will later be discarded after nsJXLRustDecoder::ProcessFrame
-    /// registers the image as RGBX.
-    fn apply_icc_color_transform(&self, rgba: &mut [u32]) -> Result<usize, &'static str> {
-        let input_profile = match Profile::new_from_slice(self.icc_profile.as_ref().unwrap(), false)
-        {
-            Some(p) => p,
-            None => return Err("Unable to parse ICC profile"),
-        };
-
-        let alpha = self
-            .alpha_channel
-            .map(|idx| self.output_vecs[idx as usize].as_slice());
-        let black = self
-            .black_channel
-            .map(|idx| self.output_vecs[idx as usize].as_slice());
-
+    /// TODO: Should this be inlined inside decode_frame?
+    /// Convert the colors + (optional) alpha or (optional) black to u32.
+    /// Note that this disallows the combination of alpha _and_ black, but CMYK with alpha doesn't seem to be a thing.
+    fn prepare_color_channels(&self, output: &mut [u8]) -> Result<usize, &'static str> {
         let info: &CachedImageInfo = self.cached_info.as_ref().unwrap();
 
-        let output_profile = Profile::new_sRGB();
-
-        let pixel_count = info.width * info.height;
-
-        let alpha_for_compositing = match alpha {
-            Some(alpha_buffer) => {
-                let mut buf = vec![0u8; pixel_count];
-                for (idx, alpha) in buf.iter_mut().enumerate() {
-                    *alpha =
-                        f32::from_ne_bytes(alpha_buffer[idx * 4..idx * 4 + 4].try_into().unwrap())
-                            as u8;
+        match info.channels {
+            1 => {
+                if self.black_channel.is_some() {
+                    return Err("Can't combine grayscale with extra black channel");
                 }
-                buf
-            }
-            None => {
-                vec![255u8; pixel_count] // Default to opaque
-            }
-        };
-        let mut tmp_color_buf = vec![0u8; 0];
-        #[allow(non_upper_case_globals)]
-        let (input_data_type, colors_for_qcms) = match qcms_profile_get_color_space(&input_profile)
-        {
-            icSigGrayData => {
-                if self.original_color_channels != 1 {
-                    return Err("Gray requires exactly one input channel");
-                }
-                (DataType::Gray8, &self.output_vecs[0])
-            }
-            icSigRgbData => {
-                if self.original_color_channels != 3 {
-                    return Err("RGB requires exactly 3 input channels");
-                }
-                (DataType::RGB8, &self.output_vecs[0])
-            }
-            icSigCmykData => {
-                // TODO(zond): The jxl-rs API only ever returns 1 or 3 channels as of now, when it's cleverer
-                // maybe improve this.
-                if self.original_color_channels != 3 {
-                    return Err(
-                        "CMYK with extra black channel requires exactly 3 regular input channels",
-                    );
-                }
-                if let Some(buf) = black {
-                    tmp_color_buf = vec![0u8; pixel_count * 4 * 4];
+                if let Some(alpha_idx) = self.alpha_channel {
+                    let alpha = &self.output_vecs[alpha_idx as usize];
                     for y in 0..(info.height) {
                         for x in 0..(info.width) {
                             let pixel_idx = y * info.width + x;
-                            // Copy the first three channels from colors.
-                            tmp_color_buf[pixel_idx * 16..pixel_idx * 16 + 12].copy_from_slice(
-                                &self.output_vecs[0][pixel_idx * 12..pixel_idx * 12 + 12],
+                            output[pixel_idx * 2] = u8_from_f32_u8s(
+                                &self.output_vecs[0][pixel_idx * 4..pixel_idx * 4 + 4],
                             );
-                            // Copy the fourth channel from black.
-                            tmp_color_buf[pixel_idx * 16 + 12..pixel_idx * 16 + 16]
-                                .copy_from_slice(&buf[pixel_idx * 4..pixel_idx * 4 + 4]);
+                            output[pixel_idx * 2 + 1] =
+                                u8_from_f32_u8s(&alpha[pixel_idx * 4..pixel_idx * 4 + 4]);
+                        }
+                    }
+                } else {
+                    for y in 0..(info.height) {
+                        for x in 0..(info.width) {
+                            let pixel_idx = y * info.width + x;
+                            output[pixel_idx] = u8_from_f32_u8s(
+                                &self.output_vecs[0][pixel_idx * 4..pixel_idx * 4 + 4],
+                            );
                         }
                     }
                 }
-                (DataType::CMYK, &tmp_color_buf)
+            }
+            3 => {
+                if self.black_channel.is_some() && self.alpha_channel.is_some() {
+                    return Err("Can't have both alpha and black channel");
+                }
+                if let Some(alpha_idx) = self.alpha_channel {
+                    let alpha = &self.output_vecs[alpha_idx as usize];
+                    for y in 0..(info.height) {
+                        for x in 0..(info.width) {
+                            let pixel_idx = y * info.width + x;
+                            output[pixel_idx * 4] = u8_from_f32_u8s(
+                                &self.output_vecs[0][pixel_idx * 4..pixel_idx * 4 + 4],
+                            );
+                            output[pixel_idx * 4 + 1] = u8_from_f32_u8s(
+                                &self.output_vecs[0][pixel_idx * 4 + 4..pixel_idx * 4 + 8],
+                            );
+                            output[pixel_idx * 4 + 2] = u8_from_f32_u8s(
+                                &self.output_vecs[0][pixel_idx * 4 + 8..pixel_idx * 4 + 12],
+                            );
+                            output[pixel_idx * 4 + 3] =
+                                u8_from_f32_u8s(&alpha[pixel_idx * 4..pixel_idx * 4 + 4]);
+                        }
+                    }
+                } else if let Some(black_idx) = self.black_channel {
+                    let black = &self.output_vecs[black_idx as usize];
+                    for y in 0..(info.height) {
+                        for x in 0..(info.width) {
+                            let pixel_idx = y * info.width + x;
+                            output[pixel_idx * 4] = u8_from_f32_u8s(
+                                &self.output_vecs[0][pixel_idx * 4..pixel_idx * 4 + 4],
+                            );
+                            output[pixel_idx * 4 + 1] = u8_from_f32_u8s(
+                                &self.output_vecs[0][pixel_idx * 4 + 4..pixel_idx * 4 + 8],
+                            );
+                            output[pixel_idx * 4 + 2] = u8_from_f32_u8s(
+                                &self.output_vecs[0][pixel_idx * 4 + 8..pixel_idx * 4 + 12],
+                            );
+                            output[pixel_idx * 4 + 3] =
+                                u8_from_f32_u8s(&black[pixel_idx * 4..pixel_idx * 4 + 4]);
+                        }
+                    }
+                } else {
+                    for y in 0..(info.height) {
+                        for x in 0..(info.width) {
+                            let pixel_idx = y * info.width + x;
+                            output[pixel_idx * 3] = u8_from_f32_u8s(
+                                &self.output_vecs[0][pixel_idx * 4..pixel_idx * 4 + 4],
+                            );
+                            output[pixel_idx * 3 + 1] = u8_from_f32_u8s(
+                                &self.output_vecs[0][pixel_idx * 4 + 4..pixel_idx * 4 + 8],
+                            );
+                            output[pixel_idx * 3 + 2] = u8_from_f32_u8s(
+                                &self.output_vecs[0][pixel_idx * 4 + 8..pixel_idx * 4 + 12],
+                            );
+                        }
+                    }
+                }
             }
             _ => {
                 // Unsupported color space - could be LAB, XYZ, or other formats
                 // that qcms doesn't currently support in our DataType enum
-                return Err("Unknown color space");
+                return Err("Unknown number of color channels");
             }
         };
-
-        let qcms_input_channels = input_data_type.bytes_per_pixel();
-        let mut input_u8 = vec![0u8; pixel_count * qcms_input_channels];
-
-        // Convert f32 input to u8 input for qcms
-        for i in 0..(pixel_count * qcms_input_channels) {
-            let f32_val =
-                f32::from_ne_bytes(colors_for_qcms[i * 4..(i + 1) * 4].try_into().unwrap());
-            input_u8[i] = f32_val.clamp(0.0, 255.0) as u8;
-        }
-        let transform = Transform::new_to(
-            &input_profile,
-            &output_profile,
-            input_data_type,
-            DataType::RGB8,
-            Intent::Perceptual,
-        )
-        .ok_or("Unable to create color transform")?;
-        let mut rgb_u8 = vec![0u8; pixel_count * 3];
-        transform.convert(&input_u8, &mut rgb_u8);
-
-        for i in 0..pixel_count {
-            let r = rgb_u8[i * 3];
-            let g = rgb_u8[i * 3 + 1];
-            let b = rgb_u8[i * 3 + 2];
-            let a = alpha_for_compositing[i];
-
-            rgba[i] = ((a as u32) << 24) | ((r as u32) << 16) | ((g as u32) << 8) | (b as u32);
-        }
-
-        Ok(pixel_count)
+        Ok(info.width * info.height)
     }
 }

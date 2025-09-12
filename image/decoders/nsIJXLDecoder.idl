@@ -23,7 +23,9 @@ interface nsIJXLDecoderStatus : nsISupports {
 interface nsIJXLImageInfo : nsISupports {
   readonly attribute unsigned long width;
   readonly attribute unsigned long height;
+  readonly attribute unsigned long channels;
   readonly attribute boolean hasAlpha;
+  readonly attribute boolean hasBlack;
   readonly attribute boolean alphaPremultiplied;
 };
 
@@ -70,6 +72,18 @@ interface nsIJXLDecoder : nsISupports {
   nsIJXLImageInfo getImageInfo();
 
   /**
+   * Get the size of the ICC in bytes.
+   */
+  unsigned long getICCSize();
+
+  /**
+   * Get ICC bytes for JXL output bytes.
+   * @return The bytes defining the ICC
+   */
+  void getICC([array, size_is(length)] in octet buffer,
+               in unsigned long length);
+
+  /**
    * Get animation information
    * @return The animation information interface
    */
@@ -99,7 +113,7 @@ interface nsIJXLDecoder : nsISupports {
    * @param pixelsWritten Returns the number of pixels written
    * @return Status code indicating the result
    */
-  unsigned short decodeFrame([array, size_is(outputLen)] in unsigned long outputData,
+  unsigned short decodeFrame([array, size_is(outputLen)] in octet outputData,
                              in unsigned long outputLen,
                              out unsigned long pixelsWritten);
 };

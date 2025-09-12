@@ -15,6 +15,18 @@
 
 class nsIJXLDecoder;
 
+struct qcms_profile_deleter {
+  void operator()(void* ptr) {
+    qcms_profile_release(static_cast<qcms_profile*>(ptr));
+  }
+};
+
+struct qcms_transform_deleter {
+  void operator()(void* ptr) {
+    qcms_transform_release(static_cast<qcms_transform*>(ptr));
+  }
+};
+
 namespace mozilla::image {
 
 class nsJXLDecoder final : public Decoder {
@@ -33,6 +45,9 @@ class nsJXLDecoder final : public Decoder {
   // Decoders should only be instantiated via DecoderFactory.
   explicit nsJXLDecoder(RasterImage* aImage);
 
+  std::unique_ptr<qcms_profile, qcms_profile_deleter> mInProfile;
+  std::unique_ptr<qcms_transform, qcms_transform_deleter> mTransform;
+
   enum class State { JXL_DATA, FINISHED_JXL_DATA };
 
   nsresult ProcessFrame();
@@ -49,7 +64,9 @@ class nsJXLDecoder final : public Decoder {
   struct CachedImageInfo {
     uint32_t width;
     uint32_t height;
+    uint32_t channels;
     bool hasAlpha;
+    bool hasBlack;
     bool alphaPremultiplied;
   } mCachedImageInfo;
 

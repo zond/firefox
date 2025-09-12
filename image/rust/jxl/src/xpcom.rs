@@ -3,6 +3,7 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 use crate::decoder::{CachedImageInfo, JxlApiDecoder};
+use libc::c_void;
 use log::error;
 use nserror::{
     nsresult, NS_ERROR_FAILURE, NS_ERROR_NOT_INITIALIZED, NS_ERROR_NULL_POINTER,
@@ -24,7 +25,9 @@ const STATUS_ERROR: u16 = 3;
 struct JXLImageInfo {
     width: u32,
     height: u32,
+    channels: u32,
     has_alpha: bool,
+    has_black: bool,
     alpha_premultiplied: bool,
 }
 
@@ -33,7 +36,9 @@ impl JXLImageInfo {
         JXLImageInfo::allocate(InitJXLImageInfo {
             width: info.width as u32,
             height: info.height as u32,
+            channels: info.channels as u32,
             has_alpha: info.has_alpha,
+            has_black: info.has_black,
             alpha_premultiplied: info.alpha_premultiplied,
         })
     }
@@ -48,9 +53,19 @@ impl JXLImageInfo {
         Ok(self.height)
     }
 
+    xpcom_method!(get_channels => GetChannels() -> u32);
+    fn get_channels(&self) -> Result<u32, nsresult> {
+        Ok(self.channels)
+    }
+
     xpcom_method!(get_has_alpha => GetHasAlpha() -> bool);
     fn get_has_alpha(&self) -> Result<bool, nsresult> {
         Ok(self.has_alpha)
+    }
+
+    xpcom_method!(get_has_black => GetHasBlack() -> bool);
+    fn get_has_black(&self) -> Result<bool, nsresult> {
+        Ok(self.has_black)
     }
 
     xpcom_method!(get_alpha_premultiplied => GetAlphaPremultiplied() -> bool);
@@ -182,6 +197,29 @@ impl JXLDecoder {
         }
     }
 
+    xpcom_method!(get_icc_size => GetICCSize() -> u32);
+    fn get_icc_size(&self) -> Result<u32, nsresult> {
+        let guard = self.inner.lock().map_err(|_| NS_ERROR_FAILURE)?;
+        let decoder_ref = guard.borrow();
+        let decoder = decoder_ref.as_ref().ok_or(NS_ERROR_NOT_INITIALIZED)?;
+        Ok(decoder.icc_profile.as_ref().unwrap().len() as u32)
+    }
+
+    xpcom_method!(get_icc => GetICC(buffer: *mut u8, length: u32));
+    unsafe fn get_icc(&self, buffer: *mut u8, length: u32) -> Result<(), nsresult> {
+        let guard = self.inner.lock().map_err(|_| NS_ERROR_FAILURE)?;
+        let decoder_ref = guard.borrow();
+        let decoder = decoder_ref.as_ref().ok_or(NS_ERROR_NOT_INITIALIZED)?;
+
+        let icc = decoder.icc_profile.as_ref().unwrap();
+        assert!(icc.len() == length as usize);
+
+        // Copy data
+        std::ptr::copy_nonoverlapping(icc.as_ptr(), buffer, length as usize);
+
+        Ok(())
+    }
+
     xpcom_method!(get_animation_info => GetAnimationInfo() -> *const nsIJXLAnimationInfo);
     fn get_animation_info(&self) -> Result<RefPtr<nsIJXLAnimationInfo>, nsresult> {
         let guard = self.inner.lock().map_err(|_| NS_ERROR_FAILURE)?;
@@ -220,14 +258,14 @@ impl JXLDecoder {
 
     xpcom_method!(
         decode_frame => DecodeFrame(
-            output_data: *mut u32,
+            output_data: *mut u8,
             output_len: u32,
             pixels_written: *mut u32
         ) -> u16
     );
     unsafe fn decode_frame(
         &self,
-        output_data: *mut u32,
+        output_data: *mut u8,
         output_len: u32,
         pixels_written: *mut u32,
     ) -> Result<u16, nsresult> {
