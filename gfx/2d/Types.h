@@ -95,6 +95,7 @@ enum class SurfaceFormat : int8_t {
   HSV,
   Lab,
   Depth,
+  CMYK,
 
   // This represents the unknown format.
   UNKNOWN,  // TODO: Replace uses with Maybe<SurfaceFormat>.
@@ -155,6 +156,7 @@ inline std::optional<SurfaceFormatInfo> Info(const SurfaceFormat aFormat) {
     case SurfaceFormat::R16G16:
     case SurfaceFormat::HSV:
     case SurfaceFormat::Lab:
+    case SurfaceFormat::CMYK:
       info.hasColor = true;
       info.hasAlpha = false;
       break;
@@ -199,6 +201,7 @@ inline std::optional<SurfaceFormatInfo> Info(const SurfaceFormat aFormat) {
     case SurfaceFormat::R8G8B8X8:
     case SurfaceFormat::X8R8G8B8:
     case SurfaceFormat::R16G16:
+    case SurfaceFormat::CMYK:
       info.bytesPerPixel = 4;
       break;
 
@@ -325,6 +328,7 @@ inline bool IsOpaque(SurfaceFormat aFormat) {
     case SurfaceFormat::P010:
     case SurfaceFormat::P016:
     case SurfaceFormat::YUY2:
+    case SurfaceFormat::CMYK:
       return true;
     default:
       return false;
