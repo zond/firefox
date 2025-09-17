@@ -1063,8 +1063,14 @@ template void UnpackRowRGB24<true>(const uint8_t*, uint8_t*, int32_t);
       SurfaceFormat::R8G8B8, aDstFormat, \
       UnpackRowRGB24<ShouldSwapRB(SurfaceFormat::R8G8B8, aDstFormat)>)
 
-static void UnpackRowRGB24_To_ARGB(const uint8_t* aSrc, uint8_t* aDst,
-                                   int32_t aLength) {
+struct ARGB {};
+struct BGRA {};
+
+template <typename aDest>
+static void UnpackRowRGB24_To_(const uint8_t* aSrc, uint8_t* aDst,
+                               int32_t aLength) {
+  static_assert(std::is_same_v<aDest, ARGB> || std::is_same_v<aDest, BGRA>,
+                "aDest must be either ARGB or BGRA");
   // Because we are expanding, we can only process the data back to front in
   // case we are performing this in place.
   const uint8_t* src = aSrc + 3 * (aLength - 1);
@@ -1074,16 +1080,24 @@ static void UnpackRowRGB24_To_ARGB(const uint8_t* aSrc, uint8_t* aDst,
     uint8_t g = src[1];
     uint8_t b = src[2];
 #if MOZ_LITTLE_ENDIAN()
-    *--dst = 0x000000FF | (r << 8) | (g << 16) | (b << 24);
+    if constexpr (std::is_same_v<aDest, ARGB>) {
+      *--dst = 0x000000FF | (r << 8) | (g << 16) | (b << 24);
+    } else {
+      *--dst = 0xFF000000 | (b << 8) | (g << 16) | (r << 24);
+    }
 #else
-    *--dst = 0xFF000000 | (r << 24) | (g << 16) | b;
+    if constexpr (std::is_same_v<aDest, ARGB>) {
+      *--dst = 0xFF000000 | (r << 24) | (g << 16) | b;
+    } else {
+      *--dst = 0x000000FF | (b << 24) | (g << 16) | r;
+    }
 #endif
     src -= 3;
   }
 }
 
 #define UNPACK_ROW_RGB_TO_ARGB(aDstFormat) \
-  FORMAT_CASE_ROW(SurfaceFormat::R8G8B8, aDstFormat, UnpackRowRGB24_To_ARGB)
+  FORMAT_CASE_ROW(SurfaceFormat::R8G8B8, aDstFormat, UnpackRowRGB24_To_<ARGB>)
 
 bool SwizzleData(const uint8_t* aSrc, int32_t aSrcStride,
                  SurfaceFormat aSrcFormat, uint8_t* aDst, int32_t aDstStride,
@@ -1375,6 +1389,11 @@ SwizzleRowFn SwizzleRow(SurfaceFormat aSrcFormat, SurfaceFormat aDstFormat) {
 
     PACK_ROW_RGB(SurfaceFormat::R8G8B8, PackRowToRGB24)
     PACK_ROW_RGB(SurfaceFormat::B8G8R8, PackRowToRGB24)
+
+    // aSrcFormat CMYK requires the CMS to run before swizzle, which
+    // means the aSrcFormat is _actually_ RGB at this point.
+    FORMAT_CASE_ROW(SurfaceFormat::CMYK, SurfaceFormat::B8G8R8X8,
+                    UnpackRowRGB24_To_<BGRA>)
 
     default:
       break;
