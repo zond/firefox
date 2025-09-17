@@ -103,7 +103,7 @@ fluent-fallback = "0.7.0"
 localization-ffi = { path = "../../../../intl/l10n/rust/localization-ffi" }
 
 processtools = { path = "../../../components/processtools" }
-qcms = { path = "../../../../gfx/qcms", features = ["c_bindings", "neon"], default-features = false }
+qcms = { path = "../../../../gfx/qcms", features = ["c_bindings", "cmyk", "neon"], default-features = false }
 
 wpf-gpu-raster = { git = "https://github.com/FirefoxGraphics/wpf-gpu-raster", rev = "99979da091fd58fba8477e7fcdf5ec0727102916" }
 aa-stroke = { git = "https://github.com/FirefoxGraphics/aa-stroke", rev = "5776bdfc8ad664a1503db668fab397d818a5f98a" }
