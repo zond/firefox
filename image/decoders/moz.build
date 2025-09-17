@@ -6,6 +6,18 @@
 
 toolkit = CONFIG["MOZ_WIDGET_TOOLKIT"]
 
+# XPCOM interface definitions for JXL decoder
+if CONFIG["MOZ_JXL"]:
+    XPIDL_SOURCES += [
+        "nsIJXLDecoder.idl",
+    ]
+
+    XPIDL_MODULE = "imgdecoders"
+
+    XPCOM_MANIFESTS += [
+        "components.conf",
+    ]
+
 # The Icon Channel stuff really shouldn't live in decoders/icon, but we'll
 # fix that another time.
 if toolkit == "gtk":
@@ -42,6 +54,11 @@ if CONFIG["MOZ_AV1"]:
 if CONFIG["MOZ_JXL"]:
     UNIFIED_SOURCES += [
         "nsJXLDecoder.cpp",
+    ]
+
+    LOCAL_INCLUDES += [
+        # For the Rust JXL decoder C API headers
+        "/image/rust",
     ]
 
 include("/ipc/chromium/chromium-config.mozbuild")
