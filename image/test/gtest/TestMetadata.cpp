@@ -239,9 +239,19 @@ TEST_F(ImageDecoderMetadata, WebP) { CheckMetadata(GreenWebPTestCase()); }
 TEST_F(ImageDecoderMetadata, AVIF) { CheckMetadata(GreenAVIFTestCase()); }
 
 #ifdef MOZ_JXL
-TEST_F(ImageDecoderMetadata, JXL) { CheckMetadata(GreenJXLTestCase()); }
+TEST_F(ImageDecoderMetadata, JXL) {
+  CheckMetadata(
+      GreenJXLTestCase(),
+      /* BMPWithinICO = */ BMPWithinICO::NO,
+      /* aSkipCommon = */ false,
+      /* aSkipFrameCount = */ true);  // JXL images don't provide a frame count.
+}
 TEST_F(ImageDecoderMetadata, TransparentJXL) {
-  CheckMetadata(TransparentJXLTestCase());
+  CheckMetadata(
+      TransparentJXLTestCase(),
+      /* BMPWithinICO = */ BMPWithinICO::NO,
+      /* aSkipCommon = */ false,
+      /* aSkipFrameCount = */ true);  // JXL images don't provide a frame count.
 }
 #endif
 

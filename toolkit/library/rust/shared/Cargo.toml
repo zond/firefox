@@ -13,6 +13,7 @@ mozglue-static = { path = "../../../../mozglue/static/rust" }
 geckoservo = { path = "../../../../servo/ports/geckolib" }
 kvstore = { path = "../../../components/kvstore" }
 mp4parse_capi = { git = "https://github.com/mozilla/mp4parse-rust", rev = "f955be5d2a04a631c0f1777d6f35370ea1a99e2d", features = ["missing-pixi-permitted"] }
+jxl_decoder = { path = "../../../../image/rust/jxl", optional = true }
 nserror = { path = "../../../../xpcom/rust/nserror" }
 nsstring = { path = "../../../../xpcom/rust/nsstring" }
 netwerk_helper = { path = "../../../../netwerk/base/rust-helper" }
@@ -156,6 +157,7 @@ thread_sanitizer = ["xpcom/thread_sanitizer"]
 uniffi_fixtures = ["uniffi-bindgen-gecko-js-test-fixtures"]
 webmidi_midir_impl = ["midir_impl"]
 icu4x = ["jsrust_shared/icu4x"]
+jxl_decoder = ["dep:jxl_decoder"]
 # Set when we're building libxul (as opposed to building the unittests, for example)
 for_xul = [
     # This makes it so `rusqlite` doesn't handle linking itself.  Instead, we'll link it to the

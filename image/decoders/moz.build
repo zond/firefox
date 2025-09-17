@@ -44,6 +44,11 @@ if CONFIG["MOZ_JXL"]:
         "nsJXLDecoder.cpp",
     ]
 
+    LOCAL_INCLUDES += [
+        # For the Rust JXL decoder C API headers
+        "/image/rust",
+    ]
+
 include("/ipc/chromium/chromium-config.mozbuild")
 
 LOCAL_INCLUDES += [

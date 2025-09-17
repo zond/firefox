@@ -5,6 +5,11 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 DIRS += ["build", "decoders", "encoders", "remote"]
+
+# Add Rust JXL decoder if enabled
+if CONFIG["MOZ_JXL"]:
+    DIRS += ["rust/jxl"]
+
 TEST_DIRS += ["test/gtest"]
 
 if CONFIG["FUZZING_INTERFACES"]:
