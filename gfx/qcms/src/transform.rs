@@ -1467,8 +1467,12 @@ pub fn transform_create(
         return None;
     }
     debug_assert!(transform.transform_fn.is_some());
+    if transform.transform_fn.is_none() {
+        return None
+    }
     Some(transform)
 }
+
 /// A transform from an input profile to an output one.
 pub struct Transform {
     src_ty: DataType,
