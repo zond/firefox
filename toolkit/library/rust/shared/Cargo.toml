@@ -76,6 +76,7 @@ dap_ffi = { path = "../../../components/telemetry/dap/ffi" }
 data-encoding-ffi = { path = "../../../../dom/fs/parent/rust/data-encoding-ffi" }
 binary_http = { path = "../../../../netwerk/protocol/http/binary_http" }
 oblivious_http = { path = "../../../../netwerk/protocol/http/oblivious_http" }
+jxl = { version = "0.1.1", optional = true }
 
 abridged_certs = { path = "../../../../security/manager/ssl/abridged_certs" }
 cert_storage = { path = "../../../../security/manager/ssl/cert_storage" }
