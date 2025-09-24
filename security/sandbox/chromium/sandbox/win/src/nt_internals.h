@@ -44,7 +44,7 @@ typedef NTSTATUS(WINAPI* NtCloseFunction)(IN HANDLE Handle);
 // Uses undocumented value not in FILE_INFORMATION_CLASS.
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wenum-constexpr-conversion"
-constexpr auto FileRenameInformation = static_cast<FILE_INFORMATION_CLASS>(10);
+const auto FileRenameInformation = static_cast<FILE_INFORMATION_CLASS>(10);
 #pragma clang diagnostic push
 
 typedef struct _FILE_RENAME_INFORMATION {
@@ -180,7 +180,7 @@ typedef NTSTATUS(WINAPI* NtSetInformationThreadFunction)(
 // Partial definition only for values not in PROCESS_INFO_CLASS.
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wenum-constexpr-conversion"
-constexpr auto ProcessHandleTable = static_cast<PROCESSINFOCLASS>(58);
+const auto ProcessHandleTable = static_cast<PROCESSINFOCLASS>(58);
 #pragma clang diagnostic pop
 
 // Partial definition only adding fields not in winternl.h, from
