@@ -2616,6 +2616,7 @@ dependencies = [
  "ipdl_utils",
  "jog",
  "jsrust_shared",
+ "jxl",
  "jxl_decoder",
  "kvstore",
  "l10nregistry",
