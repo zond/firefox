@@ -1466,6 +1466,7 @@ pub fn transform_create(
         debug_assert!(false, "unexpected colorspace");
         return None;
     }
+    eprintln!("### Returning transform with transform_fn.is_none() {}", transform.transform_fn.is_none());
     debug_assert!(transform.transform_fn.is_some());
     Some(transform)
 }
