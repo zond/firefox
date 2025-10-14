@@ -286,9 +286,8 @@ def build_one_stage(
 
         cmake_args.append("-DLLVM_ENABLE_PROJECTS=%s" % ";".join(projects))
 
-        if is_final_stage:
-            cmake_args += ["-DLLVM_ENABLE_LIBXML2=FORCE_ON"]
         if is_linux(target) and is_final_stage:
+            cmake_args += ["-DLLVM_ENABLE_LIBXML2=FORCE_ON"]
             sysroot = os.path.join(os.environ.get("MOZ_FETCHES_DIR", ""), "sysroot")
             if os.path.exists(sysroot):
                 cmake_args += ["-DLLVM_BINUTILS_INCDIR=/usr/include"]
@@ -308,6 +307,7 @@ def build_one_stage(
         if is_windows(target):
             cmake_args.insert(-1, "-DLLVM_EXPORT_SYMBOLS_FOR_PLUGINS=ON")
             cmake_args.insert(-1, "-DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded")
+            cmake_args += ["-DLLVM_ENABLE_LIBXML2=FORCE_ON"]
             if is_cross_compile(target):
                 cmake_args += [
                     f"-DCMAKE_TOOLCHAIN_FILE={src_dir}/cmake/platforms/WinMsvc.cmake",
@@ -316,13 +316,12 @@ def build_one_stage(
                     f"-DLLVM_WINSYSROOT={os.environ['VSINSTALLDIR']}",
                     "-DLLVM_DISABLE_ASSEMBLY_FILES=ON",
                 ]
-            if is_final_stage:
-                fetches = os.environ["MOZ_FETCHES_DIR"]
-                cmake_args += [
-                    "-DLIBXML2_DEFINITIONS=-DLIBXML_STATIC",
-                    f"-DLIBXML2_INCLUDE_DIR={fetches}/libxml2/include/libxml2",
-                    f"-DLIBXML2_LIBRARIES={fetches}/libxml2/lib/libxml2s.lib",
-                ]
+            fetches = os.environ["MOZ_FETCHES_DIR"]
+            cmake_args += [
+                "-DLIBXML2_DEFINITIONS=-DLIBXML_STATIC",
+                f"-DLIBXML2_INCLUDE_DIR={fetches}/libxml2/include/libxml2",
+                f"-DLIBXML2_LIBRARIES={fetches}/libxml2/lib/libxml2s.lib",
+            ]
         else:
             # libllvm as a shared library is not supported on Windows
             cmake_args += ["-DLLVM_LINK_LLVM_DYLIB=ON"]
