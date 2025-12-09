@@ -516,6 +516,22 @@ criteria = "safe-to-deploy"
 version = "0.10.3"
 criteria = "safe-to-deploy"
 
+[[exemptions.jxl]]
+version = "0.1.4"
+criteria = "safe-to-deploy"
+
+[[exemptions.jxl_macros]]
+version = "0.1.4"
+criteria = "safe-to-deploy"
+
+[[exemptions.jxl_simd]]
+version = "0.1.4"
+criteria = "safe-to-deploy"
+
+[[exemptions.jxl_transforms]]
+version = "0.1.4"
+criteria = "safe-to-deploy"
+
 [[exemptions.khronos_api]]
 version = "3.1.0"
 criteria = "safe-to-deploy"
@@ -592,6 +608,14 @@ criteria = "safe-to-run"
 
 [[exemptions.ppv-lite86]]
 version = "0.2.16"
+criteria = "safe-to-deploy"
+
+[[exemptions.proc-macro-error-attr2]]
+version = "2.0.0"
+criteria = "safe-to-deploy"
+
+[[exemptions.proc-macro-error2]]
+version = "2.0.1"
 criteria = "safe-to-deploy"
 
 [[exemptions.profiling]]
