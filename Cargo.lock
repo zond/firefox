@@ -139,6 +139,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "array-init"
+version = "2.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3d62b7694a562cdf5a74227903507c56ab2cc8bdd1f781ed5cb4cf9c9f810bfc"
+
+[[package]]
 name = "arraydeque"
 version = "0.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2610,6 +2616,8 @@ dependencies = [
  "ipdl_utils",
  "jog",
  "jsrust_shared",
+ "jxl",
+ "jxl_decoder",
  "kvstore",
  "l10nregistry",
  "l10nregistry-ffi",
@@ -3638,6 +3646,57 @@ dependencies = [
  "serde_derive",
  "serde_json",
  "thiserror 2.0.12",
+]
+
+[[package]]
+name = "jxl"
+version = "0.1.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "15a5abc97642b3fb3f3469400fe7da7de1b1cf38c16a64b6c1a9f1e5e2f1f240"
+dependencies = [
+ "array-init",
+ "byteorder",
+ "jxl_macros",
+ "jxl_simd",
+ "jxl_transforms",
+ "num-derive",
+ "num-traits",
+ "thiserror 2.0.12",
+]
+
+[[package]]
+name = "jxl_decoder"
+version = "0.1.4"
+dependencies = [
+ "jxl",
+ "log",
+]
+
+[[package]]
+name = "jxl_macros"
+version = "0.1.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c1d637bd43aa1385b06fc96dd1bb05c0324b5ae07bf49f93da037df7cf855a9b"
+dependencies = [
+ "proc-macro-error2",
+ "proc-macro2",
+ "quote",
+ "syn",
+]
+
+[[package]]
+name = "jxl_simd"
+version = "0.1.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bb6db6beb1373c3fe4fbeac894a67ac03e9996d94b8e3bb6ecd9ec97727c50b9"
+
+[[package]]
+name = "jxl_transforms"
+version = "0.1.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "752aa46baabece5849df25fd42f879093f19b70f7d5c6ac83b369efb463899f0"
+dependencies = [
+ "jxl_simd",
 ]
 
 [[package]]
@@ -5589,6 +5648,28 @@ dependencies = [
  "sha3",
  "subtle",
  "thiserror 1.999.999",
+]
+
+[[package]]
+name = "proc-macro-error-attr2"
+version = "2.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "96de42df36bb9bba5542fe9f1a054b8cc87e172759a1868aa05c1f3acc89dfc5"
+dependencies = [
+ "proc-macro2",
+ "quote",
+]
+
+[[package]]
+name = "proc-macro-error2"
+version = "2.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "11ec05c52be0a07b08061f7dd003e7d7092e0472bc731b4af7bb1ef876109802"
+dependencies = [
+ "proc-macro-error-attr2",
+ "proc-macro2",
+ "quote",
+ "syn",
 ]
 
 [[package]]
