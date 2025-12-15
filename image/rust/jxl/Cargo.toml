@@ -1,0 +1,10 @@
+[package]
+name = "jxl_decoder"
+version = "0.1.4"
+authors = ["Google"]
+edition = "2024"
+license = "MPL-2.0"
+
+[dependencies]
+jxl = "0.1.4"
+log = "0.4"
