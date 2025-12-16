@@ -69,6 +69,9 @@ LexerTransition<nsJXLDecoder::State> nsJXLDecoder::ReadJXLData(
           }
 
           PostSize(mCachedBasicInfo.width, mCachedBasicInfo.height);
+          if (mCachedBasicInfo.has_alpha) {
+            PostHasTransparency();
+          }
 
           if (IsMetadataDecode()) {
             return Transition::TerminateSuccess();
@@ -143,8 +146,13 @@ nsresult nsJXLDecoder::ProcessFrame() {
   }
 
   SurfaceFormat inFormat = SurfaceFormat::A8R8G8B8_UINT32;
-  SurfaceFormat outFormat = SurfaceFormat::OS_RGBX;
+  SurfaceFormat outFormat = mCachedBasicInfo.has_alpha ? SurfaceFormat::OS_RGBA
+                                                       : SurfaceFormat::OS_RGBX;
   SurfacePipeFlags pipeFlags = SurfacePipeFlags();
+  if (mCachedBasicInfo.has_alpha && !mCachedBasicInfo.alpha_premultiplied &&
+      !(GetSurfaceFlags() & SurfaceFlags::NO_PREMULTIPLY_ALPHA)) {
+    pipeFlags |= SurfacePipeFlags::PREMULTIPLY_ALPHA;
+  }
 
   Maybe<SurfacePipe> pipe = SurfacePipeFactory::CreateSurfacePipe(
       this, fullSize, outputSize, frameRect, inFormat, outFormat, animParams,

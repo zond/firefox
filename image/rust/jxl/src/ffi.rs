@@ -3,6 +3,7 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 use crate::decoder::JxlApiDecoder;
+use jxl::headers::extra_channels::ExtraChannel;
 use std::ptr;
 use std::slice;
 
@@ -19,6 +20,8 @@ pub enum JxlDecoderStatus {
 pub struct JxlBasicInfo {
     pub width: u32,
     pub height: u32,
+    pub has_alpha: bool,
+    pub alpha_premultiplied: bool,
     pub is_animated: bool,
     pub num_loops: u32,
     pub valid: bool,
@@ -29,6 +32,8 @@ impl JxlBasicInfo {
         Self {
             width: 0,
             height: 0,
+            has_alpha: false,
+            alpha_premultiplied: false,
             is_animated: false,
             num_loops: 0,
             valid: false,
@@ -124,9 +129,19 @@ pub unsafe extern "C" fn jxl_decoder_get_basic_info(decoder: *const JxlDecoder) 
             (false, 0)
         };
 
+        let mut alpha_channel = None;
+        for ec in &basic_info.extra_channels {
+            if ec.ec_type == ExtraChannel::Alpha {
+                alpha_channel = Some(ec);
+                break;
+            }
+        }
+
         JxlBasicInfo {
             width: width as u32,
             height: height as u32,
+            has_alpha: alpha_channel.is_some(),
+            alpha_premultiplied: alpha_channel.is_some_and(|ec| ec.alpha_associated),
             is_animated,
             num_loops,
             valid: true,

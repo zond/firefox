@@ -6,7 +6,7 @@ use jxl::api::{
     JxlBitstreamInput, JxlColorType, JxlDecoderInner, JxlDecoderOptions, JxlOutputBuffer,
     ProcessingResult,
 };
-
+use jxl::headers::extra_channels::ExtraChannel;
 use jxl::image::{Image, Rect};
 
 pub struct JxlApiDecoder {
@@ -17,6 +17,7 @@ pub struct JxlApiDecoder {
     pub frame_ready: bool,
     pub frame_duration: f64,
     is_grayscale: bool,
+    alpha_channel_idx: Option<usize>,
 }
 
 #[derive(Debug)]
@@ -47,6 +48,7 @@ impl JxlApiDecoder {
             frame_ready: false,
             frame_duration: 0.0,
             is_grayscale: false,
+            alpha_channel_idx: None,
         }
     }
 
@@ -87,10 +89,15 @@ impl JxlApiDecoder {
                                 basic_info.size.1,
                             ))?];
                             // Allocate buffers for extra channels (alpha, black, etc.)
-                            // We need to provide these to the decoder even if we ignore them
-                            for _ in 0..basic_info.extra_channels.len() {
+                            // Find the alpha channel index while we're at it
+                            for (i, ec) in basic_info.extra_channels.iter().enumerate() {
                                 self.output_images
                                     .push(Image::new((basic_info.size.0, basic_info.size.1))?);
+                                if ec.ec_type == ExtraChannel::Alpha
+                                    && self.alpha_channel_idx.is_none()
+                                {
+                                    self.alpha_channel_idx = Some(i + 1); // +1 because output_images[0] is color
+                                }
                             }
                         } else if let (Some(frame_header), false) =
                             (self.inner.frame_header(), self.processing_frame)
@@ -126,20 +133,25 @@ impl JxlApiDecoder {
         let color_image = &self.output_images[0];
 
         for y in 0..(basic_info.size.1) {
-            let row = color_image.row(y);
+            let color_row = color_image.row(y);
             for x in 0..(basic_info.size.0) {
                 let pixel_idx = y * basic_info.size.0 + x;
                 let (r, g, b) = if self.is_grayscale {
-                    let gray = u8_from_f32(row[x]) as u32;
+                    let gray = u8_from_f32(color_row[x]) as u32;
                     (gray, gray, gray)
                 } else {
                     (
-                        u8_from_f32(row[x * 3]) as u32,
-                        u8_from_f32(row[x * 3 + 1]) as u32,
-                        u8_from_f32(row[x * 3 + 2]) as u32,
+                        u8_from_f32(color_row[x * 3]) as u32,
+                        u8_from_f32(color_row[x * 3 + 1]) as u32,
+                        u8_from_f32(color_row[x * 3 + 2]) as u32,
                     )
                 };
-                output[pixel_idx] = (255 << 24) | (r << 16) | (g << 8) | b;
+                let a = if let Some(alpha_idx) = self.alpha_channel_idx {
+                    u8_from_f32(self.output_images[alpha_idx].row(y)[x]) as u32
+                } else {
+                    255
+                };
+                output[pixel_idx] = (a << 24) | (r << 16) | (g << 8) | b;
             }
         }
         Ok(basic_info.size.0 * basic_info.size.1)
