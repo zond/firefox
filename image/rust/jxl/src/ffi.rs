@@ -144,7 +144,7 @@ pub unsafe extern "C" fn jxl_decoder_get_basic_info(decoder: *const JxlDecoder) 
         JxlBasicInfo {
             width: width as u32,
             height: height as u32,
-            has_alpha: black_channel.is_none() && alpha_channel.is_some(),
+            has_alpha: alpha_channel.is_some(),
             cmyk: black_channel.is_some(),
             alpha_premultiplied: alpha_channel.is_some_and(|ec| ec.alpha_associated),
             is_animated,

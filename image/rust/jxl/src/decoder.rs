@@ -8,6 +8,7 @@ use jxl::api::{
 };
 use jxl::headers::extra_channels::ExtraChannel;
 use jxl::image::{Image, Rect};
+use qcms::{DataType, Intent, Profile, Transform};
 
 pub struct JxlApiDecoder {
     pub inner: JxlDecoderInner,
@@ -19,6 +20,8 @@ pub struct JxlApiDecoder {
     is_grayscale: bool,
     alpha_channel_idx: Option<usize>,
     black_channel_idx: Option<usize>,
+    // QCMS transform for CMYKA (SurfacePipeline can't handle alpha with CMYK)
+    cmyk_transform: Option<Transform>,
 }
 
 #[derive(Debug)]
@@ -51,6 +54,7 @@ impl JxlApiDecoder {
             is_grayscale: false,
             alpha_channel_idx: None,
             black_channel_idx: None,
+            cmyk_transform: None,
         }
     }
 
@@ -107,6 +111,12 @@ impl JxlApiDecoder {
                                     self.black_channel_idx = Some(idx);
                                 }
                             }
+                            // Create QCMS transform for CMYKA (CMYK with alpha)
+                            // SurfacePipeline can't handle alpha with CMYK, so we do it here
+                            if self.black_channel_idx.is_some() && self.alpha_channel_idx.is_some()
+                            {
+                                self.cmyk_transform = self.create_cmyk_transform();
+                            }
                         } else if let (Some(frame_header), false) =
                             (self.inner.frame_header(), self.processing_frame)
                         {
@@ -132,6 +142,20 @@ impl JxlApiDecoder {
         }
     }
 
+    fn create_cmyk_transform(&self) -> Option<Transform> {
+        let profile = self.inner.output_color_profile()?;
+        let icc_bytes = profile.as_icc();
+        let input_profile = Profile::new_from_slice(&icc_bytes, false)?;
+        let output_profile = Profile::new_sRGB();
+        Transform::new_to(
+            &input_profile,
+            &output_profile,
+            DataType::CMYK,
+            DataType::RGB8,
+            Intent::Perceptual,
+        )
+    }
+
     pub fn decode_frame(&mut self, output: &mut [u32]) -> Result<usize, Error> {
         if !self.frame_ready {
             return Err(Error::String("Frame is not ready".to_string()));
@@ -147,7 +171,75 @@ impl JxlApiDecoder {
 
         let color_image = &self.output_images[0];
 
-        // For CMYK images, output CMYK bytes for SurfacePipeline ICC transform
+        // For CMYK images with alpha, convert CMYK→RGB and combine with alpha
+        // SurfacePipeline can't handle alpha with CMYK, so we do it here
+        if let (Some(black_idx), Some(alpha_idx)) = (self.black_channel_idx, self.alpha_channel_idx)
+        {
+            let black_image = &self.output_images[black_idx];
+            let alpha_image = &self.output_images[alpha_idx];
+            let num_pixels = basic_info.size.0 * basic_info.size.1;
+
+            if let Some(transform) = &self.cmyk_transform {
+                // Use QCMS for ICC-based color management
+                // Build CMYK input buffer with inverted values for QCMS
+                // JXL uses inverted convention: 0 = max ink, 1 = no ink
+                // QCMS expects standard ICC convention: 0 = no ink, 255 = max ink
+                let mut cmyk_input = vec![0u8; num_pixels * 4];
+                for y in 0..(basic_info.size.1) {
+                    let color_row = color_image.row(y);
+                    let black_row = black_image.row(y);
+                    for x in 0..(basic_info.size.0) {
+                        let pixel_idx = y * basic_info.size.0 + x;
+                        cmyk_input[pixel_idx * 4] = u8_from_f32_inverted(color_row[x * 3]);
+                        cmyk_input[pixel_idx * 4 + 1] = u8_from_f32_inverted(color_row[x * 3 + 1]);
+                        cmyk_input[pixel_idx * 4 + 2] = u8_from_f32_inverted(color_row[x * 3 + 2]);
+                        cmyk_input[pixel_idx * 4 + 3] = u8_from_f32_inverted(black_row[x]);
+                    }
+                }
+
+                // Convert CMYK to RGB using QCMS
+                let mut rgb_output = vec![0u8; num_pixels * 3];
+                transform.convert(&cmyk_input, &mut rgb_output);
+
+                // Combine RGB with alpha and output ARGB
+                for y in 0..(basic_info.size.1) {
+                    let alpha_row = alpha_image.row(y);
+                    for x in 0..(basic_info.size.0) {
+                        let pixel_idx = y * basic_info.size.0 + x;
+                        let r = rgb_output[pixel_idx * 3] as u32;
+                        let g = rgb_output[pixel_idx * 3 + 1] as u32;
+                        let b = rgb_output[pixel_idx * 3 + 2] as u32;
+                        let a = u8_from_f32(alpha_row[x]) as u32;
+                        output[pixel_idx] = (a << 24) | (r << 16) | (g << 8) | b;
+                    }
+                }
+            } else {
+                // Fallback: naive CMYK→RGB conversion when no ICC profile is available
+                // JXL CMYK values are "reflectance": 1 = no ink (white), 0 = max ink
+                // RGB = CMY * K (all values in JXL's reflectance convention)
+                for y in 0..(basic_info.size.1) {
+                    let color_row = color_image.row(y);
+                    let black_row = black_image.row(y);
+                    let alpha_row = alpha_image.row(y);
+                    for x in 0..(basic_info.size.0) {
+                        let pixel_idx = y * basic_info.size.0 + x;
+                        let c = color_row[x * 3];
+                        let m = color_row[x * 3 + 1];
+                        let y_val = color_row[x * 3 + 2];
+                        let k = black_row[x];
+                        let r = u8_from_f32(c * k) as u32;
+                        let g = u8_from_f32(m * k) as u32;
+                        let b = u8_from_f32(y_val * k) as u32;
+                        let a = u8_from_f32(alpha_row[x]) as u32;
+                        output[pixel_idx] = (a << 24) | (r << 16) | (g << 8) | b;
+                    }
+                }
+            }
+
+            return Ok(num_pixels);
+        }
+
+        // For CMYK images without alpha, output CMYK bytes for SurfacePipeline ICC transform
         if let Some(black_idx) = self.black_channel_idx {
             let black_image = &self.output_images[black_idx];
             let num_pixels = basic_info.size.0 * basic_info.size.1;

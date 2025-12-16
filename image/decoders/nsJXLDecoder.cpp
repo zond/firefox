@@ -184,9 +184,17 @@ nsresult nsJXLDecoder::ProcessFrame() {
     pipeFlags |= SurfacePipeFlags::PREMULTIPLY_ALPHA;
   }
 
-  if (mCachedBasicInfo.cmyk) {
+  // For CMYK without alpha, use SurfacePipeline's QCMS transform
+  // For CMYKA, Rust does the QCMS transform and outputs ARGB directly
+  qcms_transform* pipeTransform = mTransform.get();
+  if (mCachedBasicInfo.cmyk && !mCachedBasicInfo.has_alpha) {
     inFormat = SurfaceFormat::CMYK;
     outFormat = SurfaceFormat::OS_RGBX;
+  } else if (mCachedBasicInfo.cmyk && mCachedBasicInfo.has_alpha) {
+    // CMYKA: Rust handles QCMS internally and outputs ARGB
+    inFormat = SurfaceFormat::A8R8G8B8_UINT32;
+    outFormat = SurfaceFormat::OS_RGBA;
+    pipeTransform = nullptr;  // Already color-managed in Rust
   } else {
     inFormat = SurfaceFormat::A8R8G8B8_UINT32;
     outFormat = mCachedBasicInfo.has_alpha ? SurfaceFormat::OS_RGBA
@@ -195,7 +203,7 @@ nsresult nsJXLDecoder::ProcessFrame() {
 
   Maybe<SurfacePipe> pipe = SurfacePipeFactory::CreateSurfacePipe(
       this, fullSize, outputSize, frameRect, inFormat, outFormat, animParams,
-      mTransform.get(), pipeFlags);
+      pipeTransform, pipeFlags);
   if (!pipe) {
     return NS_ERROR_FAILURE;
   }

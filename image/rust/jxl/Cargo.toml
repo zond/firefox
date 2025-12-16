@@ -8,3 +8,4 @@ license = "MPL-2.0"
 [dependencies]
 jxl = "0.1.4"
 log = "0.4"
+qcms = { path = "../../../gfx/qcms", features = ["cmyk", "iccv4-enabled"] }

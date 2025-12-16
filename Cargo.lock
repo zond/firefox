@@ -3670,6 +3670,7 @@ version = "0.1.4"
 dependencies = [
  "jxl",
  "log",
+ "qcms",
 ]
 
 [[package]]
