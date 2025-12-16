@@ -49,6 +49,8 @@ class nsJXLDecoder final : public Decoder {
   StreamingLexer<State> mLexer;
 
   JxlBasicInfo mCachedBasicInfo;
+
+  uint32_t mFrameIndex = 0;
 };
 
 }  // namespace mozilla::image

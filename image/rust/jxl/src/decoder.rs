@@ -15,6 +15,7 @@ pub struct JxlApiDecoder {
     output_images: Vec<Image<f32>>,
     processing_frame: bool,
     pub frame_ready: bool,
+    pub frame_duration: f64,
 }
 
 #[derive(Debug)]
@@ -43,6 +44,7 @@ impl JxlApiDecoder {
             output_images: vec![],
             processing_frame: false,
             frame_ready: false,
+            frame_duration: 0.0,
         }
     }
 
@@ -91,10 +93,11 @@ impl JxlApiDecoder {
                                 self.output_images
                                     .push(Image::new((basic_info.size.0, basic_info.size.1))?);
                             }
-                        } else if let (Some(_frame_header), false) =
+                        } else if let (Some(frame_header), false) =
                             (self.inner.frame_header(), self.processing_frame)
                         {
                             self.processing_frame = true;
+                            self.frame_duration = frame_header.duration.unwrap_or(0.0);
                             self.frame_ready = false;
                         } else if let (None, true) =
                             (self.inner.frame_header(), self.processing_frame)

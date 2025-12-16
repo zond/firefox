@@ -12,7 +12,7 @@ include_guard = "mozilla_image_JxlDecoder_h"
 includes = ["cstdint", "cstddef"]
 
 [export]
-include = ["JxlDecoderStatus", "JxlBasicInfo"]
+include = ["JxlDecoderStatus", "JxlBasicInfo", "JxlFrameInfo"]
 
 [export.rename]
 "JxlDecoder" = "JxlDecoderImpl"

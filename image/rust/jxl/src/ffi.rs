@@ -19,6 +19,8 @@ pub enum JxlDecoderStatus {
 pub struct JxlBasicInfo {
     pub width: u32,
     pub height: u32,
+    pub is_animated: bool,
+    pub num_loops: u32,
     pub valid: bool,
 }
 
@@ -27,6 +29,24 @@ impl JxlBasicInfo {
         Self {
             width: 0,
             height: 0,
+            is_animated: false,
+            num_loops: 0,
+            valid: false,
+        }
+    }
+}
+
+#[repr(C)]
+#[derive(Debug, Clone, Copy)]
+pub struct JxlFrameInfo {
+    pub duration_ms: i32,
+    pub valid: bool,
+}
+
+impl JxlFrameInfo {
+    fn invalid() -> Self {
+        Self {
+            duration_ms: 0,
             valid: false,
         }
     }
@@ -98,9 +118,17 @@ pub unsafe extern "C" fn jxl_decoder_get_basic_info(decoder: *const JxlDecoder) 
             (basic_info.size.0, basic_info.size.1)
         };
 
+        let (is_animated, num_loops) = if let Some(anim) = basic_info.animation.as_ref() {
+            (true, anim.num_loops)
+        } else {
+            (false, 0)
+        };
+
         JxlBasicInfo {
             width: width as u32,
             height: height as u32,
+            is_animated,
+            num_loops,
             valid: true,
         }
     }
@@ -149,6 +177,24 @@ pub unsafe extern "C" fn jxl_decoder_get_icc(
 }
 
 #[unsafe(no_mangle)]
+pub unsafe extern "C" fn jxl_decoder_get_frame_info(decoder: *const JxlDecoder) -> JxlFrameInfo {
+    unsafe {
+        if decoder.is_null() {
+            return JxlFrameInfo::invalid();
+        }
+
+        let decoder = &*decoder;
+        JxlFrameInfo {
+            duration_ms: decoder
+                .inner
+                .frame_duration
+                .clamp(i32::MIN as f64, i32::MAX as f64) as i32,
+            valid: true,
+        }
+    }
+}
+
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn jxl_decoder_is_frame_ready(decoder: *const JxlDecoder) -> bool {
     unsafe {
         if decoder.is_null() {
@@ -157,6 +203,18 @@ pub unsafe extern "C" fn jxl_decoder_is_frame_ready(decoder: *const JxlDecoder) 
 
         let decoder = &*decoder;
         decoder.inner.frame_ready
+    }
+}
+
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn jxl_decoder_has_more_frames(decoder: *const JxlDecoder) -> bool {
+    unsafe {
+        if decoder.is_null() {
+            return false;
+        }
+
+        let decoder = &*decoder;
+        decoder.inner.inner.has_more_frames()
     }
 }
 
