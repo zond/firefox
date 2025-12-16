@@ -11,6 +11,7 @@
 #include "SurfacePipeFactory.h"
 #include "mozilla/CheckedInt.h"
 #include "mozilla/Vector.h"
+#include <gfxPlatform.h>
 
 using namespace mozilla::gfx;
 
@@ -75,6 +76,36 @@ LexerTransition<nsJXLDecoder::State> nsJXLDecoder::ReadJXLData(
 
           if (IsMetadataDecode()) {
             return Transition::TerminateSuccess();
+          }
+
+          uint32_t icc_buffer_size = jxl_decoder_get_icc_size(mDecoder.get());
+          if (icc_buffer_size == 0) {
+            return Transition::TerminateFailure();
+          }
+          std::unique_ptr<uint8_t[]> icc_buffer(new uint8_t[icc_buffer_size]);
+
+          if (!jxl_decoder_get_icc(mDecoder.get(), icc_buffer.get(),
+                                   icc_buffer_size)) {
+            return Transition::TerminateFailure();
+          }
+
+          mInProfile.reset(
+              qcms_profile_from_memory(icc_buffer.get(), icc_buffer_size));
+
+          int32_t intent = gfxPlatform::GetRenderingIntent();
+          if (intent == -1) {
+            intent = qcms_profile_get_rendering_intent(mInProfile.get());
+          }
+
+          qcms_data_type inType =
+              mCachedBasicInfo.cmyk ? QCMS_DATA_CMYK : QCMS_DATA_BGRA_8;
+          qcms_data_type outType =
+              mCachedBasicInfo.cmyk ? QCMS_DATA_RGB_8 : QCMS_DATA_BGRA_8;
+          mTransform.reset(qcms_transform_create(mInProfile.get(), inType,
+                                                 GetCMSOutputProfile(), outType,
+                                                 (qcms_intent)intent));
+          if (!mTransform.get()) {
+            return Transition::TerminateFailure();
           }
         }
 
@@ -145,18 +176,26 @@ nsresult nsJXLDecoder::ProcessFrame() {
                        BlendMethod::SOURCE, DisposalMethod::KEEP);
   }
 
-  SurfaceFormat inFormat = SurfaceFormat::A8R8G8B8_UINT32;
-  SurfaceFormat outFormat = mCachedBasicInfo.has_alpha ? SurfaceFormat::OS_RGBA
-                                                       : SurfaceFormat::OS_RGBX;
+  SurfaceFormat inFormat;
+  SurfaceFormat outFormat;
   SurfacePipeFlags pipeFlags = SurfacePipeFlags();
   if (mCachedBasicInfo.has_alpha && !mCachedBasicInfo.alpha_premultiplied &&
       !(GetSurfaceFlags() & SurfaceFlags::NO_PREMULTIPLY_ALPHA)) {
     pipeFlags |= SurfacePipeFlags::PREMULTIPLY_ALPHA;
   }
 
+  if (mCachedBasicInfo.cmyk) {
+    inFormat = SurfaceFormat::CMYK;
+    outFormat = SurfaceFormat::OS_RGBX;
+  } else {
+    inFormat = SurfaceFormat::A8R8G8B8_UINT32;
+    outFormat = mCachedBasicInfo.has_alpha ? SurfaceFormat::OS_RGBA
+                                           : SurfaceFormat::OS_RGBX;
+  }
+
   Maybe<SurfacePipe> pipe = SurfacePipeFactory::CreateSurfacePipe(
       this, fullSize, outputSize, frameRect, inFormat, outFormat, animParams,
-      nullptr, pipeFlags);
+      mTransform.get(), pipeFlags);
   if (!pipe) {
     return NS_ERROR_FAILURE;
   }

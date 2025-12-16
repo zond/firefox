@@ -21,6 +21,7 @@ pub struct JxlBasicInfo {
     pub width: u32,
     pub height: u32,
     pub has_alpha: bool,
+    pub cmyk: bool,
     pub alpha_premultiplied: bool,
     pub is_animated: bool,
     pub num_loops: u32,
@@ -33,6 +34,7 @@ impl JxlBasicInfo {
             width: 0,
             height: 0,
             has_alpha: false,
+            cmyk: false,
             alpha_premultiplied: false,
             is_animated: false,
             num_loops: 0,
@@ -130,17 +132,20 @@ pub unsafe extern "C" fn jxl_decoder_get_basic_info(decoder: *const JxlDecoder) 
         };
 
         let mut alpha_channel = None;
+        let mut black_channel = None;
         for ec in &basic_info.extra_channels {
-            if ec.ec_type == ExtraChannel::Alpha {
-                alpha_channel = Some(ec);
-                break;
+            match ec.ec_type {
+                ExtraChannel::Alpha => alpha_channel = Some(ec),
+                ExtraChannel::Black => black_channel = Some(ec),
+                _ => {}
             }
         }
 
         JxlBasicInfo {
             width: width as u32,
             height: height as u32,
-            has_alpha: alpha_channel.is_some(),
+            has_alpha: black_channel.is_none() && alpha_channel.is_some(),
+            cmyk: black_channel.is_some(),
             alpha_premultiplied: alpha_channel.is_some_and(|ec| ec.alpha_associated),
             is_animated,
             num_loops,

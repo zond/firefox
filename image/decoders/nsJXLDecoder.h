@@ -12,15 +12,27 @@
 #include "StreamingLexer.h"
 #include "mozilla/image/jxl_decoder_ffi.h"
 
-namespace mozilla::image {
+struct qcms_profile_deleter {
+  void operator()(void* ptr) {
+    qcms_profile_release(static_cast<qcms_profile*>(ptr));
+  }
+};
 
-struct JxlDecoderDeleter {
+struct qcms_transform_deleter {
+  void operator()(void* ptr) {
+    qcms_transform_release(static_cast<qcms_transform*>(ptr));
+  }
+};
+
+struct jxl_decoder_deleter {
   void operator()(JxlDecoderImpl* ptr) {
     if (ptr) {
       jxl_decoder_destroy(ptr);
     }
   }
 };
+
+namespace mozilla::image {
 
 class nsJXLDecoder final : public Decoder {
  public:
@@ -37,7 +49,9 @@ class nsJXLDecoder final : public Decoder {
 
   explicit nsJXLDecoder(RasterImage* aImage);
 
-  std::unique_ptr<JxlDecoderImpl, JxlDecoderDeleter> mDecoder;
+  std::unique_ptr<qcms_profile, qcms_profile_deleter> mInProfile;
+  std::unique_ptr<qcms_transform, qcms_transform_deleter> mTransform;
+  std::unique_ptr<JxlDecoderImpl, jxl_decoder_deleter> mDecoder;
 
   enum class State { JXL_DATA, FINISHED_JXL_DATA };
 
