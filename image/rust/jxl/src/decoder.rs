@@ -16,6 +16,7 @@ pub struct JxlApiDecoder {
     processing_frame: bool,
     pub frame_ready: bool,
     pub frame_duration: f64,
+    is_grayscale: bool,
 }
 
 #[derive(Debug)]
@@ -45,6 +46,7 @@ impl JxlApiDecoder {
             processing_frame: false,
             frame_ready: false,
             frame_duration: 0.0,
+            is_grayscale: false,
         }
     }
 
@@ -78,11 +80,8 @@ impl JxlApiDecoder {
                         }
 
                         if self.output_images.is_empty() {
-                            let channels = if pixel_format.color_type == JxlColorType::Grayscale {
-                                1
-                            } else {
-                                3
-                            };
+                            self.is_grayscale = pixel_format.color_type == JxlColorType::Grayscale;
+                            let channels = if self.is_grayscale { 1 } else { 3 };
                             self.output_images = vec![Image::new((
                                 basic_info.size.0 * channels,
                                 basic_info.size.1,
@@ -124,18 +123,22 @@ impl JxlApiDecoder {
         }
 
         let basic_info = self.inner.basic_info().unwrap();
+        let color_image = &self.output_images[0];
 
-        // RGB only path
-        let rgb_image = &self.output_images[0];
         for y in 0..(basic_info.size.1) {
-            let rgb_row = rgb_image.row(y);
+            let row = color_image.row(y);
             for x in 0..(basic_info.size.0) {
                 let pixel_idx = y * basic_info.size.0 + x;
-                let (r, g, b) = (
-                    u8_from_f32(rgb_row[x * 3]) as u32,
-                    u8_from_f32(rgb_row[x * 3 + 1]) as u32,
-                    u8_from_f32(rgb_row[x * 3 + 2]) as u32,
-                );
+                let (r, g, b) = if self.is_grayscale {
+                    let gray = u8_from_f32(row[x]) as u32;
+                    (gray, gray, gray)
+                } else {
+                    (
+                        u8_from_f32(row[x * 3]) as u32,
+                        u8_from_f32(row[x * 3 + 1]) as u32,
+                        u8_from_f32(row[x * 3 + 2]) as u32,
+                    )
+                };
                 output[pixel_idx] = (255 << 24) | (r << 16) | (g << 8) | b;
             }
         }
