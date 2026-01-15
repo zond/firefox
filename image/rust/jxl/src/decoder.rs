@@ -2,6 +2,7 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
+use crate::cms::QcmsCms;
 use jxl::api::{
     JxlBitstreamInput, JxlColorType, JxlDecoderInner, JxlDecoderOptions, JxlOutputBuffer,
     ProcessingResult,
@@ -49,8 +50,10 @@ impl From<jxl::error::Error> for Error {
 
 impl JxlApiDecoder {
     pub fn new(metadata_only: bool) -> Self {
+        let mut options = JxlDecoderOptions::default();
+        options.cms = QcmsCms::new().map(|cms| Box::new(cms) as Box<dyn jxl::api::JxlCms>);
         Self {
-            inner: JxlDecoderInner::new(JxlDecoderOptions::default()),
+            inner: JxlDecoderInner::new(options),
             metadata_only,
             output_images: vec![],
             processing_frame: false,
