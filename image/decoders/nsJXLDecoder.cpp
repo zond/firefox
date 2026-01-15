@@ -9,6 +9,11 @@
 #include "nsJXLDecoder.h"
 
 #include "RasterImage.h"
+#include "SurfacePipeFactory.h"
+#include "mozilla/CheckedInt.h"
+#include "mozilla/Vector.h"
+
+using namespace mozilla::gfx;
 
 namespace mozilla::image {
 
@@ -32,8 +37,12 @@ LexerResult nsJXLDecoder::DoDecode(SourceBufferIterator& aIterator,
                                    IResumable* aOnResume) {
   MOZ_ASSERT(!HasError(), "Shouldn't call DoDecode after error!");
 
+  if (!mDecoder) {
+    mDecoder.reset(jxl_decoder_new(IsMetadataDecode()));
+  }
+
   return mLexer.Lex(aIterator, aOnResume,
-                    [=](State aState, const char* aData, size_t aLength) {
+                    [this](State aState, const char* aData, size_t aLength) {
                       switch (aState) {
                         case State::JXL_DATA:
                           return ReadJXLData(aData, aLength);
@@ -46,13 +55,131 @@ LexerResult nsJXLDecoder::DoDecode(SourceBufferIterator& aIterator,
 
 LexerTransition<nsJXLDecoder::State> nsJXLDecoder::ReadJXLData(
     const char* aData, size_t aLength) {
-  // JXL decoder not yet implemented - will be added in next commit
-  return Transition::TerminateFailure();
+  MOZ_ASSERT(mDecoder);
+
+  while (true) {
+    JxlDecoderStatus decoder_status = jxl_decoder_process_data(
+        mDecoder.get(), reinterpret_cast<const uint8_t**>(&aData), &aLength);
+
+    switch (decoder_status) {
+      case JxlDecoderStatus::Ok: {
+        if (!HasSize()) {
+          mCachedBasicInfo = jxl_decoder_get_basic_info(mDecoder.get());
+          if (!mCachedBasicInfo.valid) {
+            if (aLength == 0) {
+              return Transition::ContinueUnbuffered(State::JXL_DATA);
+            } else {
+              break;
+            }
+          }
+
+          PostSize(mCachedBasicInfo.width, mCachedBasicInfo.height);
+          if (mCachedBasicInfo.has_alpha) {
+            PostHasTransparency();
+          }
+
+          if (IsMetadataDecode()) {
+            return Transition::TerminateSuccess();
+          }
+        }
+
+        bool frameReady = jxl_decoder_is_frame_ready(mDecoder.get());
+
+        if (HasSize() && frameReady) {
+          if (NS_FAILED(ProcessFrame())) {
+            return Transition::TerminateFailure();
+          }
+
+          PostDecodeDone();
+          return Transition::TerminateSuccess();
+        } else {
+          if (aLength == 0) {
+            return Transition::ContinueUnbuffered(State::JXL_DATA);
+          }
+        }
+        break;
+      }
+
+      case JxlDecoderStatus::NeedMoreData: {
+        if (aLength == 0) {
+          return Transition::ContinueUnbuffered(State::JXL_DATA);
+        }
+        break;
+      }
+
+      default:
+        return Transition::TerminateFailure();
+    }
+  }
 }
 
 LexerTransition<nsJXLDecoder::State> nsJXLDecoder::FinishedJXLData() {
   MOZ_ASSERT_UNREACHABLE("Read the entire address space?");
   return Transition::TerminateFailure();
+}
+
+nsresult nsJXLDecoder::ProcessFrame() {
+  MOZ_ASSERT(HasSize());
+  MOZ_ASSERT(mDecoder);
+
+  OrientedIntSize fullSize(mCachedBasicInfo.width, mCachedBasicInfo.height);
+  OrientedIntSize outputSize = OutputSize();
+  OrientedIntRect frameRect(OrientedIntPoint(0, 0), fullSize);
+
+  SurfaceFormat inFormat = SurfaceFormat::A8R8G8B8_UINT32;
+  SurfaceFormat outFormat = mCachedBasicInfo.has_alpha ? SurfaceFormat::OS_RGBA
+                                                       : SurfaceFormat::OS_RGBX;
+
+  SurfacePipeFlags pipeFlags = SurfacePipeFlags();
+  if (mCachedBasicInfo.has_alpha && !mCachedBasicInfo.alpha_premultiplied &&
+      !(GetSurfaceFlags() & SurfaceFlags::NO_PREMULTIPLY_ALPHA)) {
+    pipeFlags |= SurfacePipeFlags::PREMULTIPLY_ALPHA;
+  }
+
+  Maybe<SurfacePipe> pipe = SurfacePipeFactory::CreateSurfacePipe(
+      this, fullSize, outputSize, frameRect, inFormat, outFormat, Nothing(),
+      nullptr, pipeFlags);
+  if (!pipe) {
+    return NS_ERROR_FAILURE;
+  }
+
+  Vector<uint32_t> pixelBuffer;
+  CheckedInt<size_t> fullPixelCount =
+      CheckedInt<size_t>(fullSize.width) * fullSize.height;
+  if (!fullPixelCount.isValid()) {
+    return NS_ERROR_OUT_OF_MEMORY;
+  }
+  if (!pixelBuffer.resize(fullPixelCount.value())) {
+    return NS_ERROR_OUT_OF_MEMORY;
+  }
+
+  size_t pixelsWritten = 0;
+  JxlDecoderStatus status =
+      jxl_decoder_decode_frame(mDecoder.get(), pixelBuffer.begin(),
+                               pixelBuffer.length(), &pixelsWritten);
+  if (status != JxlDecoderStatus::Ok) {
+    return NS_ERROR_FAILURE;
+  }
+  if (pixelsWritten != fullPixelCount.value()) {
+    return NS_ERROR_FAILURE;
+  }
+
+  uint32_t* currentRow = pixelBuffer.begin();
+  for (int32_t y = 0; y < fullSize.height; ++y) {
+    WriteState result = pipe->WriteBuffer(currentRow);
+    if (result == WriteState::FAILURE) {
+      return NS_ERROR_FAILURE;
+    }
+    currentRow += fullSize.width;
+  }
+
+  if (Maybe<SurfaceInvalidRect> invalidRect = pipe->TakeInvalidRect()) {
+    PostInvalidation(invalidRect->mInputSpaceRect,
+                     Some(invalidRect->mOutputSpaceRect));
+  }
+
+  PostFrameStop();
+  return NS_OK;
 }
 
 }  // namespace mozilla::image

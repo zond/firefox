@@ -38,6 +38,7 @@ rsdparsa_capi = { path = "../../../../dom/media/webrtc/sdp/rsdparsa_capi" }
 log = {version = "0.4", features = ["release_max_level_info"]}
 cose-c = { version = "0.1.5" }
 jsrust_shared = { path = "../../../../js/src/rust/shared" }
+jxl_decoder = { path = "../../../../image/rust/jxl", optional = true }
 cascade_bloom_filter = { path = "../../../components/cascade_bloom_filter" }
 bitsdownload = { path = "../../../components/bitsdownload", optional = true }
 storage = { path = "../../../../storage/rust" }
