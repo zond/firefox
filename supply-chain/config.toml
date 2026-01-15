@@ -84,6 +84,22 @@ notes = "Patched version of upstream"
 audit-as-crates-io = true
 notes = "Patched version of upstream"
 
+[policy."jxl:0.2.2@git:cf5117dd3db42d0e438a9ddaff1e1dd7612248ad"]
+audit-as-crates-io = true
+notes = "JXL decoder from upstream jxl-rs GitHub main branch for CMS trait features."
+
+[policy."jxl_macros:0.2.2@git:cf5117dd3db42d0e438a9ddaff1e1dd7612248ad"]
+audit-as-crates-io = true
+notes = "JXL decoder macros from upstream jxl-rs GitHub main branch."
+
+[policy."jxl_simd:0.2.2@git:cf5117dd3db42d0e438a9ddaff1e1dd7612248ad"]
+audit-as-crates-io = true
+notes = "JXL decoder SIMD from upstream jxl-rs GitHub main branch."
+
+[policy."jxl_transforms:0.2.2@git:cf5117dd3db42d0e438a9ddaff1e1dd7612248ad"]
+audit-as-crates-io = true
+notes = "JXL decoder transforms from upstream jxl-rs GitHub main branch."
+
 [policy.l10nregistry]
 dependency-criteria = { fluent-testing = "safe-to-run", tokio = "safe-to-run" }
 notes = "This crate has two testing-only dependencies which are specified as regular-but-optional rather than a dev-dependencies, because they need to be available to both benchmarks and integration tests."
@@ -516,6 +532,22 @@ criteria = "safe-to-deploy"
 version = "0.10.3"
 criteria = "safe-to-deploy"
 
+[[exemptions.jxl]]
+version = "0.2.2@git:cf5117dd3db42d0e438a9ddaff1e1dd7612248ad"
+criteria = "safe-to-deploy"
+
+[[exemptions.jxl_macros]]
+version = "0.2.2@git:cf5117dd3db42d0e438a9ddaff1e1dd7612248ad"
+criteria = "safe-to-deploy"
+
+[[exemptions.jxl_simd]]
+version = "0.2.2@git:cf5117dd3db42d0e438a9ddaff1e1dd7612248ad"
+criteria = "safe-to-deploy"
+
+[[exemptions.jxl_transforms]]
+version = "0.2.2@git:cf5117dd3db42d0e438a9ddaff1e1dd7612248ad"
+criteria = "safe-to-deploy"
+
 [[exemptions.khronos_api]]
 version = "3.1.0"
 criteria = "safe-to-deploy"
@@ -592,6 +624,14 @@ criteria = "safe-to-run"
 
 [[exemptions.ppv-lite86]]
 version = "0.2.16"
+criteria = "safe-to-deploy"
+
+[[exemptions.proc-macro-error-attr2]]
+version = "2.0.0"
+criteria = "safe-to-deploy"
+
+[[exemptions.proc-macro-error2]]
+version = "2.0.1"
 criteria = "safe-to-deploy"
 
 [[exemptions.profiling]]
