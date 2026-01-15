@@ -20,6 +20,8 @@ pub struct JxlBasicInfo {
     pub height: u32,
     pub has_alpha: bool,
     pub alpha_premultiplied: bool,
+    pub is_animated: bool,
+    pub num_loops: u32,
     pub valid: bool,
 }
 
@@ -30,9 +32,18 @@ impl JxlBasicInfo {
             height: 0,
             has_alpha: false,
             alpha_premultiplied: false,
+            is_animated: false,
+            num_loops: 0,
             valid: false,
         }
     }
+}
+
+#[repr(C)]
+#[derive(Debug, Clone, Copy)]
+pub struct JxlFrameInfo {
+    pub duration_ms: i32,
+    pub valid: bool,
 }
 
 pub struct JxlDecoderImpl {
@@ -93,6 +104,23 @@ pub unsafe extern "C" fn jxl_decoder_get_basic_info(
         height: info.height,
         has_alpha: info.has_alpha,
         alpha_premultiplied: info.alpha_premultiplied,
+        is_animated: info.is_animated,
+        num_loops: info.num_loops,
+        valid: true,
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn jxl_decoder_get_frame_info(
+    decoder: *const JxlDecoderImpl,
+) -> JxlFrameInfo {
+    assert!(!decoder.is_null());
+    let decoder = &*decoder;
+    JxlFrameInfo {
+        duration_ms: decoder
+            .inner
+            .frame_duration
+            .clamp(i32::MIN as f64, i32::MAX as f64) as i32,
         valid: true,
     }
 }
@@ -102,6 +130,13 @@ pub unsafe extern "C" fn jxl_decoder_is_frame_ready(decoder: *const JxlDecoderIm
     assert!(!decoder.is_null());
     let decoder = &*decoder;
     decoder.inner.frame_ready
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn jxl_decoder_has_more_frames(decoder: *const JxlDecoderImpl) -> bool {
+    assert!(!decoder.is_null());
+    let decoder = &*decoder;
+    decoder.inner.inner.has_more_frames()
 }
 
 #[no_mangle]

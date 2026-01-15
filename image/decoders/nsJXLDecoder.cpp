@@ -8,6 +8,7 @@
 
 #include "nsJXLDecoder.h"
 
+#include "AnimationParams.h"
 #include "RasterImage.h"
 #include "SurfacePipeFactory.h"
 #include "mozilla/CheckedInt.h"
@@ -56,6 +57,7 @@ LexerResult nsJXLDecoder::DoDecode(SourceBufferIterator& aIterator,
 LexerTransition<nsJXLDecoder::State> nsJXLDecoder::ReadJXLData(
     const char* aData, size_t aLength) {
   MOZ_ASSERT(mDecoder);
+  const size_t originalLength = aLength;
 
   while (true) {
     JxlDecoderStatus decoder_status = jxl_decoder_process_data(
@@ -90,8 +92,16 @@ LexerTransition<nsJXLDecoder::State> nsJXLDecoder::ReadJXLData(
             return Transition::TerminateFailure();
           }
 
-          PostDecodeDone();
-          return Transition::TerminateSuccess();
+          bool hasMoreFrames = jxl_decoder_has_more_frames(mDecoder.get());
+
+          if (IsFirstFrameDecode() || !mCachedBasicInfo.is_animated ||
+              !hasMoreFrames) {
+            PostDecodeDone();
+            return Transition::TerminateSuccess();
+          } else {
+            return Transition::ContinueUnbufferedAfterYield(
+                State::JXL_DATA, originalLength - aLength);
+          }
         } else {
           if (aLength == 0) {
             return Transition::ContinueUnbuffered(State::JXL_DATA);
@@ -126,6 +136,25 @@ nsresult nsJXLDecoder::ProcessFrame() {
   OrientedIntSize outputSize = OutputSize();
   OrientedIntRect frameRect(OrientedIntPoint(0, 0), fullSize);
 
+  Maybe<AnimationParams> animParams;
+  if (mCachedBasicInfo.is_animated) {
+    JxlFrameInfo frameInfo = jxl_decoder_get_frame_info(mDecoder.get());
+    if (!frameInfo.valid) {
+      return NS_ERROR_FAILURE;
+    }
+
+    const FrameTimeout timeout =
+        FrameTimeout::FromRawMilliseconds(frameInfo.duration_ms);
+    if (mFrameIndex == 0) {
+      PostIsAnimated(timeout);
+      PostLoopCount(mCachedBasicInfo.num_loops == 0
+                        ? -1
+                        : static_cast<int32_t>(mCachedBasicInfo.num_loops));
+    }
+    animParams.emplace(frameRect.ToUnknownRect(), timeout, mFrameIndex,
+                       BlendMethod::SOURCE, DisposalMethod::KEEP);
+  }
+
   SurfaceFormat inFormat = SurfaceFormat::A8R8G8B8_UINT32;
   SurfaceFormat outFormat = mCachedBasicInfo.has_alpha ? SurfaceFormat::OS_RGBA
                                                        : SurfaceFormat::OS_RGBX;
@@ -137,7 +166,7 @@ nsresult nsJXLDecoder::ProcessFrame() {
   }
 
   Maybe<SurfacePipe> pipe = SurfacePipeFactory::CreateSurfacePipe(
-      this, fullSize, outputSize, frameRect, inFormat, outFormat, Nothing(),
+      this, fullSize, outputSize, frameRect, inFormat, outFormat, animParams,
       nullptr, pipeFlags);
   if (!pipe) {
     return NS_ERROR_FAILURE;
@@ -179,6 +208,8 @@ nsresult nsJXLDecoder::ProcessFrame() {
   }
 
   PostFrameStop();
+
+  mFrameIndex++;
   return NS_OK;
 }
 

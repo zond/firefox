@@ -15,6 +15,7 @@ pub struct JxlApiDecoder {
     output_images: Vec<Image<f32>>,
     processing_frame: bool,
     pub frame_ready: bool,
+    pub frame_duration: f64,
     is_grayscale: bool,
     alpha_channel_idx: Option<usize>,
 }
@@ -24,6 +25,8 @@ pub struct BasicInfo {
     pub height: u32,
     pub has_alpha: bool,
     pub alpha_premultiplied: bool,
+    pub is_animated: bool,
+    pub num_loops: u32,
 }
 
 #[derive(Debug)]
@@ -52,6 +55,7 @@ impl JxlApiDecoder {
             output_images: vec![],
             processing_frame: false,
             frame_ready: false,
+            frame_duration: 0.0,
             is_grayscale: false,
             alpha_channel_idx: None,
         }
@@ -65,11 +69,19 @@ impl JxlApiDecoder {
             .iter()
             .find(|ec| ec.ec_type == ExtraChannel::Alpha);
 
+        let (is_animated, num_loops) = basic_info
+            .animation
+            .as_ref()
+            .map(|anim| (true, anim.num_loops))
+            .unwrap_or((false, 0));
+
         Some(BasicInfo {
             width: basic_info.size.0 as u32,
             height: basic_info.size.1 as u32,
             has_alpha: alpha_channel.is_some(),
             alpha_premultiplied: alpha_channel.is_some_and(|ec| ec.alpha_associated),
+            is_animated,
+            num_loops,
         })
     }
 
@@ -122,10 +134,11 @@ impl JxlApiDecoder {
                                     self.alpha_channel_idx = Some(idx);
                                 }
                             }
-                        } else if let (Some(_frame_header), false) =
+                        } else if let (Some(frame_header), false) =
                             (self.inner.frame_header(), self.processing_frame)
                         {
                             self.processing_frame = true;
+                            self.frame_duration = frame_header.duration.unwrap_or(0.0);
                             self.frame_ready = false;
                         } else if let (None, true) =
                             (self.inner.frame_header(), self.processing_frame)
