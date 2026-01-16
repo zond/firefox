@@ -112,8 +112,9 @@ class SurfacePipeFactory {
 
     bool unpackOrMaskSwizzle;
     bool swapOrAlphaSwizzle;
-    if (!GetSwizzleConfigInfo(aInFormat, aOutFormat, premultiplyAlpha,
-                              unpackOrMaskSwizzle, swapOrAlphaSwizzle)) {
+    if (!GetSwizzleConfigInfo(aInFormat, aOutFormat, aTransform,
+                              premultiplyAlpha, unpackOrMaskSwizzle,
+                              swapOrAlphaSwizzle)) {
       return Nothing();
     }
 
@@ -580,8 +581,9 @@ class SurfacePipeFactory {
 
     bool unpackOrMaskSwizzle;
     bool swapOrAlphaSwizzle;
-    if (!GetSwizzleConfigInfo(aInFormat, aOutFormat, premultiplyAlpha,
-                              unpackOrMaskSwizzle, swapOrAlphaSwizzle)) {
+    if (!GetSwizzleConfigInfo(aInFormat, aOutFormat, aTransform,
+                              premultiplyAlpha, unpackOrMaskSwizzle,
+                              swapOrAlphaSwizzle)) {
       return Nothing();
     }
 
@@ -712,10 +714,12 @@ class SurfacePipeFactory {
  private:
   static bool GetSwizzleConfigInfo(const gfx::SurfaceFormat aInFormat,
                                    const gfx::SurfaceFormat aOutFormat,
+                                   const qcms_transform* aTransform,
                                    const bool aPremultiplyAlpha,
                                    bool& aOutUnpackOrMaskSwizzle,
                                    bool& aOutSwapOrAlphaSwizzle) {
-    MOZ_ASSERT(aInFormat == gfx::SurfaceFormat::R8G8B8 ||
+    MOZ_ASSERT(aInFormat == gfx::SurfaceFormat::CMYK ||
+               aInFormat == gfx::SurfaceFormat::R8G8B8 ||
                aInFormat == gfx::SurfaceFormat::R8G8B8A8 ||
                aInFormat == gfx::SurfaceFormat::R8G8B8X8 ||
                aInFormat == gfx::SurfaceFormat::OS_RGBA ||
@@ -724,11 +728,14 @@ class SurfacePipeFactory {
     MOZ_ASSERT(aOutFormat == gfx::SurfaceFormat::OS_RGBA ||
                aOutFormat == gfx::SurfaceFormat::OS_RGBX);
 
+    MOZ_ASSERT_IF(aInFormat == gfx::SurfaceFormat::CMYK, aTransform != nullptr);
+
     const bool inFormatRgb = aInFormat == gfx::SurfaceFormat::R8G8B8;
+    const bool inFormatCmyk = aInFormat == gfx::SurfaceFormat::CMYK;
 
     const bool inFormatOpaque = aInFormat == gfx::SurfaceFormat::OS_RGBX ||
                                 aInFormat == gfx::SurfaceFormat::R8G8B8X8 ||
-                                inFormatRgb;
+                                inFormatRgb || inFormatCmyk;
     const bool outFormatOpaque = aOutFormat == gfx::SurfaceFormat::OS_RGBX;
 
     const bool inFormatOrder = aInFormat == gfx::SurfaceFormat::R8G8B8A8 ||
@@ -748,7 +755,8 @@ class SurfacePipeFactory {
     // converting between RGBA and BGRA_U32. It must happen after color
     // management, and before downscaling.
     aOutSwapOrAlphaSwizzle =
-        (!inFormatRgb && inFormatOrder != outFormatOrder) || aPremultiplyAlpha;
+        (!inFormatRgb && inFormatOrder != outFormatOrder) ||
+        aPremultiplyAlpha || inFormatCmyk;
 
     if (aOutUnpackOrMaskSwizzle && aOutSwapOrAlphaSwizzle) {
       MOZ_ASSERT_UNREACHABLE("Early and late swizzles not supported");

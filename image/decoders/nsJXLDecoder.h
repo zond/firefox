@@ -8,18 +8,35 @@
 #define mozilla_image_decoders_nsJXLDecoder_h
 
 #include "Decoder.h"
-#include "mp4parse.h"
 #include "SurfacePipe.h"
+#include "StreamingLexer.h"
+#include "mozilla/image/jxl_decoder_ffi.h"
 
-#include "jxl/decode_cxx.h"
-#include "jxl/thread_parallel_runner_cxx.h"
+struct qcms_profile_deleter {
+  void operator()(void* ptr) {
+    qcms_profile_release(static_cast<qcms_profile*>(ptr));
+  }
+};
+
+struct qcms_transform_deleter {
+  void operator()(void* ptr) {
+    qcms_transform_release(static_cast<qcms_transform*>(ptr));
+  }
+};
+
+struct jxl_decoder_deleter {
+  void operator()(JxlDecoderImpl* ptr) {
+    if (ptr) {
+      jxl_decoder_destroy(ptr);
+    }
+  }
+};
 
 namespace mozilla::image {
-class RasterImage;
 
 class nsJXLDecoder final : public Decoder {
  public:
-  virtual ~nsJXLDecoder();
+  ~nsJXLDecoder() override;
 
   DecoderType GetType() const override { return DecoderType::JXL; }
 
@@ -33,19 +50,24 @@ class nsJXLDecoder final : public Decoder {
   // Decoders should only be instantiated via DecoderFactory.
   explicit nsJXLDecoder(RasterImage* aImage);
 
-  size_t PreferredThreadCount();
+  std::unique_ptr<qcms_profile, qcms_profile_deleter> mInProfile;
+  std::unique_ptr<qcms_transform, qcms_transform_deleter> mTransform;
+  std::unique_ptr<JxlDecoderImpl, jxl_decoder_deleter> mDecoder;
 
   enum class State { JXL_DATA, FINISHED_JXL_DATA };
+
+  nsresult ProcessFrame();
 
   LexerTransition<State> ReadJXLData(const char* aData, size_t aLength);
   LexerTransition<State> FinishedJXLData();
 
   StreamingLexer<State> mLexer;
-  JxlDecoderPtr mDecoder;
-  JxlThreadParallelRunnerPtr mParallelRunner;
-  Vector<uint8_t> mBuffer;
-  Vector<uint8_t> mOutBuffer;
-  JxlBasicInfo mInfo{};
+
+  // Cached basic info from decoder
+  JxlBasicInfo mCachedBasicInfo;
+
+  // Animation state
+  uint32_t mFrameIndex = 0;
 };
 
 }  // namespace mozilla::image
